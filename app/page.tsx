@@ -11,6 +11,8 @@ const committees = [
   { code: "04", name: "International Press Corps", short: "IPC", level: "Open to all", seats: "Media desk" },
 ]
 
+const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
+
 const schedule = [
   ["08:30", "Delegate registration", "Main foyer"],
   ["09:30", "Inaugural ceremony", "The Grand Hall"],
@@ -29,7 +31,7 @@ export default function Home() {
       <div className="site-wash" aria-hidden="true" />
       <nav className="site-nav" aria-label="Primary navigation">
         <a href="#top" className="brand-mark" aria-label="Arkham MUN home">
-          <span className="brand-orbit"><span /></span>
+          <img src={logoUrl} alt="Arkham MUN bat and laurel emblem" />
           <span><strong>ARKHAM</strong><small>MUN 2025</small></span>
         </a>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
@@ -49,6 +51,7 @@ export default function Home() {
           <p className="hero-intro">Arkham MUN is a student-led simulation of the United Nations where ideas become resolutions and every voice has the power to move the room.</p>
           <div className="hero-actions"><button className="primary-button" onClick={() => setShowRegistration(true)}>Secure your seat <ArrowRight size={17} /></button><a className="text-link" href="#about">Explore the conference <ChevronDown size={16} /></a></div>
         </div>
+        <div className="hero-emblem" aria-hidden="true"><div className="emblem-ring" /><img src={logoUrl} alt="" /></div>
         <div className="hero-meta"><div><span>01</span><p>DECEMBER<br /><b>2025</b></p></div><div className="meta-line" /><div><span>VENUE</span><p>THE GRAND HALL<br /><b>NEW DELHI</b></p></div></div>
         <div className="scroll-cue"><span /> Scroll to explore</div>
       </section>
@@ -68,7 +71,7 @@ export default function Home() {
 
       <section className="register-banner"><div><span className="section-kicker">04 / Your move</span><h2>Bring your<br /><em>point of view.</em></h2></div><button className="primary-button" onClick={() => setShowRegistration(true)}>Register as a delegate <ArrowRight size={17} /></button></section>
 
-      <footer id="contact" className="site-footer"><div className="footer-brand"><span className="brand-orbit"><span /></span><strong>ARKHAM MUN</strong><p>Diplomacy, reimagined.</p></div><div className="footer-details"><div><span>GET IN TOUCH</span><a href="mailto:hello@arkhammum.org"><Mail size={15} /> hello@arkhammum.org</a><a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a></div><div><span>THE GRAND HALL</span><p><MapPin size={15} /> New Delhi, India</p><p><CalendarDays size={15} /> 01 December 2025</p></div></div><p className="copyright">© 2025 Arkham Model United Nations</p></footer>
+      <footer id="contact" className="site-footer"><div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>Diplomacy, reimagined.</p></div><div className="footer-details"><div><span>GET IN TOUCH</span><a href="mailto:hello@arkhammum.org"><Mail size={15} /> hello@arkhammum.org</a><a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a></div><div><span>THE GRAND HALL</span><p><MapPin size={15} /> New Delhi, India</p><p><CalendarDays size={15} /> 01 December 2025</p></div></div><p className="copyright">© 2025 Arkham Model United Nations</p></footer>
 
       {showRegistration && <div className="modal-backdrop" role="presentation" onClick={() => setShowRegistration(false)}><div className="registration-modal" role="dialog" aria-modal="true" aria-labelledby="registration-title" onClick={(event) => event.stopPropagation()}><button className="modal-close" onClick={() => setShowRegistration(false)} aria-label="Close registration"><X size={18} /></button><ShieldCheck size={30} className="modal-icon" /><h2 id="registration-title">Reserve your seat.</h2><p>Delegate registrations for Arkham MUN 2025 open soon. Leave your details and our secretariat will be in touch.</p><label>Name<input placeholder="Your full name" /></label><label>Email<input type="email" placeholder="you@example.com" /></label><button className="primary-button" onClick={() => setShowRegistration(false)}>Join the waitlist <ArrowRight size={17} /></button></div></div>}
     </main>
