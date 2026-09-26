@@ -8,12 +8,12 @@ import "./settings-panel.css"
 // =======================================================
 
 // --- Configuração de Cores (DARK GRAY THEME) ---
-const PRIMARY_GRAY = '#505050';        // Cinza escuro para destaques
-const DEEP_BLACK = '#0F0F0F';          // Preto mais profundo (fundo do título)
-const PANEL_GRAY = '#1A1A1A';          // Fundo principal do painel (quase preto)
-const TRACK_GRAY = '#2A2A2A';          // Trilhas de Fader (cinza mais escuro)
-const HIGHLIGHT_WHITE = '#E0E0E0';     // Destaques Metálicos/Thumb (mantido)
-const TEXT_COLOR = '#9CA3AF';          // Texto cinza claro (mais suave)
+const PRIMARY_GRAY = '#E3262E';        // Cinza escuro para destaques
+const DEEP_BLACK = '#050505';          // Preto mais profundo (fundo do título)
+const PANEL_GRAY = '#0B0B0B';          // Fundo principal do painel (quase preto)
+const TRACK_GRAY = '#2A0B0D';          // Trilhas de Fader (cinza mais escuro)
+const HIGHLIGHT_WHITE = '#FFFFFF';     // Destaques Metálicos/Thumb (mantido)
+const TEXT_COLOR = '#D6D6D6';          // Texto cinza claro (mais suave)
 
 // --- MÓDULO: PULSOS ALEATÓRIOS CONTROLADOS ---
 const PULSE_RHYTHMS = {
