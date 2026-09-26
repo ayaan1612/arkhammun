@@ -32,7 +32,7 @@ export default function Home() {
       <nav className="site-nav" aria-label="Primary navigation">
         <a href="#top" className="brand-mark" aria-label="Arkham MUN home">
           <img src={logoUrl} alt="Arkham MUN bat and laurel emblem" />
-          <span><strong>ARKHAM</strong><small>MUN 2025</small></span>
+          <span><strong>ARKHAM</strong><small>MUN </small></span>
         </a>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
