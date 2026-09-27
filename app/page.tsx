@@ -30,6 +30,16 @@ export default function Home() {
   const [showRegistration, setShowRegistration] = useState(false)
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
+  const [activePolicy, setActivePolicy] = useState(0)
+  const [isPolicyPaused, setIsPolicyPaused] = useState(false)
+
+  const policies = [
+    ["I", "Code of conduct", "Delegates are expected to uphold honesty, integrity, respect and professionalism at all times."],
+    ["II", "Decorum expectations", "Maintaining decorum is essential. Disruptive behavior or disrespect will not be tolerated."],
+    ["III", "Device policy", "The use of electronic devices is strictly regulated as per committee guidelines."],
+    ["IV", "ID card requirement", "All delegates must wear their official ID cards at all times within the conference premises."],
+    ["V", "Refund policy", "Refunds will be processed only under exceptional circumstances as per the conference's discretion."],
+  ]
 
   const moveCommittee = (direction: number) => {
     setActiveCommittee((current) => (current + direction + committees.length) % committees.length)
@@ -40,6 +50,12 @@ export default function Home() {
     const autoplay = window.setInterval(() => moveCommittee(1), 4800)
     return () => window.clearInterval(autoplay)
   }, [isCommitteePaused])
+
+  useEffect(() => {
+    if (isPolicyPaused) return
+    const autoplay = window.setInterval(() => setActivePolicy((current) => (current + 1) % policies.length), 4200)
+    return () => window.clearInterval(autoplay)
+  }, [isPolicyPaused, policies.length])
 
   return (
     <main className="mun-site relative min-h-screen overflow-hidden bg-[#080812] text-white">
@@ -69,7 +85,7 @@ export default function Home() {
 
       <section id="registration" className="content-section registration-section"><div className="section-kicker">05 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Scan the QR code on the official brochure to register. All registrations are completed online before 01 October.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2000</strong><small>₹1800 per student for schools registering 50 or more students</small></div><div><span>Individual delegate</span><strong>₹2200</strong><small>Online payment · Registration deadline: 1st October</small></div><LiquidButton size="xl" onClick={() => setShowRegistration(true)}>Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
 
-      <section id="policies" className="content-section policies-section"><div className="section-kicker">06 / Rules & policies</div><h2>Carry the<br /><em>standard.</em></h2><div className="policy-grid">{[["I", "Code of conduct", "Delegates are expected to uphold honesty, integrity, respect and professionalism at all times."], ["II", "Decorum expectations", "Maintaining decorum is essential. Disruptive behavior or disrespect will not be tolerated."], ["III", "Device policy", "The use of electronic devices is strictly regulated as per committee guidelines."], ["IV", "ID card requirement", "All delegates must wear their official ID cards at all times within the conference premises."], ["V", "Refund policy", "Refunds will be processed only under exceptional circumstances as per the conference's discretion."]].map(([number, title, text]) => <article className="policy-card" key={number}><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div></section>
+      <section id="policies" className="content-section policies-section"><div className="section-heading policy-heading"><div><div className="section-kicker">06 / Rules & policies</div><h2>Carry the<br /><em>standard.</em></h2></div><p>Clear expectations create the room for sharper debate, stronger diplomacy and a better conference for everyone.</p></div><div className="policy-slider" onMouseEnter={() => setIsPolicyPaused(true)} onMouseLeave={() => setIsPolicyPaused(false)}><button className="slider-arrow policy-arrow" onClick={() => setActivePolicy((current) => (current - 1 + policies.length) % policies.length)} aria-label="Previous policy"><ChevronLeft /></button><div className="policy-viewport"><div className="policy-track">{policies.map(([number, title, text], index) => <motion.article className={`policy-card ${index === activePolicy ? "is-active" : ""}`} key={number} animate={{ x: (index - activePolicy) * 18, scale: index === activePolicy ? 1 : .88, opacity: index === activePolicy ? 1 : .36, filter: index === activePolicy ? "blur(0px)" : "blur(2px)" }} transition={{ type: "spring", stiffness: 120, damping: 20 }} onClick={() => setActivePolicy(index)}><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div><small>{index === activePolicy ? "Current policy" : "Tap to inspect"}</small></motion.article>)}</div></div><button className="slider-arrow policy-arrow" onClick={() => setActivePolicy((current) => (current + 1) % policies.length)} aria-label="Next policy"><ChevronRight /></button></div><div className="policy-progress" aria-label="Policy slides">{policies.map(([number], index) => <button key={number} className={index === activePolicy ? "is-active" : ""} onClick={() => setActivePolicy(index)} aria-label={`Show policy ${number}`} />)}</div></section>
 
       <section className="register-banner"><div><span className="section-kicker">07 / Your move</span><h2>Bring your<br /><em>point of view.</em></h2></div><LiquidButton size="xl" onClick={() => setShowRegistration(true)}>Register as a delegate <ArrowRight size={17} /></LiquidButton></section>
       <footer id="contact" className="site-footer"><div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div><div className="footer-details"><div><span>GET IN TOUCH</span><a href="tel:9810110713"><Users size={15} /> 9810110713</a><a href="mailto:hello@arkhammun.org"><Mail size={15} /> hello@arkhammun.org</a><a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a></div><div><span>THE CONFERENCE</span><p><MapPin size={15} /> Delhi, India</p><p><CalendarDays size={15} /> 24—25 October</p></div></div><p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p></footer>
