@@ -169,6 +169,20 @@
 @media (max-width: 760px) { .committee-slider { --committee-card-width: calc(100vw - 92px); --committee-gap: 14px; }.committee-viewport { mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }.slider-arrow { flex: 0 0 32px; }.committee-card { min-height: 230px; }.policy-grid { grid-template-columns: 1fr; }.policy-card { min-height: auto; }.policy-card h3 { margin-top: 24px; }.fee-card { padding: 22px; }.quote { margin-top: 25px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
 
+.registration-modal { max-height: min(720px, calc(100dvh - 32px)); overflow-y: auto; }
+.registration-modal form { display: grid; gap: 2px; }
+.registration-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; margin: 24px 0 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(160,150,205,.16); border-radius: 5px; }
+.registration-tabs button { border: 0; border-radius: 3px; padding: 11px 8px; color: #8f8b9e; background: transparent; font: 10px Arial, sans-serif; letter-spacing: .04em; cursor: pointer; transition: background .25s, color .25s, transform .25s; }
+.registration-tabs button:hover { color: #fff; transform: translateY(-1px); }
+.registration-tabs button.is-active { color: #fff; background: #e3262e; box-shadow: 0 8px 20px rgba(227,38,46,.2); }
+.registration-modal select { display: block; width: 100%; margin-top: 7px; padding: 12px; color: #fff; background: #0c0b17; border: 1px solid #3d3758; border-radius: 3px; outline: none; }
+.registration-modal select:focus { border-color: #e3262e; }
+.modal-submit { width: 100%; justify-content: center; border: 0; margin-top: 22px; padding: 14px 16px; border-radius: 4px; color: #fff; background: #e3262e; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: transform .25s, background .25s, box-shadow .25s; }
+.modal-submit:hover { transform: translateY(-2px); background: #ff4b52; box-shadow: 0 12px 28px rgba(227,38,46,.3); }
+.modal-secondary { margin-top: 20px; padding: 11px 18px; border: 1px solid rgba(227,38,46,.5); border-radius: 4px; color: #fff; background: transparent; cursor: pointer; }
+.registration-success { text-align: center; padding: 18px 0 6px; }.registration-success .modal-icon { margin: 0 auto; }.registration-success h2 { font-size: 36px; }
+@media (max-width: 760px) { .registration-modal { padding: 26px 20px; } .registration-modal h2 { font-size: 31px; } .registration-tabs button { font-size: 9px; } }
+
 /* Rules carousel: the same tactile sliding language as the committee rooms, with a crisp active card. */
 .policy-heading { align-items: end; }
 .policy-slider { position: relative; display: flex; align-items: center; gap: 14px; margin-top: 46px; }
