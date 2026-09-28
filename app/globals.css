@@ -239,7 +239,7 @@
   .eyebrow { font-size: 9px; letter-spacing: .14em; }
   .hero-shell h1 { font-size: clamp(44px, 13vw, 58px); line-height: .95; margin: 20px 0; }
   .hero-intro { max-width: 31rem; font-size: 14px; line-height: 1.65; }
-  .hero-emblem { width: 170px; right: -58px; top: 35%; opacity: .1; pointer-events: none; z-index: 0 !important; }
+  .hero-emblem { display: none; }
   .hero-actions { align-items: stretch; flex-direction: column; gap: 12px; margin-top: 26px; }
   .hero-actions .primary-button { justify-content: center; width: 100%; }
   .text-link { justify-content: center; padding: 8px; }
@@ -281,6 +281,25 @@
   .footer-details a, .footer-details p { font-size: 12px; }
   .copyright { font-size: 9px; line-height: 1.5; }
   .registration-modal { padding: 28px 22px; }
+}
+
+/* Policy deck: one crisp, readable card glides through the viewport on every screen size. */
+.policy-viewport { mask-image: none; padding: 18px 0 26px; }
+.policy-track { position: relative; min-height: 292px; overflow: hidden; }
+.policy-card { position: absolute; inset: 0; width: 100%; min-height: 292px; border-color: rgba(255,255,255,.38); border-radius: 18px; background: linear-gradient(135deg, rgba(255,255,255,.98), rgba(242,238,244,.96)); color: #17131d; box-shadow: 0 24px 70px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.95); }
+.policy-card.is-active { border-color: #e3262e; background: linear-gradient(135deg, #fff, #f3eef2); box-shadow: 0 28px 75px rgba(0,0,0,.34), 0 0 34px rgba(227,38,46,.16); }
+.policy-card > span { color: #e3262e; }
+.policy-card h3 { color: #17131d; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.03em; }
+.policy-card p { color: #5f5968; font-size: 14px; max-width: 560px; }
+.policy-card small { color: #b31d26; }
+@media (max-width: 760px) {
+  .policy-slider { gap: 8px; }
+  .policy-viewport { padding: 10px 0 22px; }
+  .policy-track { min-height: 260px; }
+  .policy-card { min-width: 100%; flex-basis: 100%; min-height: 260px; padding: 22px; }
+  .policy-card:not(.is-active) { opacity: 0 !important; }
+  .policy-card h3 { margin-top: 26px; font-size: 23px; }
+  .policy-card p { font-size: 13px; line-height: 1.65; }
 }
 
 @media (max-width: 380px) {
