@@ -222,3 +222,71 @@
 .slider-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 0 4px; color: #77748a; font-size: 10px; letter-spacing: .14em; }
 .slider-dots { display: flex; gap: 8px; }.slider-dots button { width: 28px; height: 3px; padding: 0; border: 0; border-radius: 4px; background: #393341; cursor: pointer; transition: width .3s, background .3s; }.slider-dots button.is-active { width: 52px; background: #e3262e; }
 @media (max-width: 760px) { .committee-slider { margin-inline: -16px; padding-inline: 16px; mask-image: none; }.committee-track { gap: 12px; }.committee-track.active-0 { transform: translateX(0); }.committee-track.active-1 { transform: translateX(-232px); }.committee-track.active-2 { transform: translateX(-464px); }.committee-track.active-3 { transform: translateX(-696px); }.committee-track.active-4 { transform: translateX(-928px); }.committee-track.active-5 { transform: translateX(-1160px); }.committee-card { flex-basis: 220px; min-height: 245px; padding: 20px; }.committee-card h3 { font-size: 17px; }.committee-card small { font-size: 16px; }.slider-arrow { width: 42px; height: 42px; }.slider-arrow-left { left: 8px; }.slider-arrow-right { right: 8px; } }
+
+/* Phone-first polish: keep the experience compact, readable, and free of sideways overflow. */
+@media (max-width: 600px) {
+  .mun-site { overflow-x: clip; }
+  .site-nav { position: relative; padding: 18px 0; }
+  .brand-mark { gap: 8px; }
+  .brand-mark img { width: 36px; height: 36px; }
+  .brand-mark strong { font-size: 11px; }
+  .brand-mark small { font-size: 8px; }
+  .nav-links { top: 62px; padding: 16px; gap: 4px; border-radius: 12px; background: rgba(21,19,38,.96); box-shadow: 0 22px 50px rgba(0,0,0,.45); backdrop-filter: blur(16px); }
+  .nav-links a { padding: 13px 8px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .nav-cta { justify-content: center; margin-top: 8px; padding: 13px; }
+  .hero-shell { min-height: auto; padding: 62px 0 54px; }
+  .hero-copy { max-width: 100%; }
+  .eyebrow { font-size: 9px; letter-spacing: .14em; }
+  .hero-shell h1 { font-size: clamp(44px, 13vw, 58px); line-height: .95; margin: 20px 0; }
+  .hero-intro { max-width: 31rem; font-size: 14px; line-height: 1.65; }
+  .hero-emblem { width: 170px; right: -58px; top: 35%; opacity: .1; pointer-events: none; z-index: 0 !important; }
+  .hero-actions { align-items: stretch; flex-direction: column; gap: 12px; margin-top: 26px; }
+  .hero-actions .primary-button { justify-content: center; width: 100%; }
+  .text-link { justify-content: center; padding: 8px; }
+  .hero-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 58px; }
+  .hero-meta > div:not(.meta-line) { display: block; }
+  .hero-meta .meta-line { display: none; }
+  .hero-meta span { font-size: 8px; }
+  .hero-meta p { margin-top: 8px; font-size: 9px; }
+  .content-section { padding: 68px 0; }
+  .content-section h2, .register-banner h2 { font-size: clamp(42px, 12vw, 58px); line-height: .95; }
+  .section-heading { margin-bottom: 30px; }
+  .section-heading p, .section-copy { font-size: 14px; line-height: 1.7; }
+  .stats-row { gap: 22px 12px; margin-top: 48px; }
+  .stats-row strong { font-size: 26px; }
+  .stats-row span { font-size: 8px; letter-spacing: .1em; }
+  .committee-feature { min-height: 0; grid-template-columns: 1fr; gap: 12px; padding: 10px; border-radius: 14px; }
+  .committee-rail { min-height: 154px; }
+  .committee-chip { left: 2%; right: 2%; padding: 9px 12px; }
+  .committee-chip strong { font-size: 12px; }
+  .committee-chip small { font-size: 8px; }
+  .committee-spotlight { min-height: 0; }
+  .spotlight-card { min-height: 300px; padding: 20px; border-radius: 11px; }
+  .spotlight-copy h3 { font-size: clamp(48px, 16vw, 66px); }
+  .spotlight-copy p { font-size: 13px; line-height: 1.55; }
+  .committee-spotlight .slider-arrow { flex-basis: 30px; width: 30px; height: 30px; }
+  .schedule-layout { margin-top: 32px; }
+  .timeline-row { grid-template-columns: 56px 1fr 16px; gap: 10px; padding: 15px 0; }
+  .timeline-row strong { font-size: 13px; }
+  .register-banner { padding: 60px 0 68px; }
+  .register-banner .primary-button { width: 100%; justify-content: center; }
+  .policy-slider { gap: 5px; margin-top: 28px; }
+  .policy-arrow { flex-basis: 28px; width: 28px; height: 28px; }
+  .policy-card { min-width: calc(100vw - 88px); flex-basis: calc(100vw - 88px); min-height: 230px; padding: 19px; }
+  .policy-card h3 { margin-top: 20px; font-size: 16px; }
+  .policy-card p { font-size: 12px; }
+  .policy-progress { margin-top: 4px; }
+  .site-footer { padding: 42px 0 28px; gap: 30px; }
+  .footer-details { gap: 24px; }
+  .footer-details a, .footer-details p { font-size: 12px; }
+  .copyright { font-size: 9px; line-height: 1.5; }
+  .registration-modal { padding: 28px 22px; }
+}
+
+@media (max-width: 380px) {
+  .hero-shell h1 { font-size: 42px; }
+  .hero-meta { gap: 6px; }
+  .hero-meta p { font-size: 8px; }
+  .committee-feature { margin-inline: -2px; }
+  .spotlight-card { min-height: 285px; }
+}
