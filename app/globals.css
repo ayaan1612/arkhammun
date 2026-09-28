@@ -174,13 +174,28 @@
 .registration-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; margin: 24px 0 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(160,150,205,.16); border-radius: 5px; }
 .registration-tabs button { border: 0; border-radius: 3px; padding: 11px 8px; color: #8f8b9e; background: transparent; font: 10px Arial, sans-serif; letter-spacing: .04em; cursor: pointer; transition: background .25s, color .25s, transform .25s; }
 .registration-tabs button:hover { color: #fff; transform: translateY(-1px); }
-.registration-tabs button.is-active { color: #fff; background: #e3262e; box-shadow: 0 8px 20px rgba(227,38,46,.2); }
+.registration-tabs button.is-active, .registration-tabs button[aria-selected="true"] { color: #fff; background: #e3262e; box-shadow: 0 8px 20px rgba(227,38,46,.2); } .registration-tabs button[aria-selected="false"] { color: #c5c0d0; background: transparent; box-shadow: none; }
 .registration-modal select { display: block; width: 100%; margin-top: 7px; padding: 12px; color: #fff; background: #0c0b17; border: 1px solid #3d3758; border-radius: 3px; outline: none; }
 .registration-modal select:focus { border-color: #e3262e; }
 .modal-submit { width: 100%; justify-content: center; border: 0; margin-top: 22px; padding: 14px 16px; border-radius: 4px; color: #fff; background: #e3262e; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; transition: transform .25s, background .25s, box-shadow .25s; }
 .modal-submit:hover { transform: translateY(-2px); background: #ff4b52; box-shadow: 0 12px 28px rgba(227,38,46,.3); }
 .modal-secondary { margin-top: 20px; padding: 11px 18px; border: 1px solid rgba(227,38,46,.5); border-radius: 4px; color: #fff; background: transparent; cursor: pointer; }
-.registration-success { text-align: center; padding: 18px 0 6px; }.registration-success .modal-icon { margin: 0 auto; }.registration-success h2 { font-size: 36px; }
+ .registration-success { text-align: center; padding: 18px 0 6px; }.registration-success .modal-icon { margin: 0 auto; }.registration-success h2 { font-size: 36px; }
+
+/* Registration form contrast and responsive layout */
+.modal-backdrop { background: rgba(3, 3, 8, .92); backdrop-filter: blur(14px); }
+.registration-modal { max-height: min(760px, calc(100dvh - 24px)); overflow-y: auto; padding: clamp(24px, 5vw, 38px); background: linear-gradient(145deg, #211827 0%, #110f1d 100%); border: 1px solid rgba(255, 255, 255, .2); box-shadow: 0 28px 90px rgba(0, 0, 0, .72), 0 0 50px rgba(227, 38, 46, .12); }
+.registration-modal h2 { color: #fff; margin: 10px 0 8px; }
+.registration-modal > p { color: #c7c3d2; line-height: 1.6; }
+.registration-modal form { gap: 14px; margin-top: 18px; }
+.registration-modal label { display: grid; gap: 7px; color: #f2eef7; font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+.registration-modal input, .registration-modal select { box-sizing: border-box; min-height: 46px; margin: 0; padding: 13px 14px; color: #fff; background: rgba(5, 5, 12, .78); border: 1px solid rgba(255, 255, 255, .22); border-radius: 5px; font: 14px Arial, sans-serif; outline: none; }
+.registration-modal input::placeholder { color: #777286; }
+.registration-modal input:focus, .registration-modal select:focus { border-color: #e3262e; box-shadow: 0 0 0 3px rgba(227, 38, 46, .14); }
+.registration-tabs { margin: 22px 0 4px; background: rgba(255, 255, 255, .07); border-color: rgba(255, 255, 255, .18); }
+.registration-tabs button { min-height: 42px; color: #c5c0d0; font-size: 11px; font-weight: 700; }
+.modal-close { color: #fff; }
+@media (max-width: 760px) { .modal-backdrop { padding: 10px; align-items: end; } .registration-modal { width: 100%; max-height: calc(100dvh - 20px); border-radius: 14px 14px 8px 8px; padding: 25px 18px 18px; } .registration-modal h2 { font-size: 32px; } .registration-modal form { gap: 12px; } .registration-tabs button { padding-inline: 4px; font-size: 10px; } }
 @media (max-width: 760px) { .registration-modal { padding: 26px 20px; } .registration-modal h2 { font-size: 31px; } .registration-tabs button { font-size: 9px; } }
 
 /* Rules carousel: the same tactile sliding language as the committee rooms, with a crisp active card. */
