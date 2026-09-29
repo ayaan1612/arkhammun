@@ -8,7 +8,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'Arkham MUN 2025 | Diplomacy, reimagined',
-  description: 'Arkham Model United Nations — one day of diplomacy, debate and ideas that move nations.',
+  description: 'Arkham Model United Nations — diplomacy, debate and ideas that move nations.',
   generator: 'v0.app',
   icons: {
     icon: [

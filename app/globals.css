@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './page-routes.css';
 
 @custom-variant dark (&:is(.dark *));
 
