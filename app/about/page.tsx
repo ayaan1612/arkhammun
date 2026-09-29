@@ -1,0 +1,7 @@
+import { PageShell } from "@/components/site-shell"
+
+const moments = ["Debate", "Research", "Negotiation"]
+
+export default function AboutPage() {
+  return <PageShell title="About Arkham" intro="A Model United Nations conference designed to move students from spectators of global affairs to participants in them."><section className="page-content about-story"><div className="about-copy"><span className="section-kicker">THE CONFERENCE</span><h2>Diplomacy,<br /><em>reimagined.</em></h2><p>Arkham MUN gives young leaders a room to question assumptions, negotiate with purpose and leave ready to lead. Across thoughtfully curated committees, delegates engage real global challenges through research, collaboration and conviction.</p><p>Every detail is designed to feel considered: the pace of the room, the strength of the brief and the confidence to speak when the answer is not obvious.</p></div><div className="about-photo-stack" aria-label="Moments from Arkham MUN"><div className="about-photo about-photo-one"><span>01</span><strong>Find your voice.</strong></div><div className="about-photo about-photo-two"><span>02</span><strong>Meet the room.</strong></div><div className="about-photo about-photo-three"><span>03</span><strong>Shape tomorrow.</strong></div></div></section><section className="page-content about-moments">{moments.map((moment, index) => <article key={moment}><span>0{index + 1}</span><h3>{moment}</h3><p>Meaningful preparation, sharp questions and an experience that continues after the final vote.</p></article>)}</section></PageShell>
+}
