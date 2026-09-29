@@ -1,0 +1,30 @@
+.modal { width: min(520px, 100%); }
+.flowHeading h2 { margin-top: 9px; }
+.statusLine { display: flex; align-items: center; gap: 9px; padding-bottom: 15px; border-bottom: 1px solid rgba(160, 150, 205, .16); }
+.statusDot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #e6a54a; box-shadow: 0 0 12px rgba(230, 165, 74, .55); }
+.approved { background: #54bd80; box-shadow: 0 0 12px rgba(84, 189, 128, .55); }
+.rejected { background: #e3262e; box-shadow: 0 0 12px rgba(227, 38, 46, .5); }
+.paymentBlock, .statusBlock { display: grid; gap: 16px; }
+.paymentBlock h3 { margin: 0 0 5px; color: #fff; font-size: 17px; }
+.paymentBlock p, .statusBlock > p { margin: 0; }
+.paymentQr { width: 176px; height: 176px; padding: 8px; justify-self: center; background: #fff; border: 1px solid rgba(255, 255, 255, .3); border-radius: 4px; }
+.proofForm { display: grid; gap: 14px; margin: 0 !important; }
+.proofForm label span { color: #908b9d; font-weight: 400; }
+.proofForm input[type="file"] { padding: 10px; }
+.proofForm button { margin-top: 2px; }
+.entryPass { display: flex; align-items: center; gap: 16px; padding: 13px; border: 1px solid rgba(84, 189, 128, .35); background: rgba(84, 189, 128, .07); }
+.entryPass img { width: 128px; height: 128px; padding: 5px; background: #fff; border-radius: 3px; }
+.entryPass strong, .entryPass small { display: block; }
+.entryPass strong { color: #fff; font-size: 14px; }
+.entryPass small { margin-top: 5px; color: #aaa8ba; font-size: 12px; line-height: 1.5; }
+.refreshButton, .textButton { width: fit-content; border: 1px solid rgba(227, 38, 46, .5); border-radius: 4px; padding: 10px 14px; color: #fff; background: transparent; font-weight: 600; }
+.refreshButton:disabled { opacity: .55; cursor: wait; }
+.rejectedNote { padding: 12px; border-left: 2px solid #e3262e; background: rgba(227, 38, 46, .08); }
+.notice { color: #9bd4ae !important; }
+.error { margin: 14px 0 0; color: #ff999d !important; }
+.textButton { margin-top: 12px; color: #c7c3d2; font-size: 12px; }
+.adminLink { display: inline-flex; align-items: center; gap: 6px; margin-top: 22px; color: #aaa8ba; font-size: 12px; text-decoration: none; }
+.adminLink:hover { color: #fff; }
+.spinner { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 520px) { .entryPass { align-items: flex-start; }.entryPass img { width: 106px; height: 106px; } }

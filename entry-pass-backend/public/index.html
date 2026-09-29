@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#16233f">
+  <title>Entry Pass | Event Registration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.js" defer></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --navy: #16233f;
+      --navy-soft: #263b62;
+      --ink: #1c2737;
+      --muted: #667386;
+      --line: #dce2e9;
+      --surface: #ffffff;
+      --canvas: #f2f4f7;
+      --accent: #c55b37;
+      --good: #247449;
+      --bad: #a73939;
+      --shadow: 0 18px 55px rgb(22 35 63 / 8%);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--canvas); color: var(--ink); font-family: "IBM Plex Sans", sans-serif; }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .topbar { background: var(--navy); color: #fff; border-bottom: 4px solid var(--accent); }
+    .topbar-inner { width: min(1080px, calc(100% - 40px)); min-height: 112px; margin: auto; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .brand-mark { width: 42px; height: 42px; border: 1px solid rgb(255 255 255 / 45%); display: grid; place-items: center; color: #f4c9a8; font-size: 19px; font-weight: 700; }
+    .brand-name { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: .04em; }
+    .brand-caption { margin: 3px 0 0; color: #b7c2d2; font-size: 12px; }
+    .top-note { color: #d5dce7; font-size: 13px; text-align: right; }
+    main { width: min(1080px, calc(100% - 40px)); margin: 34px auto 72px; }
+    .tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+    .tab { color: var(--muted); background: transparent; border: 0; border-bottom: 3px solid transparent; padding: 12px 16px; font-weight: 600; margin-bottom: -1px; }
+    .tab[aria-selected="true"] { color: var(--navy); border-color: var(--accent); }
+    .panel[hidden] { display: none; }
+    .intro { margin: 0 0 22px; }
+    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .12em; font-size: 11px; font-weight: 700; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { color: var(--navy); font-size: clamp(26px, 5vw, 36px); line-height: 1.12; margin: 8px 0; }
+    h2 { font-size: 20px; margin-bottom: 6px; }
+    h3 { font-size: 16px; margin-bottom: 8px; }
+    .intro p, .subtle { color: var(--muted); margin-bottom: 0; }
+    .card { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 24px; margin-bottom: 18px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field { display: grid; gap: 7px; }
+    .field.full { grid-column: 1 / -1; }
+    label { color: var(--navy); font-size: 13px; font-weight: 600; }
+    input, textarea { width: 100%; min-height: 44px; color: var(--ink); background: var(--surface); border: 1px solid #cbd3dd; border-radius: 3px; padding: 10px 12px; outline: none; }
+    textarea { min-height: 90px; resize: vertical; }
+    input:focus, textarea:focus { border-color: var(--navy-soft); box-shadow: 0 0 0 3px rgb(38 59 98 / 12%); }
+    input[type="file"] { padding: 8px; }
+    .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .button { min-height: 42px; padding: 10px 16px; border: 1px solid var(--navy); border-radius: 3px; background: var(--navy); color: #fff; font-weight: 600; }
+    .button:hover { background: var(--navy-soft); }
+    .button.secondary { color: var(--navy); background: transparent; }
+    .button.secondary:hover { background: rgb(22 35 63 / 6%); }
+    .button.danger { border-color: var(--bad); background: var(--bad); }
+    .button:disabled { opacity: .55; cursor: wait; }
+    .message { margin: 14px 0 0; color: var(--muted); font-size: 14px; }
+    .message.error { color: var(--bad); }
+    .message.success { color: var(--good); }
+    .payment-layout { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 24px; align-items: center; }
+    .qr-image { display: block; width: min(100%, 220px); aspect-ratio: 1; background: #fff; border: 1px solid var(--line); padding: 8px; }
+    .status-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgb(197 91 55 / 10%); color: var(--accent); border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .status-label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status-label.approved { background: rgb(36 116 73 / 10%); color: var(--good); }
+    .status-label.rejected { background: rgb(167 57 57 / 10%); color: var(--bad); }
+    .admin-bar { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: end; }
+    .queue { display: grid; gap: 12px; }
+    .registration { border: 1px solid var(--line); padding: 18px; background: var(--surface); }
+    .registration-head { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+    .registration-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+    .registration-meta span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 3px; }
+    .registration-meta strong { overflow-wrap: anywhere; font-size: 13px; }
+    .proof-image { width: min(100%, 340px); max-height: 320px; object-fit: contain; object-position: left center; display: block; border: 1px solid var(--line); background: #f6f7f9; margin: 12px 0; }
+    .scanner-layout { display: grid; grid-template-columns: minmax(260px, 1fr) 1fr; gap: 22px; align-items: start; }
+    .video-wrap { position: relative; min-height: 230px; overflow: hidden; background: #101a2c; display: grid; place-items: center; }
+    video { width: 100%; max-height: 420px; object-fit: cover; }
+    .scan-frame { position: absolute; width: min(62%, 250px); aspect-ratio: 1; border: 2px solid #f4c9a8; box-shadow: 0 0 0 999px rgb(0 0 0 / 16%); pointer-events: none; }
+    .scan-result { min-height: 52px; padding: 14px; border-left: 3px solid var(--line); background: var(--canvas); color: var(--muted); }
+    .scan-result.valid { border-color: var(--good); color: var(--good); }
+    .scan-result.used, .scan-result.invalid { border-color: var(--bad); color: var(--bad); }
+    .empty { padding: 22px; border: 1px dashed var(--line); color: var(--muted); text-align: center; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ink: #e7ebf2; --muted: #aab5c5; --line: #39465a; --surface: #202b3b; --canvas: #151e2b; --navy: #0f1828; --navy-soft: #334b73; --accent: #e1855e; --good: #77c899; --bad: #ed8989; --shadow: 0 18px 55px rgb(0 0 0 / 18%); }
+      h1, label, .tab[aria-selected="true"] { color: #edf2fa; }
+      .button.secondary:hover { background: rgb(255 255 255 / 6%); }
+      .proof-image { background: #151e2b; }
+      .scan-result { background: #192434; }
+      input, textarea { border-color: #526075; }
+    }
+    @media (max-width: 680px) {
+      .topbar-inner { min-height: 90px; width: min(100% - 28px, 1080px); }
+      .top-note { max-width: 130px; font-size: 12px; }
+      main { width: min(100% - 28px, 1080px); margin-top: 22px; }
+      .form-grid, .payment-layout, .scanner-layout { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+      .payment-layout { justify-items: start; }
+      .admin-bar { grid-template-columns: 1fr 1fr; }
+      .admin-bar .field { grid-column: 1 / -1; }
+      .registration-meta { grid-template-columns: 1fr 1fr; }
+      .registration-head { display: block; }
+      .tabs { gap: 0; }
+      .tab { padding-inline: 11px; font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand"><div class="brand-mark" aria-hidden="true">EP</div><div><p class="brand-name">ENTRY PASS</p><p class="brand-caption">Event registration & access</p></div></div>
+      <div class="top-note">Registration · Payment review · Venue entry</div>
+    </div>
+  </header>
+  <main>
+    <div class="tabs" role="tablist" aria-label="Portal sections">
+      <button class="tab" id="user-tab" role="tab" aria-selected="true" aria-controls="user-panel">User Portal</button>
+      <button class="tab" id="admin-tab" role="tab" aria-selected="false" aria-controls="admin-panel">Admin Dashboard</button>
+    </div>
+
+    <section class="panel" id="user-panel" role="tabpanel" aria-labelledby="user-tab">
+      <div class="intro"><span class="eyebrow">Delegate access</span><h1>Your entry, handled.</h1><p>Register, submit your payment reference, then keep your approved pass ready at the venue.</p></div>
+      <form class="card" id="registration-form">
+        <h2>Start a registration</h2><p class="subtle">Use contact details where the event team can reach you.</p>
+        <div class="form-grid">
+          <div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" maxlength="120" required></div>
+          <div class="field"><label for="contact">Email or phone</label><input id="contact" name="contact" autocomplete="email" maxlength="200" required></div>
+        </div>
+        <div class="actions"><button class="button" type="submit">Continue to payment</button></div>
+        <p class="message" id="registration-message" role="status"></p>
+      </form>
+
+      <section class="card" id="payment-section" hidden>
+        <div class="payment-layout">
+          <div><span class="eyebrow">Manual UPI payment</span><h2>Pay the entry fee</h2><p class="subtle" id="amount-label"></p><p class="subtle">Scan this payment QR with your UPI app. This payment QR is not your entry pass.</p>
+            <form id="proof-form" class="form-grid" style="margin-top:20px">
+              <div class="field full"><label for="utr">Transaction reference (UTR)</label><input id="utr" name="utr" maxlength="120" required autocomplete="off"></div>
+              <div class="field full"><label for="screenshot">Payment screenshot (optional, max 5 MB)</label><input id="screenshot" name="screenshot" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></div>
+              <div class="field full"><button class="button" type="submit">Submit payment proof</button><p class="message" id="proof-message" role="status"></p></div>
+            </form>
+          </div>
+          <img class="qr-image" id="payment-qr" alt="Admin payment UPI QR code">
+        </div>
+      </section>
+
+      <section class="card" id="status-section" hidden>
+        <div class="registration-head"><div><span class="eyebrow">Registration status</span><h2 id="status-heading">Payment under review</h2></div><span class="status-label" id="status-badge">Pending</span></div>
+        <p class="subtle" id="status-copy">Your submitted payment reference is waiting for admin review.</p>
+        <div class="actions"><button class="button secondary" type="button" id="refresh-status">Refresh status</button><button class="button secondary" type="button" id="new-registration">New registration</button></div>
+        <div id="entry-pass" hidden style="margin-top:24px"><h3>Your approved entry pass</h3><p class="subtle">Show this QR to the event team at the gate. It can only be used once.</p><img class="qr-image" id="entry-qr" alt="Signed event entry QR code"></div>
+      </section>
+    </section>
+
+    <section class="panel" id="admin-panel" role="tabpanel" aria-labelledby="admin-tab" hidden>
+      <div class="intro"><span class="eyebrow">Event operations</span><h1>Review & admit.</h1><p>Confirm submitted payment references, issue entry passes, and validate each pass once at the venue.</p></div>
+      <section class="card">
+        <div class="admin-bar"><div class="field"><label for="admin-key">Admin key</label><input id="admin-key" type="password" autocomplete="current-password" placeholder="Enter shared admin key"></div><button class="button" type="button" id="load-queue">Load queue</button><button class="button secondary" type="button" id="clear-key">Clear key</button></div>
+        <p class="message" id="admin-message" role="status"></p>
+      </section>
+      <section class="card"><div class="registration-head"><div><h2>Payment review queue</h2><p class="subtle">Showing registrations that have submitted a UTR.</p></div><button class="button secondary" type="button" id="reload-queue">Refresh</button></div><div class="queue" id="queue" style="margin-top:18px"><div class="empty">Enter the admin key to load registrations.</div></div></section>
+      <section class="card">
+        <span class="eyebrow">Venue check-in</span><h2>Scan entry at venue</h2><p class="subtle">Camera access requires HTTPS outside localhost. A valid QR is marked used as soon as it is checked.</p>
+        <div class="scanner-layout" style="margin-top:18px">
+          <div><div class="video-wrap"><video id="camera" playsinline muted></video><div class="scan-frame" id="scan-frame" hidden></div><span id="camera-placeholder" class="subtle">Camera is off</span></div><div class="actions"><button class="button" type="button" id="start-camera">Start camera</button><button class="button secondary" type="button" id="stop-camera" disabled>Stop camera</button></div></div>
+          <div><div class="scan-result" id="scan-result" role="status" aria-live="polite">Ready to scan. Enter the admin key first.</div><canvas id="scan-canvas" class="sr-only"></canvas></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const byId = (id) => document.getElementById(id);
+    let registrationId = null;
+    let statusTimer = null;
+    let cameraStream = null;
+    let scanFrame = null;
+    let scanInProgress = false;
+    let lastScannedPayload = null;
+    let screenshotUrls = [];
+    const adminKeyInput = byId("admin-key");
+    adminKeyInput.value = sessionStorage.getItem("entry-pass-admin-key") || "";
+
+    async function readResponse(response) {
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(body.error || `Request failed (${response.status})`);
+        error.status = response.status;
+        error.body = body;
+        throw error;
+      }
+      return body;
+    }
+
+    function setMessage(id, text, type = "") {
+      const element = byId(id);
+      element.textContent = text;
+      element.className = `message ${type}`.trim();
+    }
+
+    document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
+      const userSelected = tab.id === "user-tab";
+      byId("user-tab").setAttribute("aria-selected", String(userSelected));
+      byId("admin-tab").setAttribute("aria-selected", String(!userSelected));
+      byId("user-panel").hidden = !userSelected;
+      byId("admin-panel").hidden = userSelected;
+    }));
+
+    byId("registration-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      setMessage("registration-message", "Creating your registration…");
+      try {
+        const result = await readResponse(await fetch("/api/registrations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: byId("name").value, contact: byId("contact").value }),
+        }));
+        registrationId = result.id;
+        byId("payment-qr").src = `/api/registrations/${encodeURIComponent(registrationId)}/payment-qr.png`;
+        byId("amount-label").textContent = `Amount due: INR ${Number(result.amount).toFixed(2)}`;
+        byId("payment-section").hidden = false;
+        byId("status-section").hidden = true;
+        setMessage("registration-message", "Registration created. Complete payment and submit your UTR below.", "success");
+        byId("payment-section").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) {
+        setMessage("registration-message", error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    byId("proof-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!registrationId) return;
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      setMessage("proof-message", "Submitting payment details…");
+      try {
+        const body = new FormData(event.currentTarget);
+        if (!byId("screenshot").files.length) body.delete("screenshot");
+        await readResponse(await fetch(`/api/registrations/${encodeURIComponent(registrationId)}/payment-proof`, { method: "POST", body }));
+        byId("status-section").hidden = false;
+        byId("status-section").scrollIntoView({ behavior: "smooth", block: "start" });
+        await refreshStatus();
+        window.clearInterval(statusTimer);
+        statusTimer = window.setInterval(refreshStatus, 10000);
+        setMessage("proof-message", "Payment reference submitted.", "success");
+      } catch (error) {
+        setMessage("proof-message", error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    async function refreshStatus() {
+      if (!registrationId) return;
+      try {
+        const result = await readResponse(await fetch(`/api/registrations/${encodeURIComponent(registrationId)}`));
+        const labels = { pending_payment: "Payment not submitted", payment_submitted: "Payment submitted", approved: "Approved", rejected: "Not approved" };
+        byId("status-badge").textContent = labels[result.status] || result.status;
+        byId("status-badge").className = `status-label ${result.status === "approved" ? "approved" : result.status === "rejected" ? "rejected" : ""}`;
+        byId("status-heading").textContent = result.status === "approved" ? "You are cleared to enter" : result.status === "rejected" ? "Action needed" : "Payment under review";
+        byId("status-copy").textContent = result.status === "approved" ? "Your entry pass is ready below." : result.status === "rejected" ? "Your payment proof was rejected. Contact the event team before submitting a new registration." : "Your submitted payment reference is waiting for admin review.";
+        if (result.status === "approved") {
+          window.clearInterval(statusTimer);
+          const entry = await readResponse(await fetch(`/api/registrations/${encodeURIComponent(registrationId)}/entry-qr`));
+          byId("entry-qr").src = entry.qr;
+          byId("entry-pass").hidden = false;
+        }
+        if (result.status === "rejected") window.clearInterval(statusTimer);
+      } catch (error) {
+        setMessage("proof-message", error.message, "error");
+      }
+    }
+
+    byId("refresh-status").addEventListener("click", refreshStatus);
+    byId("new-registration").addEventListener("click", () => {
+      window.clearInterval(statusTimer);
+      registrationId = null;
+      byId("registration-form").reset();
+      byId("proof-form").reset();
+      byId("payment-section").hidden = true;
+      byId("status-section").hidden = true;
+      setMessage("registration-message", "");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    adminKeyInput.addEventListener("change", () => sessionStorage.setItem("entry-pass-admin-key", adminKeyInput.value));
+    byId("clear-key").addEventListener("click", () => {
+      adminKeyInput.value = "";
+      sessionStorage.removeItem("entry-pass-admin-key");
+      setMessage("admin-message", "Admin key cleared.");
+      stopCamera();
+    });
+    byId("load-queue").addEventListener("click", loadQueue);
+    byId("reload-queue").addEventListener("click", loadQueue);
+
+    async function loadQueue() {
+      const key = adminKeyInput.value;
+      sessionStorage.setItem("entry-pass-admin-key", key);
+      if (!key) return setMessage("admin-message", "Enter the admin key first.", "error");
+      setMessage("admin-message", "Loading review queue…");
+      byId("queue").replaceChildren();
+      screenshotUrls.forEach(URL.revokeObjectURL);
+      screenshotUrls = [];
+      try {
+        const result = await readResponse(await fetch("/api/admin/registrations?status=payment_submitted", { headers: { "x-admin-key": key } }));
+        if (!result.registrations.length) {
+          byId("queue").innerHTML = '<div class="empty">No payment proofs are waiting for review.</div>';
+        }
+        for (const registration of result.registrations) {
+          const article = document.createElement("article");
+          article.className = "registration";
+          const heading = document.createElement("div");
+          heading.className = "registration-head";
+          const person = document.createElement("div");
+          const name = document.createElement("h3");
+          name.textContent = registration.name;
+          const identifier = document.createElement("p");
+          identifier.className = "subtle";
+          identifier.textContent = `Registration ${registration.id}`;
+          person.append(name, identifier);
+          heading.append(person);
+          article.append(heading);
+
+          const meta = document.createElement("div");
+          meta.className = "registration-meta";
+          [["Contact", registration.contact], ["Transaction reference", registration.utr], ["Amount", `INR ${Number(registration.amount).toFixed(2)}`]].forEach(([label, value]) => {
+            const item = document.createElement("div");
+            const caption = document.createElement("span");
+            caption.textContent = label;
+            const data = document.createElement("strong");
+            data.textContent = value;
+            item.append(caption, data);
+            meta.append(item);
+          });
+          article.append(meta);
+          if (registration.screenshot_url) {
+            const screenshot = document.createElement("img");
+            screenshot.className = "proof-image";
+            screenshot.alt = `Payment screenshot submitted by ${registration.name}`;
+            screenshot.src = await fetchScreenshot(registration.screenshot_url, key);
+            article.append(screenshot);
+          }
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const approve = document.createElement("button");
+          approve.className = "button";
+          approve.textContent = "Approve & issue pass";
+          approve.addEventListener("click", () => reviewRegistration(registration.id, "approve"));
+          const reject = document.createElement("button");
+          reject.className = "button danger";
+          reject.textContent = "Reject";
+          reject.addEventListener("click", () => reviewRegistration(registration.id, "reject"));
+          actions.append(approve, reject);
+          article.append(actions);
+          byId("queue").append(article);
+        }
+        setMessage("admin-message", `Loaded ${result.registrations.length} registration${result.registrations.length === 1 ? "" : "s"}.`, "success");
+      } catch (error) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = error.message;
+        byId("queue").append(empty);
+        setMessage("admin-message", error.message, "error");
+      }
+    }
+
+    async function fetchScreenshot(url, key) {
+      const response = await fetch(url, { headers: { "x-admin-key": key } });
+      if (!response.ok) throw new Error("Unable to load payment screenshot");
+      const objectUrl = URL.createObjectURL(await response.blob());
+      screenshotUrls.push(objectUrl);
+      return objectUrl;
+    }
+
+    async function reviewRegistration(id, action) {
+      let body;
+      if (action === "reject") {
+        const reason = window.prompt("Reason for rejection:");
+        if (reason === null) return;
+        body = { reason };
+      }
+      try {
+        await readResponse(await fetch(`/api/admin/registrations/${encodeURIComponent(id)}/${action}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-key": adminKeyInput.value },
+          body: JSON.stringify(body || {}),
+        }));
+        setMessage("admin-message", action === "approve" ? "Registration approved and entry pass issued." : "Registration rejected.", "success");
+        await loadQueue();
+      } catch (error) {
+        setMessage("admin-message", error.message, "error");
+      }
+    }
+
+    byId("start-camera").addEventListener("click", startCamera);
+    byId("stop-camera").addEventListener("click", stopCamera);
+
+    async function startCamera() {
+      if (!adminKeyInput.value) {
+        byId("scan-result").textContent = "Enter the admin key before scanning.";
+        byId("scan-result").className = "scan-result invalid";
+        return;
+      }
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        byId("scan-result").textContent = "Camera access requires HTTPS in production (localhost is allowed).";
+        byId("scan-result").className = "scan-result invalid";
+        return;
+      }
+      if (typeof window.jsQR !== "function") {
+        byId("scan-result").textContent = "The QR scanner library did not load. Check your connection and retry.";
+        byId("scan-result").className = "scan-result invalid";
+        return;
+      }
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+        const video = byId("camera");
+        video.srcObject = cameraStream;
+        await video.play();
+        byId("camera-placeholder").hidden = true;
+        byId("scan-frame").hidden = false;
+        byId("start-camera").disabled = true;
+        byId("stop-camera").disabled = false;
+        byId("scan-result").textContent = "Camera ready. Center an entry QR in the frame.";
+        byId("scan-result").className = "scan-result";
+        scanFrame = requestAnimationFrame(scanNextFrame);
+      } catch (error) {
+        byId("scan-result").textContent = error.name === "NotAllowedError" ? "Camera permission was denied." : `Could not start camera: ${error.message}`;
+        byId("scan-result").className = "scan-result invalid";
+      }
+    }
+
+    function scanNextFrame() {
+      const video = byId("camera");
+      if (!cameraStream) return;
+      if (!scanInProgress && video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth) {
+        const canvas = byId("scan-canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const image = context.getImageData(0, 0, canvas.width, canvas.height);
+        const decoded = window.jsQR(image.data, image.width, image.height, { inversionAttempts: "dontInvert" });
+        if (decoded?.data) {
+          if (decoded.data !== lastScannedPayload) {
+            lastScannedPayload = decoded.data;
+            verifyAtGate(decoded.data);
+          }
+        } else {
+          lastScannedPayload = null;
+        }
+      }
+      scanFrame = requestAnimationFrame(scanNextFrame);
+    }
+
+    async function verifyAtGate(payload) {
+      if (scanInProgress) return;
+      scanInProgress = true;
+      byId("scan-result").textContent = "Checking pass…";
+      byId("scan-result").className = "scan-result";
+      try {
+        const result = await readResponse(await fetch("/api/entry/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-key": adminKeyInput.value },
+          body: JSON.stringify({ payload }),
+        }));
+        if (result.valid) {
+          byId("scan-result").textContent = `VALID · ${result.name} · Entry recorded`;
+          byId("scan-result").className = "scan-result valid";
+        } else {
+          byId("scan-result").textContent = "INVALID · This QR is not a valid approved entry pass.";
+          byId("scan-result").className = "scan-result invalid";
+        }
+      } catch (error) {
+        if (error.status === 409 && error.body?.reason === "already_used") {
+          byId("scan-result").textContent = `ALREADY USED · ${error.body.name} was checked in earlier.`;
+          byId("scan-result").className = "scan-result used";
+        } else {
+          byId("scan-result").textContent = error.status === 401 ? "INVALID · Admin key was rejected." : `Could not verify pass: ${error.message}`;
+          byId("scan-result").className = "scan-result invalid";
+        }
+      } finally {
+        scanInProgress = false;
+      }
+    }
+
+    function stopCamera() {
+      if (scanFrame) cancelAnimationFrame(scanFrame);
+      scanFrame = null;
+      if (cameraStream) cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      byId("camera").srcObject = null;
+      byId("camera-placeholder").hidden = false;
+      byId("scan-frame").hidden = true;
+      byId("start-camera").disabled = false;
+      byId("stop-camera").disabled = true;
+    }
+  </script>
+</body>
+</html>

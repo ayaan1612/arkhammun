@@ -1,0 +1,75 @@
+.adminPage { min-height: 100vh; padding: 34px max(24px, calc((100vw - 1060px) / 2)) 80px; color: #efedf9; background: radial-gradient(ellipse at 15% 0%, rgba(227, 38, 46, .13), transparent 36%), #080812; }
+.header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding-bottom: 26px; border-bottom: 1px solid rgba(160, 150, 205, .18); }
+.backLink, .logoutButton { display: inline-flex; align-items: center; gap: 8px; color: #b9b7c9; text-decoration: none; font-size: 12px; }
+.backLink:hover, .logoutButton:hover { color: #fff; }
+.headerTitle { text-align: center; }
+.kicker { color: #a7a0ba; font-size: 9px; letter-spacing: .2em; }
+.headerTitle h1 { margin: 5px 0 0; color: #fff; font-size: 25px; font-weight: 500; letter-spacing: 0; }
+.logoutButton { justify-self: end; padding: 8px 11px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 4px; background: transparent; cursor: pointer; }
+.loginPanel { width: min(430px, 100%); margin: 90px auto; padding: 34px; border: 1px solid rgba(160, 150, 205, .2); background: rgba(20, 17, 30, .9); box-shadow: 0 22px 75px rgba(0, 0, 0, .3); }
+.loginPanel > svg { color: #e3262e; }
+.loginPanel h2 { margin: 18px 0 8px; font-size: 27px; font-weight: 500; letter-spacing: 0; }
+.loginPanel > p { color: #aaa8ba; font-size: 13px; line-height: 1.6; }
+.loginPanel form { display: grid; gap: 10px; margin-top: 24px; }
+.loginPanel label, .rejectForm label { color: #aaa8ba; font-size: 11px; font-weight: 600; }
+.loginPanel input, .rejectForm textarea { width: 100%; min-height: 44px; padding: 11px 12px; color: #fff; background: #0c0b17; border: 1px solid #454052; border-radius: 3px; outline: none; }
+.loginPanel input:focus, .rejectForm textarea:focus { border-color: #e3262e; box-shadow: 0 0 0 3px rgba(227, 38, 46, .13); }
+.primaryButton, .approveButton, .rejectButton, .secondaryButton, .iconButton { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 3px; font-size: 12px; font-weight: 600; cursor: pointer; transition: transform .2s, opacity .2s, background .2s; }
+.primaryButton { padding: 10px 15px; color: #fff; background: #e3262e; border: 1px solid #e3262e; }
+.primaryButton:hover, .approveButton:hover, .rejectButton:hover, .secondaryButton:hover { transform: translateY(-1px); }
+.primaryButton:disabled, .approveButton:disabled, .rejectButton:disabled, .iconButton:disabled { opacity: .55; cursor: wait; }
+.tabs { display: flex; gap: 22px; margin: 26px 0; border-bottom: 1px solid rgba(160, 150, 205, .18); }
+.tabs button { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 3px; color: #858194; border: 0; border-bottom: 2px solid transparent; background: transparent; font-size: 12px; cursor: pointer; }
+.tabs button span { min-width: 20px; padding: 2px 5px; border-radius: 10px; color: #b9b3c8; background: rgba(255, 255, 255, .08); font-size: 10px; text-align: center; }
+.tabs button.activeTab { color: #fff; border-bottom-color: #e3262e; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 20px; }
+.sectionHeading h2 { margin: 7px 0 0; color: #fff; font-size: 27px; font-weight: 500; letter-spacing: 0; }
+.sectionHeading p { margin: 8px 0 0; color: #908b9d; font-size: 12px; }
+.iconButton { width: 40px; padding: 0; color: #c9c5d4; background: transparent; border: 1px solid rgba(255, 255, 255, .18); }
+.queuePanel, .scannerPanel { padding: 25px; border: 1px solid rgba(160, 150, 205, .18); background: rgba(18, 16, 27, .74); }
+.queueList { display: grid; gap: 12px; }
+.registration { padding: 19px; border: 1px solid rgba(160, 150, 205, .16); background: rgba(6, 6, 15, .52); }
+.registrationTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.registrationTitle h3 { margin: 0 0 4px; color: #fff; font-size: 17px; font-weight: 500; }
+.registrationTitle p { margin: 0; color: #938ea1; font-size: 12px; }
+.registrationTitle > span { color: #f3b3a4; font-size: 13px; }
+.registrationDetails { display: flex; flex-wrap: wrap; gap: 28px; margin: 18px 0; }
+.registrationDetails dt { margin-bottom: 4px; color: #777286; font-size: 9px; letter-spacing: .13em; text-transform: uppercase; }
+.registrationDetails dd { margin: 0; color: #d3cfdd; font-size: 12px; overflow-wrap: anywhere; }
+.proofImage { display: block; max-width: min(100%, 420px); max-height: 320px; margin-bottom: 18px; object-fit: contain; object-position: left; border: 1px solid rgba(255, 255, 255, .14); background: #fff; }
+.actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+.approveButton { padding: 9px 13px; color: #c8f1d5; background: rgba(84, 189, 128, .1); border: 1px solid rgba(84, 189, 128, .42); }
+.rejectButton { padding: 9px 13px; color: #ffb5b8; background: rgba(227, 38, 46, .1); border: 1px solid rgba(227, 38, 46, .44); }
+.secondaryButton { padding: 9px 13px; color: #c5c0d0; background: transparent; border: 1px solid rgba(255, 255, 255, .2); }
+.rejectForm { display: grid; gap: 8px; max-width: 560px; }
+.rejectForm textarea { resize: vertical; }
+.emptyState { min-height: 130px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #8f8b9e; border: 1px dashed rgba(160, 150, 205, .2); font-size: 13px; }
+.notice, .error { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 11px 13px; font-size: 12px; }
+.notice { color: #a8dfb9; background: rgba(84, 189, 128, .08); border-left: 2px solid #54bd80; }
+.error { color: #ffb5b8; background: rgba(227, 38, 46, .08); border-left: 2px solid #e3262e; }
+.subtle { color: #8f8b9e; font-size: 11px; line-height: 1.6; }
+.scannerGrid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(240px, .75fr); gap: 22px; align-items: start; }
+.videoFrame { position: relative; min-height: 300px; display: grid; place-items: center; overflow: hidden; background: #03050a; border: 1px solid rgba(160, 150, 205, .2); }
+.videoFrame video { display: block; width: 100%; max-height: 490px; object-fit: cover; }
+.cameraPlaceholder { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 10px; color: #797589; font-size: 12px; }
+.cameraPlaceholder svg { color: #e3262e; }
+.scanFrame { position: absolute; width: min(62%, 250px); aspect-ratio: 1; border: 2px solid #f2bca5; box-shadow: 0 0 0 999px rgba(0, 0, 0, .2); pointer-events: none; }
+.hiddenCanvas { display: none; }
+.scanControls { display: grid; gap: 13px; }
+.scanResult { min-height: 74px; display: flex; align-items: center; padding: 14px; color: #aaa8ba; border-left: 3px solid #6a6677; background: rgba(255, 255, 255, .04); font-size: 13px; line-height: 1.5; }
+.scanResult.valid { color: #b5ecc8; border-color: #54bd80; background: rgba(84, 189, 128, .08); }
+.scanResult.used, .scanResult.invalid { color: #ffc0c2; border-color: #e3262e; background: rgba(227, 38, 46, .08); }
+.scanResult.error { color: #ffd19c; border-color: #e6a54a; background: rgba(230, 165, 74, .08); }
+.spinner { animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 680px) {
+  .adminPage { padding: 22px 16px 50px; }
+  .header { grid-template-columns: 1fr auto; row-gap: 18px; }
+  .headerTitle { grid-row: 2; grid-column: 1 / -1; justify-self: start; text-align: left; }
+  .logoutButton { grid-column: 2; grid-row: 1; }
+  .loginPanel { margin: 54px auto; padding: 25px 20px; }
+  .queuePanel, .scannerPanel { padding: 18px 14px; }
+  .scannerGrid { grid-template-columns: 1fr; }
+  .videoFrame { min-height: 240px; }
+  .registration { padding: 15px; }
+}
