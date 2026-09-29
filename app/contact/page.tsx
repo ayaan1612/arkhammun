@@ -1,6 +1,0 @@
-"use client"
-
-import { Mail, MapPin, Phone } from "lucide-react"
-import { PageShell } from "@/components/site-shell"
-
-export default function ContactPage() { return <PageShell title="Contact Us" intro="Have questions about Arkham MUN? We are here to help."><section className="page-content contact-layout"><article className="contact-info"><h2>Contact information</h2><p><Mail /> <span><b>Email</b>hello@arkhammun.org</span></p><p><Phone /> <span><b>Phone</b>+91 98101 10713</span></p><p><MapPin /> <span><b>Address</b>New Delhi, India</span></p></article><form className="contact-form" onSubmit={(event) => event.preventDefault()}><h2>Send us a message</h2><p>Fill out the form below and our team will get back to you.</p><div className="form-row"><label>Full name<input required /></label><label>Email address<input required type="email" /></label></div><label>Subject<select defaultValue=""><option value="" disabled>Select a subject</option><option>Registration</option><option>Committee query</option><option>Partnerships</option></select></label><label>Message<textarea required rows={6} placeholder="Please provide details about your inquiry..." /></label><button type="submit">Send message</button></form></section></PageShell> }
