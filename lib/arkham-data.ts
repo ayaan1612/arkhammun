@@ -1,0 +1,35 @@
+export const arkham = {
+  name: 'Arkham MUN',
+  dates: '24–25 October',
+  location: 'Delhi, India',
+  deadline: '1 October',
+  fees: { school: '₹2,000', individual: '₹2,200' },
+  logo: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg',
+  email: 'hello@arkhammun.org',
+  phone: '9810110713',
+  instagram: '@arkhammun',
+  committees: [
+    { acronym: 'UNODC', level: 'Advanced', agenda: 'Human Rights Implications on the global war on Drugs' },
+    { acronym: 'AIPPM', level: 'National', agenda: 'Use of Central Agencies (ED/CBI): Law Enforcement Tool or Political Tool?' },
+    { acronym: 'UNHRC', level: 'Advanced', agenda: 'Deliberating on safeguarding Political Leaders under International Human Rights Law' },
+    { acronym: 'UNGA', level: 'General Assembly', agenda: 'Strengthening Nuclear Weapon-Free Zones with focus on the Middle East & South Asia' },
+    { acronym: 'UNCSW', level: 'Specialized', agenda: "Advancing women's protection, leadership & rights in conflict zones with special emphasis on the Russia-Ukraine war" },
+    { acronym: 'IP', level: 'International Press', agenda: 'Journalists, Caricaturists & Photographers to cover conference proceedings' },
+  ],
+  schedule: [
+    ['24 OCT', 'Delegate registration', 'Conference foyer'],
+    ['24 OCT', 'Inaugural ceremony', 'Main hall'],
+    ['24 OCT', 'Committee session I', 'Council rooms'],
+    ['25 OCT', 'Committee session II', 'Council rooms'],
+    ['25 OCT', 'Closing ceremony', 'Main hall'],
+  ],
+  policies: [
+    ['Code of conduct', 'Delegates are expected to uphold honesty, integrity, respect and professionalism at all times.'],
+    ['Decorum expectations', 'Maintaining decorum is essential. Disruptive behavior or disrespect will not be tolerated.'],
+    ['Device policy', 'The use of electronic devices is strictly regulated as per committee guidelines.'],
+    ['ID card requirement', 'All delegates must wear their official ID cards at all times within the conference premises.'],
+    ['Refund policy', "Refunds will be processed only under exceptional circumstances as per the conference's discretion."],
+  ],
+} as const
+
+export type Committee = (typeof arkham.committees)[number]

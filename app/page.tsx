@@ -67,7 +67,7 @@ export default function Home() {
         <a href="#top" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN </small></span></a>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="#about" onClick={() => setMenuOpen(false)}>About</a><a href="#committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="#registration" onClick={() => setMenuOpen(false)}>Register</a><a href="#policies" onClick={() => setMenuOpen(false)}>Policies</a><button className="nav-cta" onClick={() => setShowRegistration(true)}>Register <ArrowRight size={15} /></button>
+          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/register" onClick={() => setMenuOpen(false)}>Register</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><button className="nav-cta" onClick={() => setShowRegistration(true)}>Register <ArrowRight size={15} /></button>
         </div>
       </nav>
 
