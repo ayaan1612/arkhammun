@@ -333,11 +333,13 @@
 }
 
 /* Footer contrast polish */
-.site-footer { position: relative; isolation: isolate; padding: 64px 42px 36px; border: 1px solid rgba(171, 163, 214, .24); border-radius: 18px 18px 0 0; background: linear-gradient(135deg, rgba(25, 23, 47, .96), rgba(12, 13, 27, .98)); box-shadow: 0 -18px 60px rgba(0, 0, 0, .28), inset 0 1px rgba(255, 255, 255, .08); overflow: hidden; }
-.site-footer::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 12% 18%, rgba(227, 38, 46, .18), transparent 32%), radial-gradient(circle at 78% 30%, rgba(92, 90, 255, .14), transparent 35%); }
-.footer-brand img { width: 60px; height: 60px; border-color: rgba(255, 255, 255, .52); box-shadow: 0 0 0 5px rgba(227, 38, 46, .1), 0 0 28px rgba(227, 38, 46, .32); }
-.footer-brand strong { color: #fff; font-size: 14px; }.footer-brand p { color: #b5b1c8; font-size: 13px; line-height: 1.6; }.footer-details span { color: #ff5960; font-size: 10px; }.footer-details a, .footer-details p { color: #d0ccdc; font-size: 13px; }.footer-details a:hover { color: #fff; transform: translateX(3px); }.footer-details svg { color: #ff5960; filter: drop-shadow(0 0 7px rgba(227, 38, 46, .35)); }.copyright { color: #aaa5bc; font-size: 11px; }
+.site-footer { position: relative; z-index: 3 !important; isolation: isolate; padding: 64px 42px 36px; border: 1px solid rgba(171, 163, 214, .38); border-radius: 18px 18px 0 0; background: #121426 !important; box-shadow: 0 -18px 60px rgba(0, 0, 0, .42), inset 0 1px rgba(255, 255, 255, .1); overflow: hidden; }
+.site-footer::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(circle at 12% 18%, rgba(227, 38, 46, .2), transparent 32%), radial-gradient(circle at 78% 30%, rgba(92, 90, 255, .18), transparent 35%); }
+.footer-brand img { width: 60px; height: 60px; border-color: rgba(255, 255, 255, .72); box-shadow: 0 0 0 5px rgba(227, 38, 46, .14), 0 0 28px rgba(227, 38, 46, .4); }
+.footer-brand strong { color: #fff !important; font-size: 14px; }.footer-brand p { color: #c7c5d6 !important; font-size: 13px; line-height: 1.6; }.footer-details span { color: #ff6970 !important; font-size: 10px; }.footer-details a, .footer-details p { color: #e4e1ee !important; font-size: 13px; }.footer-details a:hover { color: #fff !important; transform: translateX(3px); }.footer-details svg { color: #ff5960 !important; filter: drop-shadow(0 0 7px rgba(227, 38, 46, .45)); }.copyright { color: #c0bdd0 !important; font-size: 11px; }
 @media (max-width: 760px) { .site-footer { padding: 42px 22px 30px; border-radius: 14px 14px 0 0; } }
+/* Keep the footer fully readable instead of leaving it mid-scroll in the view-timeline reveal. */
+.site-footer { animation: none !important; opacity: 1 !important; transform: none !important; filter: none !important; }
 
 @media (max-width: 380px) {
   .hero-shell h1 { font-size: 42px; }
