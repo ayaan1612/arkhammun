@@ -4,6 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root { --mouse-x: 50vw; --mouse-y: 32vh; }
+.global-mouse-aura { position: relative; min-height: 100vh; isolation: isolate; }
+.global-mouse-aura::before { content: ""; position: fixed; inset: 0; z-index: 999; pointer-events: none; opacity: 0; background: radial-gradient(circle 170px at var(--mouse-x) var(--mouse-y), rgba(227,38,46,.18), transparent 70%); mix-blend-mode: screen; transition: opacity .35s ease; }
+.global-mouse-aura:hover::before { opacity: 1; }
+.global-mouse-aura::after { content: ""; position: fixed; left: var(--mouse-x); top: var(--mouse-y); width: 18px; height: 18px; z-index: 1000; pointer-events: none; border: 1px solid rgba(255,255,255,.7); border-radius: 999px; transform: translate(-50%,-50%); box-shadow: 0 0 0 5px rgba(227,38,46,.08), 0 0 22px rgba(227,38,46,.65); opacity: 0; transition: opacity .35s ease, width .25s ease, height .25s ease; }
+.global-mouse-aura:hover::after { opacity: .9; width: 22px; height: 22px; }
+@media (pointer: coarse), (prefers-reduced-motion: reduce) { .global-mouse-aura::before, .global-mouse-aura::after { display: none; } }
+
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
