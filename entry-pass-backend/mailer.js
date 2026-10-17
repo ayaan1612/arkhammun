@@ -235,6 +235,96 @@ async function sendApprovalMail({ registration, event, qrBuffer, transporter }) 
   return info;
 }
 
+function buildQueryReplyPayload({ query, replyMessage }) {
+  const fromAddress = (process.env.SMTP_FROM || "").trim() ||
+    (process.env.SMTP_USER ? `"Arkham MUN Secretariat" <${process.env.SMTP_USER.trim()}>` : `"Arkham MUN Secretariat" <no-reply@arkhammun.org>`);
+  const toAddress = query.email;
+  const subject = `Re: [Arkham MUN Enquiry] ${query.subject || "Your Message"}`;
+
+  const textBody = [
+    `Dear ${query.name},`,
+    "",
+    "Thank you for reaching out to the Arkham MUN Secretariat.",
+    "",
+    "--- SECRETARIAT RESPONSE ---",
+    replyMessage,
+    "",
+    "--- YOUR ORIGINAL ENQUIRY ---",
+    `Subject: ${query.subject}`,
+    `Submitted on: ${new Date(query.created_at).toLocaleString()}`,
+    query.message,
+    "",
+    "Warm regards,",
+    "Arkham MUN Secretariat",
+    "https://arkhammun.com",
+  ].join("\n");
+
+  const htmlBody = `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background-color:#080812;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#efedf9;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#080812;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#12101b;border:1px solid #2a2538;border-radius:8px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+          <tr>
+            <td style="padding:28px 32px 20px;background:linear-gradient(180deg, #191428 0%, #12101b 100%);border-bottom:1px solid #2a2538;text-align:center;">
+              <span style="display:inline-block;color:#e3262e;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;">ARKHAM MODEL UNITED NATIONS</span>
+              <h1 style="margin:4px 0 0;font-size:22px;font-weight:600;color:#ffffff;">Secretariat Response</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px 20px;">
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#d5d1e2;">
+                Dear <strong>${escapeHtml(query.name)}</strong>,
+              </p>
+              <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#a8a3b8;">
+                Thank you for reaching out to the Arkham MUN Secretariat regarding your enquiry <em>"${escapeHtml(query.subject)}"</em>. Here is our response:
+              </p>
+              <div style="background-color:#191627;border-left:3px solid #e3262e;padding:16px 20px;border-radius:4px;margin-bottom:24px;color:#ffffff;font-size:14px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(replyMessage)}</div>
+              
+              <div style="background-color:#0c0b17;border:1px solid #2a2538;border-radius:6px;padding:16px 18px;margin-bottom:20px;">
+                <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#8f8b9e;margin-bottom:8px;">Your Original Message</span>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#a8a3b8;white-space:pre-wrap;">${escapeHtml(query.message)}</p>
+              </div>
+
+              <p style="margin:0;font-size:13px;line-height:1.6;color:#8f8b9e;">
+                If you have further questions, feel free to reply directly to this email or visit our website.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 32px 24px;border-top:1px solid #231f31;text-align:center;font-size:11px;color:#6d687c;">
+              Arkham Model United Nations Secretariat · All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return {
+    from: fromAddress,
+    to: toAddress,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  };
+}
+
+async function sendQueryReplyMail({ query, replyMessage, transporter }) {
+  const mailTransporter = transporter || getTransporter();
+  if (!mailTransporter) {
+    throw new Error("SMTP server is not configured");
+  }
+
+  const mailOptions = buildQueryReplyPayload({ query, replyMessage });
+  const info = await mailTransporter.sendMail(mailOptions);
+  return info;
+}
+
 module.exports = {
   isSmtpConfigured,
   setTestTransporter,
@@ -243,4 +333,6 @@ module.exports = {
   getTransporter,
   buildEmailPayload,
   sendApprovalMail,
+  buildQueryReplyPayload,
+  sendQueryReplyMail,
 };

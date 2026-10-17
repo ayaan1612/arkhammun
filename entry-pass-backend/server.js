@@ -56,8 +56,24 @@ database.exec(`
     event_date TEXT NOT NULL DEFAULT '',
     event_time TEXT NOT NULL DEFAULT '',
     venue TEXT NOT NULL DEFAULT '',
-    payment_qr_filename TEXT
-  )
+    payment_qr_filename TEXT,
+    entry_fee REAL,
+    upi_id TEXT DEFAULT 'chauhan5408k@okaxis',
+    registration_open INTEGER DEFAULT 1,
+    registration_notice TEXT DEFAULT ''
+  );
+  CREATE TABLE IF NOT EXISTS contact_queries (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT,
+    subject TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'replied')),
+    reply_message TEXT,
+    replied_at TEXT,
+    created_at TEXT NOT NULL
+  );
 `);
 
 const registrationColumns = new Set(database.prepare("PRAGMA table_info(registrations)").all().map((column) => column.name));
@@ -72,7 +88,22 @@ for (const [name, type] of [
 ]) {
   if (!registrationColumns.has(name)) database.exec(`ALTER TABLE registrations ADD COLUMN ${name} ${type}`);
 }
-database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name) VALUES (1, ?)").run(process.env.EVENT_NAME || "Arkham MUN");
+
+const eventSettingsColumns = new Set(database.prepare("PRAGMA table_info(event_settings)").all().map((column) => column.name));
+for (const [name, type, defaultVal] of [
+  ["entry_fee", "REAL", `${entryFee}`],
+  ["upi_id", "TEXT", "'chauhan5408k@okaxis'"],
+  ["registration_open", "INTEGER", "1"],
+  ["registration_notice", "TEXT", "''"],
+]) {
+  if (!eventSettingsColumns.has(name)) database.exec(`ALTER TABLE event_settings ADD COLUMN ${name} ${type} DEFAULT ${defaultVal}`);
+}
+
+database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name, entry_fee, upi_id, registration_open) VALUES (1, ?, ?, ?, 1)").run(
+  process.env.EVENT_NAME || "Arkham MUN",
+  entryFee,
+  "chauhan5408k@okaxis"
+);
 
 const statements = {
   create: database.prepare(`
@@ -86,6 +117,11 @@ const statements = {
     SET event_name = @event_name, event_date = @event_date, event_time = @event_time, venue = @venue
     WHERE id = 1
   `),
+  updateEventControls: database.prepare(`
+    UPDATE event_settings
+    SET entry_fee = @entry_fee, upi_id = @upi_id, registration_open = @registration_open, registration_notice = @registration_notice
+    WHERE id = 1
+  `),
   updatePaymentQr: database.prepare("UPDATE event_settings SET payment_qr_filename = ? WHERE id = 1"),
   proof: database.prepare(`
     UPDATE registrations SET utr = ?, screenshot_path = ?, reject_reason = NULL, status = 'payment_submitted'
@@ -93,7 +129,7 @@ const statements = {
   `),
   queue: database.prepare(`
     SELECT id, name, contact, email, phone, organization, committee, amount, status, utr, screenshot_path, reject_reason, created_at,
-           email_status, email_sent_at, email_error
+           email_status, email_sent_at, email_error, used_at
     FROM registrations WHERE status = ? ORDER BY created_at ASC
   `),
   approve: database.prepare(`
@@ -112,6 +148,18 @@ const statements = {
   markUsed: database.prepare(`
     UPDATE registrations SET used_at = ?
     WHERE id = ? AND status = 'approved' AND entry_payload = ? AND used_at IS NULL
+  `),
+  createContactQuery: database.prepare(`
+    INSERT INTO contact_queries (id, name, email, phone, subject, message, status, created_at)
+    VALUES (@id, @name, @email, @phone, @subject, @message, 'pending', @created_at)
+  `),
+  contactQueryById: database.prepare("SELECT * FROM contact_queries WHERE id = ?"),
+  allContactQueries: database.prepare("SELECT * FROM contact_queries ORDER BY created_at DESC"),
+  contactQueriesByStatus: database.prepare("SELECT * FROM contact_queries WHERE status = ? ORDER BY created_at DESC"),
+  replyContactQuery: database.prepare(`
+    UPDATE contact_queries
+    SET status = 'replied', reply_message = @reply_message, replied_at = @replied_at
+    WHERE id = @id
   `),
 };
 
@@ -209,11 +257,19 @@ app.get("/api/event", (request, response) => {
   const settings = statements.eventSettings.get();
   const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
   const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
+  const isConfigured = Boolean(hasQr && settings.event_date && settings.event_time && settings.venue);
+  const isOpen = Boolean(isConfigured && (settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1));
+  const currentFee = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
+    ? Number(settings.entry_fee)
+    : entryFee;
+
   response.json({
     event: getEventDetails(),
-    amount: entryFee,
+    amount: currentFee,
+    upiId: settings.upi_id || "chauhan5408k@okaxis",
     paymentQrUrl: hasQr ? "/api/payment-qr.png" : null,
-    registrationOpen: Boolean(hasQr && settings.event_date && settings.event_time && settings.venue),
+    registrationOpen: isOpen,
+    registrationNotice: settings.registration_notice || "",
   });
 });
 
@@ -237,14 +293,24 @@ app.post("/api/registrations", (request, response) => {
   const settings = statements.eventSettings.get();
   const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
   const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
-  if (!hasQr || !settings.event_date || !settings.event_time || !settings.venue) {
-    return response.status(503).json({ error: "Registration is not open until the event details and payment QR are configured" });
+  const isConfigured = Boolean(hasQr && settings.event_date && settings.event_time && settings.venue);
+  const isOpen = Boolean(isConfigured && (settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1));
+
+  if (!isOpen) {
+    const errorMsg = !isConfigured
+      ? "Registration is not open until the event details and payment QR are configured"
+      : (settings.registration_notice || "Registration has been temporarily closed by the Secretariat");
+    return response.status(503).json({ error: errorMsg });
   }
   if (!name || name.length > 120 || !emailPattern.test(email) || email.length > 200 ||
       !phone || phone.length > 40 || !organization || organization.length > 160 ||
       !committee || committee.length > 160) {
     return response.status(400).json({ error: "Full name, a valid email, phone, school or organization, and committee are required within the listed limits" });
   }
+
+  const effectiveAmount = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
+    ? Number(settings.entry_fee)
+    : entryFee;
 
   const registration = {
     id: crypto.randomUUID(),
@@ -253,7 +319,7 @@ app.post("/api/registrations", (request, response) => {
     phone,
     organization,
     committee,
-    amount: entryFee,
+    amount: effectiveAmount,
     created_at: new Date().toISOString(),
   };
   statements.create.run(registration);
@@ -303,13 +369,62 @@ app.get("/api/registrations/:id/entry-qr", async (request, response, next) => {
   }
 });
 
+app.post("/api/contact", (request, response) => {
+  const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
+  const email = typeof request.body?.email === "string" ? request.body.email.trim().toLowerCase() : "";
+  const phone = typeof request.body?.phone === "string" ? request.body.phone.trim() : "";
+  const subject = typeof request.body?.subject === "string" ? request.body.subject.trim() : "";
+  const message = typeof request.body?.message === "string" ? request.body.message.trim() : "";
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!name || name.length > 120) {
+    return response.status(400).json({ error: "Please provide your full name (maximum 120 characters)" });
+  }
+  if (!email || !emailPattern.test(email) || email.length > 200) {
+    return response.status(400).json({ error: "Please provide a valid email address" });
+  }
+  if (!subject || subject.length > 200) {
+    return response.status(400).json({ error: "Please provide a subject for your enquiry" });
+  }
+  if (!message || message.length > 2500) {
+    return response.status(400).json({ error: "Please provide a message (up to 2500 characters)" });
+  }
+
+  const queryRecord = {
+    id: `query-${crypto.randomUUID()}`,
+    name,
+    email,
+    phone: phone || null,
+    subject,
+    message,
+    created_at: new Date().toISOString(),
+  };
+
+  statements.createContactQuery.run(queryRecord);
+  response.status(201).json({
+    success: true,
+    id: queryRecord.id,
+    message: "Your enquiry has been received by the Secretariat.",
+  });
+});
+
 app.use("/api/admin", requireAdminKey);
 app.get("/api/admin/settings", (request, response) => {
   const settings = statements.eventSettings.get();
+  const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
+  const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
+  const currentFee = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
+    ? Number(settings.entry_fee)
+    : entryFee;
+
   response.json({
     event: getEventDetails(),
-    paymentQrConfigured: Boolean(settings.payment_qr_filename),
-    paymentQrUrl: settings.payment_qr_filename ? "/api/payment-qr.png" : null,
+    amount: currentFee,
+    upiId: settings.upi_id || "chauhan5408k@okaxis",
+    registrationOpen: Boolean(settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1),
+    registrationNotice: settings.registration_notice || "",
+    paymentQrConfigured: Boolean(settings.payment_qr_filename || defaultQrExists),
+    paymentQrUrl: hasQr ? "/api/payment-qr.png" : null,
   });
 });
 
@@ -324,6 +439,10 @@ app.put("/api/admin/settings", (request, response) => {
     event_date: event.date.trim(),
     event_time: event.time.trim(),
     venue: event.venue.trim(),
+    entry_fee: null,
+    upi_id: null,
+    registration_open: null,
+    registration_notice: null,
   };
   if (!values.event_name || values.event_name.length > 160 ||
       !values.event_date || values.event_date.length > 120 ||
@@ -331,8 +450,51 @@ app.put("/api/admin/settings", (request, response) => {
       !values.venue || values.venue.length > 300) {
     return response.status(400).json({ error: "Complete all event details within the allowed lengths" });
   }
-  statements.updateEventSettings.run(values);
-  response.json({ event: getEventDetails() });
+
+  if (request.body?.amount !== undefined && request.body?.amount !== null && request.body?.amount !== "") {
+    const parsedFee = Number(request.body.amount);
+    if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+      return response.status(400).json({ error: "Amount must be a non-negative number" });
+    }
+    values.entry_fee = parsedFee;
+  }
+
+  if (typeof request.body?.upiId === "string") {
+    values.upi_id = request.body.upiId.trim().slice(0, 100);
+  }
+
+  if (request.body?.registrationOpen !== undefined) {
+    values.registration_open = request.body.registrationOpen ? 1 : 0;
+  }
+
+  if (typeof request.body?.registrationNotice === "string") {
+    values.registration_notice = request.body.registrationNotice.trim().slice(0, 300);
+  }
+
+  statements.updateEventSettings.run({
+    event_name: values.event_name,
+    event_date: values.event_date,
+    event_time: values.event_time,
+    venue: values.venue,
+  });
+
+  const current = statements.eventSettings.get();
+  statements.updateEventControls.run({
+    entry_fee: values.entry_fee !== null ? values.entry_fee : current.entry_fee,
+    upi_id: values.upi_id !== null ? values.upi_id : current.upi_id,
+    registration_open: values.registration_open !== null ? values.registration_open : current.registration_open,
+    registration_notice: values.registration_notice !== null ? values.registration_notice : current.registration_notice,
+  });
+  const updatedSettings = statements.eventSettings.get();
+  response.json({
+    event: getEventDetails(),
+    amount: updatedSettings.entry_fee !== null ? Number(updatedSettings.entry_fee) : entryFee,
+    upiId: updatedSettings.upi_id || "chauhan5408k@okaxis",
+    registrationOpen: Boolean(updatedSettings.registration_open === null || Number(updatedSettings.registration_open) === 1),
+    registrationNotice: updatedSettings.registration_notice || "",
+    paymentQrConfigured: Boolean(updatedSettings.payment_qr_filename || fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"))),
+    paymentQrUrl: "/api/payment-qr.png",
+  });
 });
 
 app.post("/api/admin/payment-qr", (request, response, next) => {
@@ -524,6 +686,65 @@ app.post("/api/admin/registrations/:id/reject", (request, response) => {
     return response.status(registration ? 409 : 404).json({ error: registration ? "Only submitted payments can be rejected" : "Registration not found" });
   }
   response.json({ id: request.params.id, status: "rejected" });
+});
+
+app.get("/api/admin/queries", (request, response) => {
+  const status = request.query.status;
+  let queries;
+  if (status && status !== "all") {
+    queries = statements.contactQueriesByStatus.all(status);
+  } else {
+    queries = statements.allContactQueries.all();
+  }
+  response.json({ queries });
+});
+
+app.post("/api/admin/queries/:id/reply", async (request, response, next) => {
+  try {
+    const query = statements.contactQueryById.get(request.params.id);
+    if (!query) return response.status(404).json({ error: "Query not found" });
+
+    const replyMessage = typeof request.body?.replyMessage === "string" ? request.body.replyMessage.trim() : "";
+    if (!replyMessage || replyMessage.length > 3000) {
+      return response.status(400).json({ error: "Please provide a reply message (maximum 3000 characters)" });
+    }
+
+    const repliedAt = new Date().toISOString();
+    statements.replyContactQuery.run({
+      id: query.id,
+      reply_message: replyMessage,
+      replied_at: repliedAt,
+    });
+
+    let emailSent = false;
+    let emailError = null;
+
+    if (mailer.isSmtpConfigured()) {
+      try {
+        await mailer.sendQueryReplyMail({ query, replyMessage });
+        emailSent = true;
+      } catch (err) {
+        emailError = mailer.sanitizeEmailError(err);
+        console.error(`Reply email delivery failed for query ${query.id}:`, emailError);
+      }
+    } else {
+      emailError = "SMTP not configured; reply saved in dashboard without outgoing email";
+    }
+
+    response.json({
+      success: true,
+      query: {
+        ...query,
+        status: "replied",
+        reply_message: replyMessage,
+        replied_at: repliedAt,
+      },
+      emailSent,
+      emailError,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/entry/verify", requireAdminKey, (request, response) => {

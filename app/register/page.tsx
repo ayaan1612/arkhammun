@@ -148,8 +148,10 @@ export default function RegisterPage() {
     setNotice("")
   }
 
+  const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
+
   function copyUpi() {
-    navigator.clipboard.writeText("chauhan5408k@okaxis")
+    navigator.clipboard.writeText(upiId)
     setCopied(true)
     setTimeout(() => setCopied(false), 2200)
   }
@@ -163,9 +165,9 @@ export default function RegisterPage() {
 
         {publicEvent && !publicEvent.registrationOpen && (
           <div style={{ maxWidth: 980, margin: "0 auto 30px", padding: 20, border: "1px solid rgba(230, 165, 74, .4)", background: "rgba(230, 165, 74, .08)", borderRadius: 8 }}>
-            <h3 style={{ color: "#ffd19c", margin: "0 0 6px", fontSize: 16 }}>Registration opening soon</h3>
+            <h3 style={{ color: "#ffd19c", margin: "0 0 6px", fontSize: 16 }}>Registration Notice</h3>
             <p style={{ margin: 0, color: "#d6d0e0", fontSize: 13, lineHeight: 1.6 }}>
-              The secretariat is finalizing conference dates, venue, and payment setup. If you are an organizer or staff member, you can configure these in the Admin Dashboard.
+              {publicEvent.registrationNotice || "The secretariat is finalizing conference dates, venue, or registration is temporarily closed. Please check back shortly."}
             </p>
             <Link href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, color: "#ff8289", fontWeight: 700, fontSize: 12, textDecoration: "none" }}>
               Open Admin Dashboard <ArrowRight size={14} />
@@ -314,7 +316,7 @@ export default function RegisterPage() {
                     style={{ width: "100%", height: "auto", aspectRatio: "2 / 3", objectFit: "contain", borderRadius: 8, background: "#000", border: "1px solid rgba(255, 255, 255, .15)" }}
                   />
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: "rgba(255, 255, 255, .05)", borderRadius: 5, fontSize: 12 }}>
-                    <span>UPI ID: <code style={{ color: "#ffb5b8", fontFamily: "monospace", fontWeight: 700 }}>chauhan5408k@okaxis</code></span>
+                    <span>UPI ID: <code style={{ color: "#ffb5b8", fontFamily: "monospace", fontWeight: 700 }}>{upiId}</code></span>
                     <button type="button" onClick={copyUpi} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, background: "rgba(227, 38, 46, .2)", color: "#fff", border: "1px solid rgba(227, 38, 46, .5)", borderRadius: 3, cursor: "pointer" }}>
                       {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
                     </button>
@@ -347,7 +349,7 @@ export default function RegisterPage() {
                       style={{ width: 18, height: 18, minHeight: 18, margin: "2px 0 0", accentColor: "#e3262e", cursor: "pointer", flex: "0 0 auto" }}
                     />
                     <span>
-                      I confirm that I have transferred <strong>INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong> via UPI to <code>chauhan5408k@okaxis</code> and entered the genuine transaction reference (UTR) above.
+                      I confirm that I have transferred <strong>INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong> via UPI to <code>{upiId}</code> and entered the genuine transaction reference (UTR) above.
                     </span>
                   </label>
                 </div>

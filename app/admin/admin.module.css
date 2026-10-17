@@ -127,6 +127,42 @@
 .notificationSubtext { margin: 0; color: #d6d0e0; font-size: 12px; line-height: 1.5; }
 .notificationSubtext code { color: #ffb5b8; font-family: monospace; }
 .confirmedBadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; margin-top: 10px; background: rgba(84, 189, 128, .12); border: 1px solid rgba(84, 189, 128, .4); border-radius: 3px; color: #b5ecc8; font-size: 11px; font-weight: 600; width: fit-content; }
+/* Work Area: Inquiries, Delegates Roster, Settings Controls */
+.queriesList { display: grid; gap: 14px; }
+.queryCard { padding: 20px; border: 1px solid rgba(160, 150, 205, .18); background: rgba(6, 6, 15, .65); border-radius: 6px; display: grid; gap: 12px; }
+.queryHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.queryAuthor h4 { margin: 0 0 3px; color: #fff; font-size: 16px; font-weight: 500; }
+.queryAuthor p { margin: 0; color: #8e8a9c; font-size: 12px; }
+.queryStatusPill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.queryStatusPill.pending { color: #ffd19c; background: rgba(230, 165, 74, .14); border: 1px solid rgba(230, 165, 74, .4); }
+.queryStatusPill.replied { color: #a8dfb9; background: rgba(84, 189, 128, .14); border: 1px solid rgba(84, 189, 128, .4); }
+.querySubject { font-size: 13px; font-weight: 600; color: #f4c9a8; }
+.queryBody { padding: 12px 14px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(160, 150, 205, .12); border-radius: 4px; color: #d6d1e4; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+.replyHistory { padding: 12px 14px; background: rgba(84, 189, 128, .06); border-left: 3px solid #54bd80; border-radius: 4px; font-size: 12px; line-height: 1.6; color: #b5ecc8; }
+.replyHistory strong { display: block; margin-bottom: 4px; color: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+
+/* Modal for Reply & Image Zoom */
+.modalOverlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .75); backdrop-filter: blur(4px); display: grid; place-items: center; z-index: 1000; padding: 20px; }
+.modalContent { width: min(560px, 100%); background: #12101b; border: 1px solid rgba(160, 150, 205, .25); border-radius: 8px; box-shadow: 0 24px 60px rgba(0, 0, 0, .7); padding: 24px; display: grid; gap: 14px; }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(160, 150, 205, .16); padding-bottom: 12px; }
+.modalHeader h3 { margin: 0; color: #fff; font-size: 17px; font-weight: 500; }
+.closeButton { background: transparent; border: 0; color: #8e8a9c; cursor: pointer; padding: 4px; }
+.closeButton:hover { color: #fff; }
+
+/* Control switches & grid */
+.controlGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin: 18px 0; }
+.controlCard { padding: 18px; border: 1px solid rgba(160, 150, 205, .16); background: rgba(6, 6, 15, .5); border-radius: 6px; display: grid; gap: 10px; }
+.controlCard h4 { margin: 0; color: #fff; font-size: 14px; font-weight: 600; }
+.controlCard p { margin: 0; color: #8f8b9e; font-size: 12px; line-height: 1.5; }
+.toggleContainer { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.toggleButton { padding: 8px 16px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all .2s; }
+.toggleButton.open { background: rgba(84, 189, 128, .15); border: 1px solid rgba(84, 189, 128, .5); color: #a8dfb9; }
+.toggleButton.closed { background: rgba(227, 38, 46, .15); border: 1px solid rgba(227, 38, 46, .5); color: #ffb5b8; }
+
+.checkInBadge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+.checkInBadge.checked { color: #a8dfb9; background: rgba(84, 189, 128, .12); border: 1px solid rgba(84, 189, 128, .4); }
+.checkInBadge.awaiting { color: #9d99ab; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .15); }
+
 @media (max-width: 680px) {
   .adminPage { padding: 22px 16px 50px; }
   .header { grid-template-columns: 1fr auto; row-gap: 18px; }

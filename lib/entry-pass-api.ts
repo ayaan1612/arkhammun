@@ -15,12 +15,18 @@ export type EventDetails = {
 export type PublicEvent = {
   event: EventDetails
   amount: number
+  upiId?: string
   paymentQrUrl: string | null
   registrationOpen: boolean
+  registrationNotice?: string
 }
 
 export type AdminEventSettings = {
   event: EventDetails
+  amount: number
+  upiId: string
+  registrationOpen: boolean
+  registrationNotice: string
   paymentQrConfigured: boolean
   paymentQrUrl: string | null
 }
@@ -61,10 +67,24 @@ export type AdminRegistration = {
   screenshot_url: string | null
   reject_reason?: string | null
   created_at: string
+  used_at?: string | null
   screenshotBlobUrl?: string
   email_status?: EmailStatus | null
   email_sent_at?: string | null
   email_error?: string | null
+}
+
+export type ContactQuery = {
+  id: string
+  name: string
+  email: string
+  phone: string | null
+  subject: string
+  message: string
+  status: "pending" | "replied"
+  reply_message: string | null
+  replied_at: string | null
+  created_at: string
 }
 
 export type EntryVerification =
@@ -174,6 +194,48 @@ export const entryPassApi = {
       headers: adminHeaders(adminKey, true),
       body: JSON.stringify({ event }),
     })
+  },
+
+  saveAdminSettings(
+    payload: {
+      event: EventDetails
+      amount?: number
+      upiId?: string
+      registrationOpen?: boolean
+      registrationNotice?: string
+    },
+    adminKey: string
+  ) {
+    return request<AdminEventSettings>("/api/admin/settings", {
+      method: "PUT",
+      headers: adminHeaders(adminKey, true),
+      body: JSON.stringify(payload),
+    })
+  },
+
+  submitContactQuery(details: { name: string; email: string; phone?: string; subject: string; message: string }) {
+    return request<{ success: boolean; id: string; message: string }>("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(details),
+    })
+  },
+
+  getAdminQueries(adminKey: string, status = "all") {
+    return request<{ queries: ContactQuery[] }>(`/api/admin/queries?status=${encodeURIComponent(status)}`, {
+      headers: adminHeaders(adminKey),
+    })
+  },
+
+  replyAdminQuery(id: string, replyMessage: string, adminKey: string) {
+    return request<{ success: boolean; query: ContactQuery; emailSent: boolean; emailError?: string | null }>(
+      `/api/admin/queries/${encodeURIComponent(id)}/reply`,
+      {
+        method: "POST",
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ replyMessage }),
+      }
+    )
   },
 
   uploadPaymentQr(file: File, adminKey: string) {

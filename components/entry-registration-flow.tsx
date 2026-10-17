@@ -133,8 +133,10 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     setNotice("")
   }
 
+  const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
+
   function copyUpi() {
-    navigator.clipboard.writeText("chauhan5408k@okaxis")
+    navigator.clipboard.writeText(upiId)
     setCopied(true)
     setTimeout(() => setCopied(false), 2200)
   }
@@ -151,8 +153,8 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
             {publicEvent?.registrationOpen && <p className={styles.eventSummary}><strong>{publicEvent.event.name}</strong><span>{publicEvent.event.date} · {publicEvent.event.time}</span><span>{publicEvent.event.venue}</span><span>Entry fee · INR {Number(publicEvent.amount).toFixed(2)}</span></p>}
             {publicEvent && !publicEvent.registrationOpen && (
               <div className={styles.setupNotice}>
-                <strong>Registration opening soon</strong>
-                <p>The secretariat is finalizing conference dates, venue, and payment setup. If you are an organizer, configure the event in the Admin Dashboard.</p>
+                <strong>Registration Notice</strong>
+                <p>{publicEvent.registrationNotice || "The secretariat is finalizing conference dates, venue, or registration is temporarily closed."}</p>
                 <a href="/admin" className={styles.adminActionLink}>Open Admin Dashboard <ArrowRight size={14} /></a>
               </div>
             )}
@@ -189,7 +191,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
                       priority
                     />
                     <div className={styles.upiRow}>
-                      <span>UPI ID: <code>chauhan5408k@okaxis</code></span>
+                      <span>UPI ID: <code>{upiId}</code></span>
                       <button type="button" className={styles.copyButton} onClick={copyUpi} title="Copy UPI ID">
                         {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
                       </button>

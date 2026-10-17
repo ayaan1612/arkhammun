@@ -403,3 +403,110 @@ test("7. Rejection flow never triggers email and rejected registrations cannot r
   assert.equal(retryRej.status, 409);
   assert.equal(sentMails.length, 0);
 });
+
+test("8. Admin can update amount, UPI ID, and toggle registration open/closed", async () => {
+  // Update settings via admin endpoint
+  const updateRes = await apiRequest("/api/admin/settings", {
+    method: "PUT",
+    headers: { "x-admin-key": process.env.ADMIN_KEY },
+    body: {
+      event: {
+        name: "Arkham MUN 2026 Updated",
+        date: "25-26 October 2026",
+        time: "10:00 AM - 6:00 PM",
+        venue: "Auditorium B, Delhi",
+      },
+      amount: 2500,
+      upiId: "secretariat@okaxis",
+      registrationOpen: false,
+      registrationNotice: "Registration is temporarily paused for review",
+    },
+  });
+
+  assert.equal(updateRes.status, 200);
+  assert.equal(updateRes.body.amount, 2500);
+  assert.equal(updateRes.body.upiId, "secretariat@okaxis");
+  assert.equal(updateRes.body.registrationOpen, false);
+
+  // Check public /api/event
+  const publicRes = await apiRequest("/api/event");
+  assert.equal(publicRes.status, 200);
+  assert.equal(publicRes.body.amount, 2500);
+  assert.equal(publicRes.body.upiId, "secretariat@okaxis");
+  assert.equal(publicRes.body.registrationOpen, false);
+  assert.equal(publicRes.body.registrationNotice, "Registration is temporarily paused for review");
+
+  // Re-open registration for subsequent checks
+  await apiRequest("/api/admin/settings", {
+    method: "PUT",
+    headers: { "x-admin-key": process.env.ADMIN_KEY },
+    body: {
+      event: {
+        name: "Arkham MUN 2026",
+        date: "24-25 October 2026",
+        time: "9:00 AM - 5:00 PM",
+        venue: "Main Auditorium, Delhi",
+      },
+      amount: 2200,
+      upiId: "chauhan5408k@okaxis",
+      registrationOpen: true,
+      registrationNotice: "",
+    },
+  });
+});
+
+test("9. User can submit contact inquiry and admin can view and reply via email", async () => {
+  const sentReplies = [];
+  mailer.setTestTransporter({
+    sendMail: async (mailOptions) => {
+      sentReplies.push(mailOptions);
+      return { messageId: "msg-reply-1" };
+    },
+  });
+
+  // Public submits contact inquiry
+  const contactRes = await apiRequest("/api/contact", {
+    method: "POST",
+    body: {
+      name: "Barbara Gordon",
+      email: "barbara@gotham-pd.gov",
+      phone: "+919999888877",
+      subject: "Committee Allotment Query",
+      message: "Can you confirm if UNODC seats are still open for delegation?",
+    },
+  });
+
+  assert.equal(contactRes.status, 201);
+  assert.equal(contactRes.body.success, true);
+  const queryId = contactRes.body.id;
+  assert.ok(queryId);
+
+  // Admin retrieves queries
+  const queriesRes = await apiRequest("/api/admin/queries", {
+    headers: { "x-admin-key": process.env.ADMIN_KEY },
+  });
+  assert.equal(queriesRes.status, 200);
+  const found = queriesRes.body.queries.find((q) => q.id === queryId);
+  assert.ok(found, "Submitted inquiry must appear in admin query list");
+  assert.equal(found.status, "pending");
+
+  // Admin replies to inquiry
+  const replyRes = await apiRequest(`/api/admin/queries/${queryId}/reply`, {
+    method: "POST",
+    headers: { "x-admin-key": process.env.ADMIN_KEY },
+    body: {
+      replyMessage: "Yes, UNODC has remaining delegate seats available. Please proceed with registration.",
+    },
+  });
+
+  assert.equal(replyRes.status, 200);
+  assert.equal(replyRes.body.success, true);
+  assert.equal(replyRes.body.emailSent, true);
+  assert.equal(replyRes.body.query.status, "replied");
+
+  // Verify outgoing email
+  assert.equal(sentReplies.length, 1);
+  assert.equal(sentReplies[0].to, "barbara@gotham-pd.gov");
+  assert.match(sentReplies[0].subject, /Re: \[Arkham MUN Enquiry\] Committee Allotment Query/);
+  assert.match(sentReplies[0].text, /UNODC has remaining delegate seats/);
+});
