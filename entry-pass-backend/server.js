@@ -17,7 +17,7 @@ const publicDirectory = path.join(__dirname, "public");
 const uploadsDirectory = path.join(__dirname, "uploads");
 const dataDirectory = path.join(__dirname, "data");
 
-for (const variable of ["ENTRY_FEE", "ADMIN_UPI_ID", "ADMIN_NAME", "ENTRY_SECRET", "ADMIN_KEY"]) {
+for (const variable of ["ENTRY_FEE", "ENTRY_SECRET", "ADMIN_KEY"]) {
   if (!process.env[variable]) throw new Error(`Missing required environment variable: ${variable}`);
 }
 if (!Number.isFinite(entryFee) || entryFee <= 0) throw new Error("ENTRY_FEE must be a positive number");
@@ -32,6 +32,10 @@ database.exec(`
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     contact TEXT NOT NULL,
+    email TEXT,
+    phone TEXT,
+    organization TEXT,
+    committee TEXT,
     amount REAL NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('pending_payment', 'payment_submitted', 'approved', 'rejected')),
     utr TEXT,
@@ -40,21 +44,42 @@ database.exec(`
     entry_payload TEXT,
     used_at TEXT,
     created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS event_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    event_name TEXT NOT NULL,
+    event_date TEXT NOT NULL DEFAULT '',
+    event_time TEXT NOT NULL DEFAULT '',
+    venue TEXT NOT NULL DEFAULT '',
+    payment_qr_filename TEXT
   )
 `);
 
+const registrationColumns = new Set(database.prepare("PRAGMA table_info(registrations)").all().map((column) => column.name));
+for (const [name, type] of [["email", "TEXT"], ["phone", "TEXT"], ["organization", "TEXT"], ["committee", "TEXT"]]) {
+  if (!registrationColumns.has(name)) database.exec(`ALTER TABLE registrations ADD COLUMN ${name} ${type}`);
+}
+database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name) VALUES (1, ?)").run(process.env.EVENT_NAME || "Arkham MUN");
+
 const statements = {
   create: database.prepare(`
-    INSERT INTO registrations (id, name, contact, amount, status, created_at)
-    VALUES (@id, @name, @contact, @amount, 'pending_payment', @created_at)
+    INSERT INTO registrations (id, name, contact, email, phone, organization, committee, amount, status, created_at)
+    VALUES (@id, @name, @email, @email, @phone, @organization, @committee, @amount, 'pending_payment', @created_at)
   `),
   byId: database.prepare("SELECT * FROM registrations WHERE id = ?"),
+  eventSettings: database.prepare("SELECT * FROM event_settings WHERE id = 1"),
+  updateEventSettings: database.prepare(`
+    UPDATE event_settings
+    SET event_name = @event_name, event_date = @event_date, event_time = @event_time, venue = @venue
+    WHERE id = 1
+  `),
+  updatePaymentQr: database.prepare("UPDATE event_settings SET payment_qr_filename = ? WHERE id = 1"),
   proof: database.prepare(`
     UPDATE registrations SET utr = ?, screenshot_path = ?, reject_reason = NULL, status = 'payment_submitted'
     WHERE id = ? AND status IN ('pending_payment', 'rejected')
   `),
   queue: database.prepare(`
-    SELECT id, name, contact, amount, status, utr, screenshot_path, created_at
+    SELECT id, name, contact, email, phone, organization, committee, amount, status, utr, screenshot_path, created_at
     FROM registrations WHERE status = ? ORDER BY created_at ASC
   `),
   approve: database.prepare(`
@@ -78,7 +103,7 @@ app.use((request, response, next) => {
     response.set("Access-Control-Allow-Origin", origin);
     response.set("Vary", "Origin");
     response.set("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
-    response.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response.set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
   }
   if (request.method === "OPTIONS") return response.sendStatus(204);
   next();
@@ -111,20 +136,19 @@ const upload = multer({
   }),
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (request, file, callback) => {
-    if (!allowedImageTypes.has(file.mimetype)) return callback(new Error("Screenshot must be a JPEG, PNG, WebP, or GIF image"));
+    if (!allowedImageTypes.has(file.mimetype)) return callback(new Error("Image must be a JPEG, PNG, WebP, or GIF image"));
     callback(null, true);
   },
 });
 
-function makeUpiString() {
-  const parameters = new URLSearchParams({
-    pa: process.env.ADMIN_UPI_ID,
-    pn: process.env.ADMIN_NAME,
-    am: entryFee.toFixed(2),
-    cu: "INR",
-    tn: "Event entry fee",
-  });
-  return `upi://pay?${parameters.toString()}`;
+function getEventDetails() {
+  const settings = statements.eventSettings.get();
+  return {
+    name: settings.event_name,
+    date: settings.event_date,
+    time: settings.event_time,
+    venue: settings.venue,
+  };
 }
 
 function issueEntryPayload(registration) {
@@ -132,6 +156,7 @@ function issueEntryPayload(registration) {
     id: registration.id,
     name: registration.name,
     issuedAt: new Date().toISOString(),
+    event: getEventDetails(),
   })).toString("base64url");
   const signature = crypto.createHmac("sha256", process.env.ENTRY_SECRET).update(body).digest("base64url");
   return `${body}.${signature}`;
@@ -153,44 +178,68 @@ function verifyEntryPayload(payload) {
   try {
     const decoded = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
     if (typeof decoded.id !== "string" || typeof decoded.name !== "string" || typeof decoded.issuedAt !== "string") return null;
+    if (decoded.event !== undefined && (!decoded.event ||
+        ["name", "date", "time", "venue"].some((field) => typeof decoded.event[field] !== "string"))) return null;
     return decoded;
   } catch {
     return null;
   }
 }
 
+app.get("/api/event", (request, response) => {
+  const settings = statements.eventSettings.get();
+  response.json({
+    event: getEventDetails(),
+    amount: entryFee,
+    paymentQrUrl: settings.payment_qr_filename ? "/api/payment-qr.png" : null,
+    registrationOpen: Boolean(settings.payment_qr_filename && settings.event_date && settings.event_time && settings.venue),
+  });
+});
+
+app.get("/api/payment-qr.png", (request, response, next) => {
+  const filename = statements.eventSettings.get().payment_qr_filename;
+  if (!filename) return response.status(404).json({ error: "Payment QR has not been configured" });
+  response.set("X-Content-Type-Options", "nosniff").set("Cache-Control", "no-store");
+  response.sendFile(path.join(uploadsDirectory, filename), (error) => {
+    if (error && !response.headersSent) next(error);
+  });
+});
+
 app.post("/api/registrations", (request, response) => {
   const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
-  const contact = typeof request.body?.contact === "string" ? request.body.contact.trim() : "";
-  if (!name || name.length > 120 || !contact || contact.length > 200) {
-    return response.status(400).json({ error: "Name and contact are required (maximum 120 and 200 characters)" });
+  const email = typeof request.body?.email === "string" ? request.body.email.trim().toLowerCase() : "";
+  const phone = typeof request.body?.phone === "string" ? request.body.phone.trim() : "";
+  const organization = typeof request.body?.organization === "string" ? request.body.organization.trim() : "";
+  const committee = typeof request.body?.committee === "string" ? request.body.committee.trim() : "";
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const settings = statements.eventSettings.get();
+  if (!settings.payment_qr_filename || !settings.event_date || !settings.event_time || !settings.venue) {
+    return response.status(503).json({ error: "Registration is not open until the event details and payment QR are configured" });
+  }
+  if (!name || name.length > 120 || !emailPattern.test(email) || email.length > 200 ||
+      !phone || phone.length > 40 || !organization || organization.length > 160 ||
+      !committee || committee.length > 160) {
+    return response.status(400).json({ error: "Full name, a valid email, phone, school or organization, and committee are required within the listed limits" });
   }
 
   const registration = {
     id: crypto.randomUUID(),
     name,
-    contact,
+    email,
+    phone,
+    organization,
+    committee,
     amount: entryFee,
     created_at: new Date().toISOString(),
   };
   statements.create.run(registration);
-  response.status(201).json({ id: registration.id, amount: registration.amount, upiString: makeUpiString() });
+  response.status(201).json({ id: registration.id, amount: registration.amount });
 });
 
 app.get("/api/registrations/:id", (request, response) => {
   const registration = statements.byId.get(request.params.id);
   if (!registration) return response.status(404).json({ error: "Registration not found" });
   response.json({ id: registration.id, amount: registration.amount, status: registration.status });
-});
-
-app.get("/api/registrations/:id/payment-qr.png", async (request, response, next) => {
-  try {
-    if (!statements.byId.get(request.params.id)) return response.status(404).json({ error: "Registration not found" });
-    response.type("png").set("Cache-Control", "no-store");
-    await QRCode.toFileStream(response, makeUpiString(), { type: "png", width: 320, margin: 2 });
-  } catch (error) {
-    next(error);
-  }
 });
 
 app.post("/api/registrations/:id/payment-proof", (request, response, next) => {
@@ -223,13 +272,58 @@ app.get("/api/registrations/:id/entry-qr", async (request, response, next) => {
       return response.status(409).json({ error: "Entry QR is available after approval" });
     }
     const qr = await QRCode.toDataURL(registration.entry_payload, { errorCorrectionLevel: "M", margin: 2, width: 320 });
-    response.json({ payload: registration.entry_payload, qr });
+    const decoded = verifyEntryPayload(registration.entry_payload);
+    response.json({ payload: registration.entry_payload, qr, registrationId: registration.id, event: decoded.event || getEventDetails() });
   } catch (error) {
     next(error);
   }
 });
 
 app.use("/api/admin", requireAdminKey);
+app.get("/api/admin/settings", (request, response) => {
+  const settings = statements.eventSettings.get();
+  response.json({
+    event: getEventDetails(),
+    paymentQrConfigured: Boolean(settings.payment_qr_filename),
+    paymentQrUrl: settings.payment_qr_filename ? "/api/payment-qr.png" : null,
+  });
+});
+
+app.put("/api/admin/settings", (request, response) => {
+  const event = request.body?.event;
+  const fields = ["name", "date", "time", "venue"];
+  if (!event || fields.some((field) => typeof event[field] !== "string")) {
+    return response.status(400).json({ error: "Event name, date, time, and venue are required" });
+  }
+  const values = {
+    event_name: event.name.trim(),
+    event_date: event.date.trim(),
+    event_time: event.time.trim(),
+    venue: event.venue.trim(),
+  };
+  if (!values.event_name || values.event_name.length > 160 ||
+      !values.event_date || values.event_date.length > 120 ||
+      !values.event_time || values.event_time.length > 120 ||
+      !values.venue || values.venue.length > 300) {
+    return response.status(400).json({ error: "Complete all event details within the allowed lengths" });
+  }
+  statements.updateEventSettings.run(values);
+  response.json({ event: getEventDetails() });
+});
+
+app.post("/api/admin/payment-qr", (request, response, next) => {
+  upload.single("paymentQr")(request, response, (uploadError) => {
+    if (uploadError) return next(uploadError);
+    if (!request.file) return response.status(400).json({ error: "Select a payment QR image to upload" });
+    const previousFilename = statements.eventSettings.get().payment_qr_filename;
+    statements.updatePaymentQr.run(request.file.filename);
+    if (previousFilename && previousFilename !== request.file.filename) {
+      fs.rmSync(path.join(uploadsDirectory, previousFilename), { force: true });
+    }
+    response.json({ paymentQrConfigured: true, paymentQrUrl: "/api/payment-qr.png" });
+  });
+});
+
 app.get("/api/admin/registrations", (request, response) => {
   const status = request.query.status || "payment_submitted";
   const allowedStatuses = new Set(["pending_payment", "payment_submitted", "approved", "rejected"]);
@@ -271,7 +365,22 @@ app.post("/api/entry/verify", requireAdminKey, (request, response) => {
   if (registration.used_at) return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
   const result = statements.markUsed.run(new Date().toISOString(), registration.id, request.body.payload);
   if (!result.changes) return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
-  response.json({ valid: true, name: registration.name });
+  response.json({
+    valid: true,
+    registration: {
+      id: registration.id,
+      name: registration.name,
+      email: registration.email || registration.contact,
+      phone: registration.phone || "",
+      organization: registration.organization || "",
+      committee: registration.committee || "",
+      amount: registration.amount,
+      utr: registration.utr,
+      paymentStatus: registration.status,
+      checkedInAt: new Date().toISOString(),
+      event: decoded.event || getEventDetails(),
+    },
+  });
 });
 
 app.get("/uploads/:filename", requireAdminKey, (request, response, next) => {
@@ -291,7 +400,7 @@ app.use((error, request, response, next) => {
     const status = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
     return response.status(status).json({ error: error.code === "LIMIT_FILE_SIZE" ? "Screenshot exceeds the 5 MB limit" : error.message });
   }
-  if (error.message?.startsWith("Screenshot must be")) return response.status(400).json({ error: error.message });
+  if (error.message?.startsWith("Image must be")) return response.status(400).json({ error: error.message });
   console.error(error);
   response.status(500).json({ error: "Internal server error" });
 });

@@ -26,7 +26,7 @@
 .sectionHeading h2 { margin: 7px 0 0; color: #fff; font-size: 27px; font-weight: 500; letter-spacing: 0; }
 .sectionHeading p { margin: 8px 0 0; color: #908b9d; font-size: 12px; }
 .iconButton { width: 40px; padding: 0; color: #c9c5d4; background: transparent; border: 1px solid rgba(255, 255, 255, .18); }
-.queuePanel, .scannerPanel { padding: 25px; border: 1px solid rgba(160, 150, 205, .18); background: rgba(18, 16, 27, .74); }
+.queuePanel, .scannerPanel, .settingsPanel { padding: 25px; border: 1px solid rgba(160, 150, 205, .18); background: rgba(18, 16, 27, .74); }
 .queueList { display: grid; gap: 12px; }
 .registration { padding: 19px; border: 1px solid rgba(160, 150, 205, .16); background: rgba(6, 6, 15, .52); }
 .registrationTitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
@@ -60,6 +60,15 @@
 .scanResult.valid { color: #b5ecc8; border-color: #54bd80; background: rgba(84, 189, 128, .08); }
 .scanResult.used, .scanResult.invalid { color: #ffc0c2; border-color: #e3262e; background: rgba(227, 38, 46, .08); }
 .scanResult.error { color: #ffd19c; border-color: #e6a54a; background: rgba(230, 165, 74, .08); }
+.scanDetails { display: grid; gap: 12px; margin: 0; padding: 15px; border: 1px solid rgba(84, 189, 128, .3); background: rgba(84, 189, 128, .05); }
+.scanDetails dt { margin-bottom: 4px; color: #8f8b9e; font-size: 9px; letter-spacing: .13em; text-transform: uppercase; }
+.scanDetails dd { margin: 0; color: #e5e1ed; font-size: 12px; overflow-wrap: anywhere; }
+.settingsForm { display: grid; gap: 12px; max-width: 620px; margin: 22px 0; padding-bottom: 22px; border-bottom: 1px solid rgba(160, 150, 205, .18); }
+.settingsForm label { display: grid; gap: 7px; color: #aaa8ba; font-size: 11px; font-weight: 600; }
+.settingsForm input { width: 100%; min-height: 42px; padding: 10px 12px; color: #fff; background: #0c0b17; border: 1px solid #454052; border-radius: 3px; outline: none; }
+.settingsForm input:focus { border-color: #e3262e; box-shadow: 0 0 0 3px rgba(227, 38, 46, .13); }
+.settingsForm input[type="file"] { padding: 8px; }
+.paymentQrPreview { width: 180px; height: 180px; padding: 7px; object-fit: contain; background: #fff; }
 .spinner { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 680px) {
@@ -68,7 +77,7 @@
   .headerTitle { grid-row: 2; grid-column: 1 / -1; justify-self: start; text-align: left; }
   .logoutButton { grid-column: 2; grid-row: 1; }
   .loginPanel { margin: 54px auto; padding: 25px 20px; }
-  .queuePanel, .scannerPanel { padding: 18px 14px; }
+  .queuePanel, .scannerPanel, .settingsPanel { padding: 18px 14px; }
   .scannerGrid { grid-template-columns: 1fr; }
   .videoFrame { min-height: 240px; }
   .registration { padding: 15px; }

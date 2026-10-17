@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, Camera, Check, CircleAlert, LoaderCircle, LogOut, RefreshCw, ShieldCheck, X } from "lucide-react"
 import jsQR from "jsqr"
-import { AdminRegistration, EntryPassApiError, entryPassApi } from "@/lib/entry-pass-api"
+import { AdminEventSettings, AdminRegistration, EntryPassApiError, EventDetails, ScannedRegistration, entryPassApi } from "@/lib/entry-pass-api"
 import styles from "./admin.module.css"
 
 type ScanState = { type: "idle" | "valid" | "used" | "invalid" | "error"; message: string }
@@ -13,8 +13,12 @@ export default function AdminPage() {
   const [adminKey, setAdminKey] = useState("")
   const [keyInput, setKeyInput] = useState("")
   const [authenticated, setAuthenticated] = useState(false)
-  const [activeView, setActiveView] = useState<"queue" | "scanner">("queue")
+  const [activeView, setActiveView] = useState<"queue" | "scanner" | "settings">("queue")
   const [registrations, setRegistrations] = useState<AdminRegistration[]>([])
+  const [settings, setSettings] = useState<AdminEventSettings | null>(null)
+  const [eventForm, setEventForm] = useState<EventDetails>({ name: "Arkham MUN", date: "", time: "", venue: "" })
+  const [settingsBusy, setSettingsBusy] = useState(false)
+  const [scannedRegistration, setScannedRegistration] = useState<ScannedRegistration | null>(null)
   const [loading, setLoading] = useState(false)
   const [busyId, setBusyId] = useState("")
   const [error, setError] = useState("")
@@ -45,7 +49,10 @@ export default function AdminPage() {
     setLoading(true)
     setError("")
     try {
-      const result = await entryPassApi.getAdminRegistrations(key)
+      const [result, currentSettings] = await Promise.all([
+        entryPassApi.getAdminRegistrations(key),
+        entryPassApi.getAdminSettings(key),
+      ])
       const next = await Promise.all(result.registrations.map(async (registration) => {
         if (!registration.screenshot_url) return registration
         try {
@@ -59,6 +66,8 @@ export default function AdminPage() {
         if (registration.screenshotBlobUrl) URL.revokeObjectURL(registration.screenshotBlobUrl)
       })
       setRegistrations(next)
+      setSettings(currentSettings)
+      setEventForm(currentSettings.event)
       setAdminKey(key)
       setAuthenticated(true)
       setNotice(successMessage || `${next.length} payment ${next.length === 1 ? "submission" : "submissions"} loaded.`)
@@ -107,6 +116,45 @@ export default function AdminPage() {
     }
   }
 
+  async function saveEventSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSettingsBusy(true)
+    setError("")
+    try {
+      const result = await entryPassApi.saveAdminEvent(eventForm, adminKey)
+      setEventForm(result.event)
+      setSettings((current) => current ? { ...current, event: result.event } : current)
+      setNotice("Event details saved.")
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to save event details.")
+    } finally {
+      setSettingsBusy(false)
+    }
+  }
+
+  async function uploadPaymentQr(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const fileInput = form.elements.namedItem("paymentQr")
+    const file = fileInput instanceof HTMLInputElement ? fileInput.files?.[0] : undefined
+    if (!file) {
+      setError("Choose a payment QR image to upload.")
+      return
+    }
+    setSettingsBusy(true)
+    setError("")
+    try {
+      const result = await entryPassApi.uploadPaymentQr(file, adminKey)
+      setSettings((current) => current ? { ...current, paymentQrConfigured: result.paymentQrConfigured, paymentQrUrl: result.paymentQrUrl } : current)
+      form.reset()
+      setNotice("Payment QR image uploaded.")
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to upload payment QR.")
+    } finally {
+      setSettingsBusy(false)
+    }
+  }
+
   function logout() {
     setCameraOn(false)
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -118,6 +166,8 @@ export default function AdminPage() {
     setAdminKey("")
     setKeyInput("")
     setAuthenticated(false)
+    setSettings(null)
+    setScannedRegistration(null)
     setNotice("")
     setError("")
   }
@@ -155,11 +205,15 @@ export default function AdminPage() {
     async function verifyScan(payload: string) {
       scanBusyRef.current = true
       setScanState({ type: "idle", message: "Checking entry pass…" })
+      setScannedRegistration(null)
       try {
         const result = await entryPassApi.verifyEntry(payload, adminKey)
-        setScanState(result.valid
-          ? { type: "valid", message: `VALID · ${result.name} · entry recorded` }
-          : { type: "invalid", message: "INVALID · This is not an approved entry pass." })
+        if (result.valid) {
+          setScannedRegistration(result.registration)
+          setScanState({ type: "valid", message: `VALID · ${result.registration.name} · entry recorded` })
+        } else {
+          setScanState({ type: "invalid", message: "INVALID · This is not an approved entry pass." })
+        }
       } catch (requestError) {
         if (requestError instanceof EntryPassApiError && requestError.status === 409 && requestError.body.reason === "already_used") {
           setScanState({ type: "used", message: `ALREADY USED · ${String(requestError.body.name || "This pass")} was checked in earlier.` })
@@ -240,6 +294,7 @@ export default function AdminPage() {
           <nav className={styles.tabs} aria-label="Admin tools">
             <button className={activeView === "queue" ? styles.activeTab : ""} onClick={() => { if (activeView === "scanner") stopCamera(); setActiveView("queue"); void loadQueue() }}>Payment review <span>{registrations.length}</span></button>
             <button className={activeView === "scanner" ? styles.activeTab : ""} onClick={() => setActiveView("scanner")}>Venue scanner</button>
+            <button className={activeView === "settings" ? styles.activeTab : ""} onClick={() => { if (activeView === "scanner") stopCamera(); setActiveView("settings") }}>Event setup</button>
           </nav>
           {notice && <p className={styles.notice} role="status"><Check size={15} />{notice}</p>}
           {error && <p className={styles.error} role="alert"><CircleAlert size={15} />{error}</p>}
@@ -248,14 +303,14 @@ export default function AdminPage() {
               <div className={styles.sectionHeading}><div><span className={styles.kicker}>PAYMENT-SUBMITTED REGISTRATIONS</span><h2>Review queue</h2></div><button className={styles.iconButton} onClick={() => loadQueue()} disabled={loading} aria-label="Refresh queue" title="Refresh queue">{loading ? <LoaderCircle className={styles.spinner} size={17} /> : <RefreshCw size={17} />}</button></div>
               {loading && registrations.length === 0 ? <p className={styles.emptyState}><LoaderCircle className={styles.spinner} size={18} />Loading submissions…</p> : registrations.length === 0 ? <p className={styles.emptyState}>No payment submissions are waiting for review.</p> : <div className={styles.queueList}>
                 {registrations.map((registration) => <article className={styles.registration} key={registration.id}>
-                  <div className={styles.registrationTitle}><div><h3>{registration.name}</h3><p>{registration.contact}</p></div><span>INR {Number(registration.amount).toFixed(2)}</span></div>
-                  <dl className={styles.registrationDetails}><div><dt>UTR</dt><dd>{registration.utr || "Not provided"}</dd></div><div><dt>Submitted</dt><dd>{new Date(registration.created_at).toLocaleString()}</dd></div></dl>
+                  <div className={styles.registrationTitle}><div><h3>{registration.name}</h3><p>{registration.email || registration.contact}</p></div><span>INR {Number(registration.amount).toFixed(2)}</span></div>
+                  <dl className={styles.registrationDetails}><div><dt>Phone</dt><dd>{registration.phone || "Not provided"}</dd></div><div><dt>School / organization</dt><dd>{registration.organization || "Not provided"}</dd></div><div><dt>Committee</dt><dd>{registration.committee || "Not provided"}</dd></div><div><dt>UTR</dt><dd>{registration.utr || "Not provided"}</dd></div><div><dt>Submitted</dt><dd>{new Date(registration.created_at).toLocaleString()}</dd></div><div><dt>Registration ID</dt><dd>{registration.id}</dd></div></dl>
                   {registration.screenshot_url && (registration.screenshotBlobUrl ? <a href={registration.screenshotBlobUrl} target="_blank" rel="noreferrer"><img className={styles.proofImage} src={registration.screenshotBlobUrl} alt={`Payment screenshot from ${registration.name}`} /></a> : <p className={styles.subtle}>Screenshot could not be loaded.</p>)}
                   {rejectingId === registration.id ? <div className={styles.rejectForm}><label htmlFor={`reject-${registration.id}`}>Reason for rejection</label><textarea id={`reject-${registration.id}`} value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} maxLength={500} rows={2} /><div className={styles.actions}><button className={styles.rejectButton} onClick={() => reject(registration.id)} disabled={busyId === registration.id}>{busyId === registration.id ? "Saving…" : "Confirm rejection"}</button><button className={styles.secondaryButton} onClick={() => { setRejectingId(""); setRejectReason("") }}>Cancel</button></div></div> : <div className={styles.actions}><button className={styles.approveButton} onClick={() => approve(registration.id)} disabled={busyId === registration.id}>{busyId === registration.id ? <LoaderCircle className={styles.spinner} size={15} /> : <Check size={15} />}{busyId === registration.id ? "Working" : "Approve & issue pass"}</button><button className={styles.rejectButton} onClick={() => { setRejectingId(registration.id); setRejectReason(""); setError("") }} disabled={Boolean(busyId)}>Reject</button></div>}
                 </article>)}
               </div>}
             </section>
-          ) : (
+          ) : activeView === "scanner" ? (
             <section className={styles.scannerPanel}>
               <div className={styles.sectionHeading}><div><span className={styles.kicker}>SINGLE-USE CHECK-IN</span><h2>Scan entry pass</h2><p>First valid scan admits the guest. A second scan is rejected as already used.</p></div></div>
               <div className={styles.scannerGrid}>
@@ -267,10 +322,39 @@ export default function AdminPage() {
                 </div>
                 <div className={styles.scanControls}>
                   <p className={`${styles.scanResult} ${styles[scanState.type]}`} role="status" aria-live="polite">{scanState.message}</p>
+                  {scannedRegistration && <dl className={styles.scanDetails}>
+                    <div><dt>Registration ID</dt><dd>{scannedRegistration.id}</dd></div>
+                    <div><dt>Delegate</dt><dd>{scannedRegistration.name}</dd></div>
+                    <div><dt>Email</dt><dd>{scannedRegistration.email}</dd></div>
+                    <div><dt>Phone</dt><dd>{scannedRegistration.phone}</dd></div>
+                    <div><dt>School / organization</dt><dd>{scannedRegistration.organization}</dd></div>
+                    <div><dt>Committee</dt><dd>{scannedRegistration.committee}</dd></div>
+                    <div><dt>Payment</dt><dd>Admin approved · INR {Number(scannedRegistration.amount).toFixed(2)}</dd></div>
+                    <div><dt>UTR</dt><dd>{scannedRegistration.utr || "Not provided"}</dd></div>
+                    <div><dt>Event</dt><dd>{scannedRegistration.event.name} · {scannedRegistration.event.date} · {scannedRegistration.event.time} · {scannedRegistration.event.venue}</dd></div>
+                  </dl>}
                   {cameraOn ? <button className={styles.secondaryButton} onClick={stopCamera}><X size={15} /> Stop camera</button> : <button className={styles.primaryButton} onClick={() => { setScanState({ type: "idle", message: "Starting camera…" }); setCameraOn(true) }}><Camera size={16} /> Start camera</button>}
                   <p className={styles.subtle}>Camera access requires HTTPS in production. Localhost is supported for development.</p>
                 </div>
               </div>
+            </section>
+          ) : (
+            <section className={styles.settingsPanel}>
+              <div className={styles.sectionHeading}><div><span className={styles.kicker}>DELEGATE REGISTRATION</span><h2>Event setup</h2><p>Set the event details and upload the payment QR shown before delegates submit payment proof.</p></div></div>
+              <form className={styles.settingsForm} onSubmit={saveEventSettings}>
+                <label>Event name<input required maxLength={160} value={eventForm.name} onChange={(event) => setEventForm({ ...eventForm, name: event.target.value })} /></label>
+                <label>Event date<input required maxLength={120} placeholder="e.g. 24–25 October 2026" value={eventForm.date} onChange={(event) => setEventForm({ ...eventForm, date: event.target.value })} /></label>
+                <label>Event timing<input required maxLength={120} placeholder="e.g. 9:00 AM – 5:00 PM" value={eventForm.time} onChange={(event) => setEventForm({ ...eventForm, time: event.target.value })} /></label>
+                <label>Venue<input required maxLength={300} value={eventForm.venue} onChange={(event) => setEventForm({ ...eventForm, venue: event.target.value })} /></label>
+                <button className={styles.primaryButton} type="submit" disabled={settingsBusy}>{settingsBusy ? "Saving…" : "Save event details"}</button>
+              </form>
+              <form className={styles.settingsForm} onSubmit={uploadPaymentQr}>
+                <label>Payment QR image<input required name="paymentQr" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
+                <p className={styles.subtle}>Upload a JPEG, PNG, WebP, or GIF image, up to 5 MB. The latest image replaces the previous payment QR.</p>
+                <button className={styles.primaryButton} type="submit" disabled={settingsBusy}>{settingsBusy ? "Uploading…" : "Upload payment QR"}</button>
+                {settings?.paymentQrConfigured && settings.paymentQrUrl && <img className={styles.paymentQrPreview} src={entryPassApi.paymentQrUrl(settings.paymentQrUrl)} alt="Current event payment QR" />}
+              </form>
+              <p className={styles.subtle}>Registration opens after the event details are saved and a payment QR is uploaded. Approval emails are not configured yet; delegates can view their entry QR in the registration flow after approval.</p>
             </section>
           )}
         </>

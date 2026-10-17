@@ -1,6 +1,6 @@
 # Entry Pass Backend
 
-A standalone Express service for event registration, manual UPI payment review, signed entry passes, and single-use venue check-in. It serves its plain HTML portal and JSON API from the same origin. The Next.js site in the parent directory is unchanged.
+A standalone Express service for event registration, manual payment review, signed entry passes, and single-use venue check-in. It serves a plain HTML portal and JSON API from the same origin; the Next.js website in the parent directory also uses this API.
 
 ## Setup
 
@@ -11,14 +11,14 @@ cd entry-pass-backend
 npm install
 ```
 
-Copy `.env.example` to `.env`, then configure the event's payment details and two independent secrets. Generate secrets with `openssl rand -hex 32`:
+Copy `.env.example` to `.env`, configure the event name and two independent secrets, then use the admin page to set the date, timing, venue, and payment QR. Generate secrets with `openssl rand -hex 32`:
 
 ```sh
 cp .env.example .env
 openssl rand -hex 32
 ```
 
-Use one generated value for `ENTRY_SECRET` and a different value for `ADMIN_KEY`. Do not commit `.env`. Keep `ENTRY_SECRET` stable: changing it invalidates previously issued passes. Set `ENTRY_FEE`, `ADMIN_UPI_ID`, and `ADMIN_NAME` to the values shown to delegates.
+Use one generated value for `ENTRY_SECRET` and a different value for `ADMIN_KEY`. Do not commit `.env`. Keep `ENTRY_SECRET` stable: changing it invalidates previously issued passes. `ENTRY_FEE` is the fixed amount shown to delegates.
 
 ## Run
 
@@ -34,11 +34,12 @@ The Arkham MUN frontend in the parent directory uses `NEXT_PUBLIC_API_URL` from 
 
 ## User Flow
 
-1. A user submits their name and contact. The server creates a `pending_payment` registration and returns the amount and UPI payment string.
-2. The portal displays the admin's payment QR. The user pays outside this service, then submits a UTR and optionally an image screenshot.
-3. An admin reviews the self-reported details and approves or rejects them.
-4. Approval creates a signed entry QR. The user can refresh their status or wait for polling to display it.
-5. At the venue, an admin scans the entry QR. A valid pass is marked used atomically; a later scan returns `already_used`.
+1. An admin configures event details and uploads the payment QR in the Next.js admin page at `/admin`.
+2. A user submits their full name, email, phone, school/organization, and committee before payment. The server creates a `pending_payment` registration.
+3. The portal displays the uploaded payment QR. The user pays outside this service, then submits a UTR and optionally an image screenshot.
+4. An admin reviews the submitted details and payment proof, then approves or rejects it.
+5. Approval creates a signed entry QR and registration ID. The user can refresh their status to view the pass and event details. Email delivery is not configured yet.
+6. At the venue, an admin scans the entry QR. A valid pass is marked used atomically and the scanner shows the delegate and payment details; a later scan returns `already_used`.
 
 ## API Reference
 
@@ -46,18 +47,22 @@ All request and response bodies are JSON unless the route is a multipart form or
 
 | Method and path | Access | Purpose |
 | --- | --- | --- |
-| `POST /api/registrations` | Public | JSON `{ "name": "...", "contact": "..." }`; returns `{ id, amount, upiString }` with HTTP 201. |
+| `GET /api/event` | Public | Returns event details, fixed amount, payment QR URL, and whether registration is open. |
+| `GET /api/payment-qr.png` | Public | Displays the payment QR uploaded by an admin. |
+| `POST /api/registrations` | Public | JSON `{ name, email, phone, organization, committee }`; returns `{ id, amount }` with HTTP 201. All delegate fields are required. |
 | `GET /api/registrations/:id` | Public | Returns only `{ id, amount, status }`; status is `pending_payment`, `payment_submitted`, `approved`, or `rejected`. |
-| `GET /api/registrations/:id/payment-qr.png` | Public | PNG for the admin's UPI payment deep link. |
 | `POST /api/registrations/:id/payment-proof` | Public | Multipart fields `utr` (required) and `screenshot` (optional image, maximum 5 MB); moves a pending registration to `payment_submitted`. |
 | `GET /api/registrations/:id/entry-qr` | Public | After approval, returns `{ payload, qr }`, where `qr` is a PNG data URL. |
 | `GET /api/admin/registrations?status=payment_submitted` | Admin | Returns `{ registrations }`, including `screenshot_url`. Other supported statuses can be selected with `status`. |
+| `GET /api/admin/settings` | Admin | Returns configured event details and whether a payment QR has been uploaded. |
+| `PUT /api/admin/settings` | Admin | Saves event `name`, `date`, `time`, and `venue`. |
+| `POST /api/admin/payment-qr` | Admin | Multipart image field `paymentQr`; uploads/replaces the public payment QR (maximum 5 MB). |
 | `POST /api/admin/registrations/:id/approve` | Admin | Approves a submitted payment and stores its signed entry payload. |
 | `POST /api/admin/registrations/:id/reject` | Admin | JSON `{ "reason": "..." }`; rejects a submitted payment. |
 | `POST /api/entry/verify` | Admin | JSON `{ "payload": "..." }`; returns `{ valid: true, name }` once, `{ valid: false, reason: "invalid" }` for invalid passes, or HTTP 409 `{ valid: false, reason: "already_used", name }` for a repeat scan. |
 | `GET /uploads/:filename` | Admin | Serves an uploaded screenshot. This route is protected by the same admin key. |
 
-Invalid or missing IDs return HTTP 404. Invalid state transitions return HTTP 409. Uploads that exceed 5 MB return HTTP 413. Rejection requires a non-empty reason. The signed QR contains a base64url JSON body (`id`, `name`, `issuedAt`) and an HMAC-SHA256 signature; the entry signing secret is never returned by the API.
+Invalid or missing IDs return HTTP 404. Invalid state transitions return HTTP 409. Uploads that exceed 5 MB return HTTP 413. Rejection requires a non-empty reason. Registration cannot open until an admin saves event details and uploads a payment QR. The signed entry QR contains the delegate's unique registration ID, name, issue time, and event details; the admin scanner uses that ID to retrieve the payment-confirmed delegate record. The payload is protected with an HMAC-SHA256 signature; the entry signing secret is never returned by the API.
 
 ## Before a Real Launch
 

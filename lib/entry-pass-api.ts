@@ -3,7 +3,26 @@ export type RegistrationStatus = "pending_payment" | "payment_submitted" | "appr
 export type RegistrationStart = {
   id: string
   amount: number
-  upiString: string
+}
+
+export type EventDetails = {
+  name: string
+  date: string
+  time: string
+  venue: string
+}
+
+export type PublicEvent = {
+  event: EventDetails
+  amount: number
+  paymentQrUrl: string | null
+  registrationOpen: boolean
+}
+
+export type AdminEventSettings = {
+  event: EventDetails
+  paymentQrConfigured: boolean
+  paymentQrUrl: string | null
 }
 
 export type RegistrationStatusResponse = {
@@ -15,12 +34,18 @@ export type RegistrationStatusResponse = {
 export type EntryQrResponse = {
   payload: string
   qr: string
+  registrationId: string
+  event: EventDetails
 }
 
 export type AdminRegistration = {
   id: string
   name: string
   contact: string
+  email: string | null
+  phone: string | null
+  organization: string | null
+  committee: string | null
   amount: number
   status: RegistrationStatus
   utr: string | null
@@ -30,7 +55,23 @@ export type AdminRegistration = {
   screenshotBlobUrl?: string
 }
 
-export type EntryVerification = { valid: true; name: string } | { valid: false; reason: "invalid" }
+export type EntryVerification =
+  | { valid: true; registration: ScannedRegistration }
+  | { valid: false; reason: "invalid" }
+
+export type ScannedRegistration = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  organization: string
+  committee: string
+  amount: number
+  utr: string | null
+  paymentStatus: RegistrationStatus
+  checkedInAt: string
+  event: EventDetails
+}
 
 export class EntryPassApiError extends Error {
   status: number
@@ -69,16 +110,20 @@ function adminHeaders(adminKey: string, json = false): HeadersInit {
 }
 
 export const entryPassApi = {
-  createRegistration(name: string, contact: string) {
+  getPublicEvent() {
+    return request<PublicEvent>("/api/event")
+  },
+
+  createRegistration(details: { name: string; email: string; phone: string; organization: string; committee: string }) {
     return request<RegistrationStart>("/api/registrations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, contact }),
+      body: JSON.stringify(details),
     })
   },
 
-  paymentQrUrl(id: string) {
-    return `${API_BASE_URL}/api/registrations/${encodeURIComponent(id)}/payment-qr.png`
+  paymentQrUrl(url: string) {
+    return `${API_BASE_URL}${url}`
   },
 
   submitPaymentProof(id: string, utr: string, screenshot?: File) {
@@ -102,6 +147,30 @@ export const entryPassApi = {
   getAdminRegistrations(adminKey: string) {
     return request<{ registrations: AdminRegistration[] }>("/api/admin/registrations?status=payment_submitted", {
       headers: adminHeaders(adminKey),
+    })
+  },
+
+  getAdminSettings(adminKey: string) {
+    return request<AdminEventSettings>("/api/admin/settings", {
+      headers: adminHeaders(adminKey),
+    })
+  },
+
+  saveAdminEvent(event: EventDetails, adminKey: string) {
+    return request<{ event: EventDetails }>("/api/admin/settings", {
+      method: "PUT",
+      headers: adminHeaders(adminKey, true),
+      body: JSON.stringify({ event }),
+    })
+  },
+
+  uploadPaymentQr(file: File, adminKey: string) {
+    const body = new FormData()
+    body.set("paymentQr", file)
+    return request<{ paymentQrConfigured: boolean; paymentQrUrl: string }>("/api/admin/payment-qr", {
+      method: "POST",
+      headers: adminHeaders(adminKey),
+      body,
     })
   },
 

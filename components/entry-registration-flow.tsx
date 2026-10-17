@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react"
 import { ArrowRight, LoaderCircle, ShieldCheck, X } from "lucide-react"
-import { EntryQrResponse, entryPassApi, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
+import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
 import styles from "./entry-registration-flow.module.css"
 
 type Props = {
@@ -21,6 +21,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
   const [registration, setRegistration] = useState<RegistrationStart | null>(null)
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
   const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
+  const [publicEvent, setPublicEvent] = useState<PublicEvent | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -45,6 +46,17 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     }
   }, [isOpen, registration, status])
 
+  useEffect(() => {
+    if (!isOpen) return
+    let active = true
+    entryPassApi.getPublicEvent().then((details) => {
+      if (active) setPublicEvent(details)
+    }).catch((requestError) => {
+      if (active) setError(requestError instanceof Error ? requestError.message : "Unable to load event details.")
+    })
+    return () => { active = false }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   async function handleRegistration(event: FormEvent<HTMLFormElement>) {
@@ -54,7 +66,13 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     setError("")
     setNotice("")
     try {
-      const created = await entryPassApi.createRegistration(String(data.get("name")), String(data.get("contact")))
+      const created = await entryPassApi.createRegistration({
+        name: String(data.get("name")),
+        email: String(data.get("email")),
+        phone: String(data.get("phone")),
+        organization: String(data.get("organization")),
+        committee: String(data.get("committee")),
+      })
       setRegistration(created)
       setStatus("pending_payment")
       setNotice("Registration created. Pay using the QR below, then submit your UTR.")
@@ -118,11 +136,15 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
           <>
             <ShieldCheck size={30} className="modal-icon" />
             <h2 id="entry-registration-title">Reserve your seat.</h2>
-            <p>Start your Arkham MUN registration. Your payment and entry pass will be connected to these contact details.</p>
+            <p>Complete your delegate details before payment. Your signed entry pass will be issued after an admin verifies your payment.</p>
+            {publicEvent?.registrationOpen && <p className={styles.eventSummary}><strong>{publicEvent.event.name}</strong><span>{publicEvent.event.date} · {publicEvent.event.time}</span><span>{publicEvent.event.venue}</span><span>Entry fee · INR {Number(publicEvent.amount).toFixed(2)}</span></p>}
             <form onSubmit={handleRegistration}>
-              <label>Delegate name<input required name="name" autoComplete="name" maxLength={120} placeholder="Your full name" /></label>
-              <label>Email or phone<input required name="contact" autoComplete="email" maxLength={200} placeholder="you@example.com or phone" /></label>
-              <button className="modal-submit" type="submit" disabled={busy}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Creating registration" : "Continue registration"}<ArrowRight size={17} /></button>
+              <label>Full name<input required name="name" autoComplete="name" maxLength={120} placeholder="Your full name" /></label>
+              <label>Email address<input required type="email" name="email" autoComplete="email" maxLength={200} placeholder="you@example.com" /></label>
+              <label>Phone number<input required type="tel" name="phone" autoComplete="tel" maxLength={40} placeholder="Your contact number" /></label>
+              <label>School / organization<input required name="organization" maxLength={160} placeholder="Your school or organization" /></label>
+              <label>Committee<input required name="committee" maxLength={160} placeholder="Committee preference" /></label>
+              <button className="modal-submit" type="submit" disabled={busy || publicEvent?.registrationOpen !== true}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Creating registration" : publicEvent ? publicEvent.registrationOpen ? "Continue registration" : "Registration unavailable" : "Loading event details"}<ArrowRight size={17} /></button>
             </form>
           </>
         ) : (
@@ -131,7 +153,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
             <p className={styles.statusLine}><span className={`${styles.statusDot} ${status === "approved" ? styles.approved : status === "rejected" ? styles.rejected : ""}`} />{status ? statusLabels[status] : "Preparing registration"} · INR {Number(registration.amount).toFixed(2)}</p>
             {(status === "pending_payment" || status === "rejected") && <div className={styles.paymentBlock}>
               <div><h3>{status === "rejected" ? "Submit corrected payment proof" : "Pay the entry fee"}</h3><p>Scan the admin’s UPI QR in your payment app. This payment QR is separate from your entry pass.</p></div>
-              <img className={styles.paymentQr} src={entryPassApi.paymentQrUrl(registration.id)} alt="Admin UPI payment QR code" />
+              {publicEvent?.paymentQrUrl && <img className={styles.paymentQr} src={entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)} alt="Event payment QR code" />}
               <form className={styles.proofForm} onSubmit={handleProof}>
                 <label>Transaction reference (UTR)<input required name="utr" maxLength={120} autoComplete="off" placeholder="Enter the UPI transaction reference" /></label>
                 <label>Payment screenshot <span>(optional, up to 5 MB)</span><input type="file" name="screenshot" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
@@ -140,7 +162,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
             </div>}
             {(status === "payment_submitted" || status === "approved") && <div className={styles.statusBlock}>
               <p>{status === "approved" ? "Your entry QR is ready. Show it to the event team at the gate; it can only be scanned once." : "Your UTR is with the event team for review. This status refreshes automatically."}</p>
-              {entryQr && <div className={styles.entryPass}><img src={entryQr.qr} alt="Your signed event entry QR code" /><div><strong>Approved entry pass</strong><small>Keep this QR ready for venue check-in.</small></div></div>}
+              {entryQr && <div className={styles.entryPass}><img src={entryQr.qr} alt="Your signed event entry QR code" /><div><strong>{entryQr.event.name} entry pass</strong><small>Registration ID: {entryQr.registrationId}</small><small>{entryQr.event.date} · {entryQr.event.time}</small><small>{entryQr.event.venue}</small><small>Keep this QR ready for venue check-in.</small></div></div>}
               {status === "approved" && <button type="button" className={styles.refreshButton} onClick={startAgain}>Register another delegate</button>}
               {status === "payment_submitted" && <button type="button" className={styles.refreshButton} disabled={busy} onClick={refreshStatus}>{busy ? "Refreshing…" : "Refresh status"}</button>}
             </div>}

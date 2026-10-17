@@ -68,6 +68,7 @@
     .message.success { color: var(--good); }
     .payment-layout { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 24px; align-items: center; }
     .qr-image { display: block; width: min(100%, 220px); aspect-ratio: 1; background: #fff; border: 1px solid var(--line); padding: 8px; }
+    .qr-image[hidden], .registration-meta[hidden] { display: none; }
     .status-label { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgb(197 91 55 / 10%); color: var(--accent); border-radius: 2px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
     .status-label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
     .status-label.approved { background: rgb(36 116 73 / 10%); color: var(--good); }
@@ -129,12 +130,16 @@
     <section class="panel" id="user-panel" role="tabpanel" aria-labelledby="user-tab">
       <div class="intro"><span class="eyebrow">Delegate access</span><h1>Your entry, handled.</h1><p>Register, submit your payment reference, then keep your approved pass ready at the venue.</p></div>
       <form class="card" id="registration-form">
-        <h2>Start a registration</h2><p class="subtle">Use contact details where the event team can reach you.</p>
+        <h2>Start a registration</h2><p class="subtle">All delegate details are required before payment.</p>
+        <p class="subtle" id="event-summary">Loading event details…</p>
         <div class="form-grid">
           <div class="field"><label for="name">Full name</label><input id="name" name="name" autocomplete="name" maxlength="120" required></div>
-          <div class="field"><label for="contact">Email or phone</label><input id="contact" name="contact" autocomplete="email" maxlength="200" required></div>
+          <div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" maxlength="200" required></div>
+          <div class="field"><label for="phone">Phone number</label><input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="40" required></div>
+          <div class="field"><label for="organization">School / organization</label><input id="organization" name="organization" maxlength="160" required></div>
+          <div class="field"><label for="committee">Committee</label><input id="committee" name="committee" maxlength="160" required></div>
         </div>
-        <div class="actions"><button class="button" type="submit">Continue to payment</button></div>
+        <div class="actions"><button class="button" id="register-button" type="submit" disabled>Loading event details</button></div>
         <p class="message" id="registration-message" role="status"></p>
       </form>
 
@@ -155,7 +160,7 @@
         <div class="registration-head"><div><span class="eyebrow">Registration status</span><h2 id="status-heading">Payment under review</h2></div><span class="status-label" id="status-badge">Pending</span></div>
         <p class="subtle" id="status-copy">Your submitted payment reference is waiting for admin review.</p>
         <div class="actions"><button class="button secondary" type="button" id="refresh-status">Refresh status</button><button class="button secondary" type="button" id="new-registration">New registration</button></div>
-        <div id="entry-pass" hidden style="margin-top:24px"><h3>Your approved entry pass</h3><p class="subtle">Show this QR to the event team at the gate. It can only be used once.</p><img class="qr-image" id="entry-qr" alt="Signed event entry QR code"></div>
+        <div id="entry-pass" hidden style="margin-top:24px"><h3>Your approved entry pass</h3><p class="subtle" id="entry-pass-details"></p><p class="subtle">Show this QR to the event team at the gate. It can only be used once.</p><img class="qr-image" id="entry-qr" alt="Signed event entry QR code"></div>
       </section>
     </section>
 
@@ -165,12 +170,27 @@
         <div class="admin-bar"><div class="field"><label for="admin-key">Admin key</label><input id="admin-key" type="password" autocomplete="current-password" placeholder="Enter shared admin key"></div><button class="button" type="button" id="load-queue">Load queue</button><button class="button secondary" type="button" id="clear-key">Clear key</button></div>
         <p class="message" id="admin-message" role="status"></p>
       </section>
+      <section class="card">
+        <h2>Event setup</h2><p class="subtle">Set event information and upload the payment QR shown to delegates.</p>
+        <form id="event-settings-form" class="form-grid">
+          <div class="field"><label for="event-name">Event name</label><input id="event-name" required maxlength="160"></div>
+          <div class="field"><label for="event-date">Event date</label><input id="event-date" required maxlength="120" placeholder="e.g. 24–25 October 2026"></div>
+          <div class="field"><label for="event-time">Event timing</label><input id="event-time" required maxlength="120" placeholder="e.g. 9:00 AM – 5:00 PM"></div>
+          <div class="field"><label for="event-venue">Venue</label><input id="event-venue" required maxlength="300"></div>
+          <div class="field full"><button class="button" type="submit">Save event details</button></div>
+        </form>
+        <form id="payment-qr-form" class="form-grid" style="margin-top:18px">
+          <div class="field full"><label for="payment-qr-file">Payment QR image (JPEG, PNG, WebP, or GIF; max 5 MB)</label><input id="payment-qr-file" name="paymentQr" type="file" accept="image/jpeg,image/png,image/webp,image/gif" required></div>
+          <div class="field full"><button class="button" type="submit">Upload payment QR</button></div>
+          <img class="qr-image" id="admin-payment-qr-preview" alt="Current event payment QR" hidden>
+        </form>
+      </section>
       <section class="card"><div class="registration-head"><div><h2>Payment review queue</h2><p class="subtle">Showing registrations that have submitted a UTR.</p></div><button class="button secondary" type="button" id="reload-queue">Refresh</button></div><div class="queue" id="queue" style="margin-top:18px"><div class="empty">Enter the admin key to load registrations.</div></div></section>
       <section class="card">
         <span class="eyebrow">Venue check-in</span><h2>Scan entry at venue</h2><p class="subtle">Camera access requires HTTPS outside localhost. A valid QR is marked used as soon as it is checked.</p>
         <div class="scanner-layout" style="margin-top:18px">
           <div><div class="video-wrap"><video id="camera" playsinline muted></video><div class="scan-frame" id="scan-frame" hidden></div><span id="camera-placeholder" class="subtle">Camera is off</span></div><div class="actions"><button class="button" type="button" id="start-camera">Start camera</button><button class="button secondary" type="button" id="stop-camera" disabled>Stop camera</button></div></div>
-          <div><div class="scan-result" id="scan-result" role="status" aria-live="polite">Ready to scan. Enter the admin key first.</div><canvas id="scan-canvas" class="sr-only"></canvas></div>
+          <div><div class="scan-result" id="scan-result" role="status" aria-live="polite">Ready to scan. Enter the admin key first.</div><dl id="scan-details" class="registration-meta" hidden></dl><canvas id="scan-canvas" class="sr-only"></canvas></div>
         </div>
       </section>
     </section>
@@ -187,6 +207,26 @@
     let screenshotUrls = [];
     const adminKeyInput = byId("admin-key");
     adminKeyInput.value = sessionStorage.getItem("entry-pass-admin-key") || "";
+
+    async function loadPublicEvent() {
+      try {
+        const result = await readResponse(await fetch("/api/event"));
+        const event = result.event;
+        byId("event-summary").textContent = `${event.name} · ${event.date || "Date pending"} · ${event.time || "Timing pending"} · ${event.venue || "Venue pending"} · Entry fee: INR ${Number(result.amount).toFixed(2)}`;
+        if (result.registrationOpen) {
+          byId("register-button").disabled = false;
+          byId("register-button").textContent = "Continue to payment";
+        } else {
+          byId("register-button").textContent = "Registration unavailable";
+          setMessage("registration-message", "The event team has not finished registration setup yet.", "error");
+        }
+      } catch (error) {
+        byId("event-summary").textContent = "Event details could not be loaded.";
+        setMessage("registration-message", error.message, "error");
+      }
+    }
+
+    void loadPublicEvent();
 
     async function readResponse(response) {
       const body = await response.json().catch(() => ({}));
@@ -222,10 +262,17 @@
         const result = await readResponse(await fetch("/api/registrations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: byId("name").value, contact: byId("contact").value }),
+          body: JSON.stringify({
+            name: byId("name").value,
+            email: byId("email").value,
+            phone: byId("phone").value,
+            organization: byId("organization").value,
+            committee: byId("committee").value,
+          }),
         }));
         registrationId = result.id;
-        byId("payment-qr").src = `/api/registrations/${encodeURIComponent(registrationId)}/payment-qr.png`;
+        const event = await readResponse(await fetch("/api/event"));
+        byId("payment-qr").src = event.paymentQrUrl;
         byId("amount-label").textContent = `Amount due: INR ${Number(result.amount).toFixed(2)}`;
         byId("payment-section").hidden = false;
         byId("status-section").hidden = true;
@@ -274,6 +321,7 @@
           window.clearInterval(statusTimer);
           const entry = await readResponse(await fetch(`/api/registrations/${encodeURIComponent(registrationId)}/entry-qr`));
           byId("entry-qr").src = entry.qr;
+          byId("entry-pass-details").textContent = `Registration ID: ${entry.registrationId} · ${entry.event.name} · ${entry.event.date} · ${entry.event.time} · ${entry.event.venue}`;
           byId("entry-pass").hidden = false;
         }
         if (result.status === "rejected") window.clearInterval(statusTimer);
@@ -304,6 +352,47 @@
     byId("load-queue").addEventListener("click", loadQueue);
     byId("reload-queue").addEventListener("click", loadQueue);
 
+    byId("event-settings-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const body = {
+          event: {
+            name: byId("event-name").value,
+            date: byId("event-date").value,
+            time: byId("event-time").value,
+            venue: byId("event-venue").value,
+          },
+        };
+        const result = await readResponse(await fetch("/api/admin/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-admin-key": adminKeyInput.value },
+          body: JSON.stringify(body),
+        }));
+        setMessage("admin-message", `Saved settings for ${result.event.name}.`, "success");
+        void loadPublicEvent();
+      } catch (error) {
+        setMessage("admin-message", error.message, "error");
+      }
+    });
+
+    byId("payment-qr-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        const body = new FormData(event.currentTarget);
+        await readResponse(await fetch("/api/admin/payment-qr", {
+          method: "POST",
+          headers: { "x-admin-key": adminKeyInput.value },
+          body,
+        }));
+        byId("admin-payment-qr-preview").src = "/api/payment-qr.png";
+        byId("admin-payment-qr-preview").hidden = false;
+        setMessage("admin-message", "Payment QR uploaded.", "success");
+        void loadPublicEvent();
+      } catch (error) {
+        setMessage("admin-message", error.message, "error");
+      }
+    });
+
     async function loadQueue() {
       const key = adminKeyInput.value;
       sessionStorage.setItem("entry-pass-admin-key", key);
@@ -313,7 +402,18 @@
       screenshotUrls.forEach(URL.revokeObjectURL);
       screenshotUrls = [];
       try {
-        const result = await readResponse(await fetch("/api/admin/registrations?status=payment_submitted", { headers: { "x-admin-key": key } }));
+        const [result, settings] = await Promise.all([
+          readResponse(await fetch("/api/admin/registrations?status=payment_submitted", { headers: { "x-admin-key": key } })),
+          readResponse(await fetch("/api/admin/settings", { headers: { "x-admin-key": key } })),
+        ]);
+        byId("event-name").value = settings.event.name;
+        byId("event-date").value = settings.event.date;
+        byId("event-time").value = settings.event.time;
+        byId("event-venue").value = settings.event.venue;
+        if (settings.paymentQrConfigured) {
+          byId("admin-payment-qr-preview").src = `/api/payment-qr.png?updated=${Date.now()}`;
+          byId("admin-payment-qr-preview").hidden = false;
+        }
         if (!result.registrations.length) {
           byId("queue").innerHTML = '<div class="empty">No payment proofs are waiting for review.</div>';
         }
@@ -334,12 +434,12 @@
 
           const meta = document.createElement("div");
           meta.className = "registration-meta";
-          [["Contact", registration.contact], ["Transaction reference", registration.utr], ["Amount", `INR ${Number(registration.amount).toFixed(2)}`]].forEach(([label, value]) => {
+          [["Email", registration.email || registration.contact], ["Phone", registration.phone], ["School / organization", registration.organization], ["Committee", registration.committee], ["Transaction reference", registration.utr], ["Amount", `INR ${Number(registration.amount).toFixed(2)}`]].forEach(([label, value]) => {
             const item = document.createElement("div");
             const caption = document.createElement("span");
             caption.textContent = label;
             const data = document.createElement("strong");
-            data.textContent = value;
+            data.textContent = value || "Not provided";
             item.append(caption, data);
             meta.append(item);
           });
@@ -468,6 +568,7 @@
       scanInProgress = true;
       byId("scan-result").textContent = "Checking pass…";
       byId("scan-result").className = "scan-result";
+      byId("scan-details").hidden = true;
       try {
         const result = await readResponse(await fetch("/api/entry/verify", {
           method: "POST",
@@ -475,11 +576,35 @@
           body: JSON.stringify({ payload }),
         }));
         if (result.valid) {
-          byId("scan-result").textContent = `VALID · ${result.name} · Entry recorded`;
+          byId("scan-result").textContent = `VALID · ${result.registration.name} · Entry recorded`;
           byId("scan-result").className = "scan-result valid";
+          const registration = result.registration;
+          const details = [
+            ["Registration ID", registration.id],
+            ["Email", registration.email],
+            ["Phone", registration.phone],
+            ["School / organization", registration.organization],
+            ["Committee", registration.committee],
+            ["Payment", `Admin approved · INR ${Number(registration.amount).toFixed(2)}`],
+            ["UTR", registration.utr],
+            ["Event", `${registration.event.name} · ${registration.event.date} · ${registration.event.time} · ${registration.event.venue}`],
+          ];
+          const list = byId("scan-details");
+          list.replaceChildren();
+          details.forEach(([label, value]) => {
+            const item = document.createElement("div");
+            const caption = document.createElement("dt");
+            caption.textContent = label;
+            const data = document.createElement("dd");
+            data.textContent = value || "Not provided";
+            item.append(caption, data);
+            list.append(item);
+          });
+          list.hidden = false;
         } else {
           byId("scan-result").textContent = "INVALID · This QR is not a valid approved entry pass.";
           byId("scan-result").className = "scan-result invalid";
+          byId("scan-details").hidden = true;
         }
       } catch (error) {
         if (error.status === 409 && error.body?.reason === "already_used") {
