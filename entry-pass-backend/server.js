@@ -207,16 +207,19 @@ function verifyEntryPayload(payload) {
 
 app.get("/api/event", (request, response) => {
   const settings = statements.eventSettings.get();
+  const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
+  const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
   response.json({
     event: getEventDetails(),
     amount: entryFee,
-    paymentQrUrl: settings.payment_qr_filename ? "/api/payment-qr.png" : null,
-    registrationOpen: Boolean(settings.payment_qr_filename && settings.event_date && settings.event_time && settings.venue),
+    paymentQrUrl: hasQr ? "/api/payment-qr.png" : null,
+    registrationOpen: Boolean(hasQr && settings.event_date && settings.event_time && settings.venue),
   });
 });
 
 app.get("/api/payment-qr.png", (request, response, next) => {
-  const filename = statements.eventSettings.get().payment_qr_filename;
+  const settings = statements.eventSettings.get();
+  const filename = settings.payment_qr_filename || (fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg")) ? "default-payment-qr.jpg" : null);
   if (!filename) return response.status(404).json({ error: "Payment QR has not been configured" });
   response.set("X-Content-Type-Options", "nosniff").set("Cache-Control", "no-store");
   response.sendFile(path.join(uploadsDirectory, filename), (error) => {
@@ -232,7 +235,9 @@ app.post("/api/registrations", (request, response) => {
   const committee = typeof request.body?.committee === "string" ? request.body.committee.trim() : "";
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const settings = statements.eventSettings.get();
-  if (!settings.payment_qr_filename || !settings.event_date || !settings.event_time || !settings.venue) {
+  const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
+  const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
+  if (!hasQr || !settings.event_date || !settings.event_time || !settings.venue) {
     return response.status(503).json({ error: "Registration is not open until the event details and payment QR are configured" });
   }
   if (!name || name.length > 120 || !emailPattern.test(email) || email.length > 200 ||

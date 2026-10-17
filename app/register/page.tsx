@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, CircleAlert, Clock3, LoaderCircle, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, CircleAlert, Clock3, Copy, LoaderCircle, ShieldCheck } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
 
@@ -48,6 +48,8 @@ export default function RegisterPage() {
   const [registration, setRegistration] = useState<RegistrationStart | null>(null)
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
   const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -140,8 +142,16 @@ export default function RegisterPage() {
     setRegistration(null)
     setStatus(null)
     setEntryQr(null)
+    setPaymentConfirmed(false)
+    setCopied(false)
     setError("")
     setNotice("")
+  }
+
+  function copyUpi() {
+    navigator.clipboard.writeText("chauhan5408k@okaxis")
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
   }
 
   return (
@@ -280,27 +290,67 @@ export default function RegisterPage() {
             <section className="registration-section payment-section">
               <div className="registration-section-heading">
                 <span>06</span>
-                <h2>Payment</h2>
+                <h2>Payment & Verification</h2>
               </div>
               <p className="payment-note">
                 <strong>Entry Fee: INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong>
                 <br />
-                Scan the official UPI QR code below in your payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR) and upload your payment screenshot.
+                Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment confirmation box.
               </p>
-              <div className="qr-panel">
-                <span>Official Payment QR Code</span>
-                {publicEvent?.paymentQrUrl ? (
-                  <Image src={entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)} alt="Arkham MUN registration payment QR code" width={220} height={220} unoptimized />
-                ) : (
-                  <Image src="/payment-qr.jpeg" alt="Arkham MUN registration payment QR code" width={220} height={220} unoptimized style={{ objectFit: "contain" }} />
-                )}
-              </div>
-              <div className="registration-grid">
-                <TextField label="Transaction ID / UTR" name="transaction-id" placeholder="12-digit UPI transaction reference" />
-                <label className="registration-field">
-                  Screenshot of Payment <span>(optional, up to 5 MB)</span>
-                  <input name="payment-proof" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf" />
-                </label>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 28, alignItems: "start", marginTop: 18 }}>
+                {/* Left Column: Full View QR Poster Card */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, background: "rgba(5, 5, 12, .92)", border: "1px solid rgba(227, 38, 46, .4)", borderRadius: 10, boxShadow: "0 14px 40px rgba(0, 0, 0, .6), 0 0 24px rgba(227, 38, 46, .12)" }}>
+                  <span style={{ color: "#e3262e", fontSize: 11, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase" }}>
+                    Official UPI Payment QR
+                  </span>
+                  <Image
+                    src={publicEvent?.paymentQrUrl ? entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl) : "/payment-qr.jpeg"}
+                    alt="Arkham MUN official UPI payment QR poster"
+                    width={320}
+                    height={480}
+                    unoptimized
+                    priority
+                    style={{ width: "100%", height: "auto", aspectRatio: "2 / 3", objectFit: "contain", borderRadius: 8, background: "#000", border: "1px solid rgba(255, 255, 255, .15)" }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: "rgba(255, 255, 255, .05)", borderRadius: 5, fontSize: 12 }}>
+                    <span>UPI ID: <code style={{ color: "#ffb5b8", fontFamily: "monospace", fontWeight: 700 }}>chauhan5408k@okaxis</code></span>
+                    <button type="button" onClick={copyUpi} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, background: "rgba(227, 38, 46, .2)", color: "#fff", border: "1px solid rgba(227, 38, 46, .5)", borderRadius: 3, cursor: "pointer" }}>
+                      {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Column: UTR, Screenshot, and Confirmation Checkbox */}
+                <div style={{ display: "grid", gap: 18 }}>
+                  <div style={{ padding: "14px 16px", background: "rgba(255, 255, 255, .03)", border: "1px solid rgba(160, 150, 205, .16)", borderRadius: 8 }}>
+                    <h3 style={{ margin: "0 0 6px", fontSize: 15, color: "#fff" }}>Transaction Reference & Proof</h3>
+                    <p style={{ margin: 0, color: "#aaa8ba", fontSize: 12, lineHeight: 1.6 }}>
+                      Once your UPI transfer is complete, submit your 12-digit UTR reference. The secretariat will review and approve your submission to issue your signed entry pass.
+                    </p>
+                  </div>
+
+                  <TextField label="Transaction ID / UTR" name="transaction-id" placeholder="12-digit UPI transaction reference" />
+                  
+                  <label className="registration-field">
+                    Screenshot of Payment <span>(optional, up to 5 MB)</span>
+                    <input name="payment-proof" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf" />
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: "rgba(227, 38, 46, .08)", border: "1px solid rgba(227, 38, 46, .35)", borderRadius: 6, cursor: "pointer", fontSize: 13, lineHeight: 1.5, color: "#e8e5f2" }}>
+                    <input
+                      type="checkbox"
+                      name="paymentConfirmation"
+                      required
+                      checked={paymentConfirmed}
+                      onChange={(event) => setPaymentConfirmed(event.target.checked)}
+                      style={{ width: 18, height: 18, minHeight: 18, margin: "2px 0 0", accentColor: "#e3262e", cursor: "pointer", flex: "0 0 auto" }}
+                    />
+                    <span>
+                      I confirm that I have transferred <strong>INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong> via UPI to <code>chauhan5408k@okaxis</code> and entered the genuine transaction reference (UTR) above.
+                    </span>
+                  </label>
+                </div>
               </div>
             </section>
 
@@ -315,7 +365,7 @@ export default function RegisterPage() {
               </label>
             </section>
 
-            <button className="registration-submit" type="submit" disabled={busy || publicEvent?.registrationOpen !== true}>
+            <button className="registration-submit" type="submit" disabled={busy || publicEvent?.registrationOpen !== true || !paymentConfirmed}>
               {busy ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <LoaderCircle className="spinner" size={16} /> Submitting registration…
@@ -323,7 +373,7 @@ export default function RegisterPage() {
               ) : publicEvent?.registrationOpen === false ? (
                 "Registration currently closed"
               ) : (
-                "Submit registration & payment proof"
+                "Submit registration & notify secretariat"
               )}
             </button>
           </form>

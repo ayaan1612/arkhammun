@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react"
 import Image from "next/image"
-import { ArrowRight, LoaderCircle, ShieldCheck, X } from "lucide-react"
+import { ArrowRight, Check, Copy, LoaderCircle, ShieldCheck, X } from "lucide-react"
 import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
 import styles from "./entry-registration-flow.module.css"
 
@@ -23,6 +23,8 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
   const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
   const [publicEvent, setPublicEvent] = useState<PublicEvent | null>(null)
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -125,13 +127,21 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     setRegistration(null)
     setStatus(null)
     setEntryQr(null)
+    setPaymentConfirmed(false)
+    setCopied(false)
     setError("")
     setNotice("")
   }
 
+  function copyUpi() {
+    navigator.clipboard.writeText("chauhan5408k@okaxis")
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
+  }
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <section className={`registration-modal ${styles.modal}`} role="dialog" aria-modal="true" aria-labelledby="entry-registration-title">
+      <section className={`registration-modal ${styles.modal} ${registration ? styles.modalWide : ""}`} role="dialog" aria-modal="true" aria-labelledby="entry-registration-title">
         <button className="modal-close" onClick={onClose} aria-label="Close registration"><X size={18} /></button>
         {!registration ? (
           <>
@@ -159,15 +169,65 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
           <>
             <div className={styles.flowHeading}><span className="eyebrow">Entry registration</span><h2 id="entry-registration-title">{status === "approved" ? "You are cleared." : status === "rejected" ? "Let’s try again." : "Your payment pass."}</h2></div>
             <p className={styles.statusLine}><span className={`${styles.statusDot} ${status === "approved" ? styles.approved : status === "rejected" ? styles.rejected : ""}`} />{status ? statusLabels[status] : "Preparing registration"} · INR {Number(registration.amount).toFixed(2)}</p>
-            {(status === "pending_payment" || status === "rejected") && <div className={styles.paymentBlock}>
-              <div><h3>{status === "rejected" ? "Submit corrected payment proof" : "Pay the entry fee"}</h3><p>Scan the admin’s UPI QR in your payment app. This payment QR is separate from your entry pass.</p></div>
-              {publicEvent?.paymentQrUrl && <Image className={styles.paymentQr} src={entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)} alt="Event payment QR code" width={176} height={176} unoptimized />}
-              <form className={styles.proofForm} onSubmit={handleProof}>
-                <label>Transaction reference (UTR)<input required name="utr" maxLength={120} autoComplete="off" placeholder="Enter the UPI transaction reference" /></label>
-                <label>Payment screenshot <span>(optional, up to 5 MB)</span><input type="file" name="screenshot" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
-                <button className="modal-submit" type="submit" disabled={busy}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Submitting proof" : status === "rejected" ? "Resubmit payment proof" : "Submit payment proof"}<ArrowRight size={17} /></button>
-              </form>
-            </div>}
+            {(status === "pending_payment" || status === "rejected") && (
+              <div className={styles.paymentBlock}>
+                <div>
+                  <h3>{status === "rejected" ? "Submit corrected payment proof" : "Pay the entry fee"}</h3>
+                  <p>Scan the official Arkham MUN UPI QR in any payment app. Then enter your UTR reference, confirm payment completion, and submit proof below.</p>
+                </div>
+
+                <div className={styles.paymentGrid}>
+                  {/* Left Column: Full View QR Poster */}
+                  <div className={styles.qrPosterCard}>
+                    <Image
+                      className={styles.fullViewPoster}
+                      src={publicEvent?.paymentQrUrl ? entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl) : "/payment-qr.jpeg"}
+                      alt="Arkham MUN official UPI payment QR poster"
+                      width={320}
+                      height={480}
+                      unoptimized
+                      priority
+                    />
+                    <div className={styles.upiRow}>
+                      <span>UPI ID: <code>chauhan5408k@okaxis</code></span>
+                      <button type="button" className={styles.copyButton} onClick={copyUpi} title="Copy UPI ID">
+                        {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: UTR, Screenshot, and Checkbox besides the QR */}
+                  <form className={styles.proofForm} onSubmit={handleProof}>
+                    <label>
+                      Transaction reference (UTR)
+                      <input required name="utr" maxLength={120} autoComplete="off" placeholder="Enter 12-digit UPI transaction reference" />
+                    </label>
+                    <label>
+                      Payment screenshot <span>(optional, up to 5 MB)</span>
+                      <input type="file" name="screenshot" accept="image/jpeg,image/png,image/webp,image/gif" />
+                    </label>
+
+                    <label className={styles.checkboxRow}>
+                      <input
+                        type="checkbox"
+                        required
+                        checked={paymentConfirmed}
+                        onChange={(event) => setPaymentConfirmed(event.target.checked)}
+                      />
+                      <span>
+                        I confirm that I have transferred <strong>INR {Number(registration.amount).toFixed(2)}</strong> via UPI to <code>chauhan5408k@okaxis</code> and entered the genuine transaction reference (UTR) above.
+                      </span>
+                    </label>
+
+                    <button className="modal-submit" type="submit" disabled={busy || !paymentConfirmed}>
+                      {busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}
+                      {busy ? "Submitting proof…" : status === "rejected" ? "Resubmit payment proof" : "Submit payment proof & notify secretariat"}
+                      <ArrowRight size={17} />
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
             {(status === "payment_submitted" || status === "approved") && <div className={styles.statusBlock}>
               <p>{status === "approved" ? "Your entry QR is ready and has also been emailed to you. Show it to the event team at the gate; it can only be scanned once." : "Your UTR is with the event team for review. This status refreshes automatically."}</p>
               {entryQr && <div className={styles.entryPass}><Image src={entryQr.qr} alt="Your signed event entry QR code" width={128} height={128} unoptimized /><div><strong>{entryQr.event.name} entry pass</strong><small>Registration ID: {entryQr.registrationId}</small><small>{entryQr.event.date} · {entryQr.event.time}</small><small>{entryQr.event.venue}</small><small>Keep this QR ready for venue check-in.</small></div></div>}

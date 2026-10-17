@@ -56,6 +56,32 @@ export default function AdminPage() {
     })
   }, [registrations])
 
+  useEffect(() => {
+    if (!authenticated || !adminKey) return
+    let active = true
+    const pollTimer = window.setInterval(async () => {
+      try {
+        const [submittedRes, approvedRes, rejectedRes] = await Promise.all([
+          entryPassApi.getAdminRegistrations(adminKey, "payment_submitted"),
+          entryPassApi.getAdminRegistrations(adminKey, "approved"),
+          entryPassApi.getAdminRegistrations(adminKey, "rejected"),
+        ])
+        if (!active) return
+        setQueueCounts({
+          payment_submitted: submittedRes.registrations.length,
+          approved: approvedRes.registrations.length,
+          rejected: rejectedRes.registrations.length,
+        })
+      } catch {
+        // Silently retry on next interval
+      }
+    }, 6000)
+    return () => {
+      active = false
+      window.clearInterval(pollTimer)
+    }
+  }, [authenticated, adminKey])
+
   async function loadQueue(key = adminKey, successMessage?: string, filter = queueFilter) {
     setLoading(true)
     setError("")
@@ -453,6 +479,20 @@ export default function AdminPage() {
             </button>
           </div>
 
+          {/* Live Notification Banner when delegates submit payment proof */}
+          {queueCounts.payment_submitted > 0 && (
+            <div className={styles.liveNotificationBanner}>
+              <div className={styles.notificationHeader}>
+                <span className={styles.livePulseDot} />
+                <strong>{queueCounts.payment_submitted} Payment Verification{queueCounts.payment_submitted === 1 ? "" : "s"} Received</strong>
+                <span className={styles.notificationTag}>Action Required</span>
+              </div>
+              <p className={styles.notificationSubtext}>
+                Delegates have completed UPI transfers to <code>chauhan5408k@okaxis</code> and confirmed payment submission. Review their UTR & screenshot below: click <strong>Accept & Issue Pass</strong> to issue their signed entry QR (both emailed and displayed on their screen) or <strong>Reject</strong> with reason.
+              </p>
+            </div>
+          )}
+
           <nav className={styles.tabs} aria-label="Admin tools">
             <button className={activeView === "queue" ? styles.activeTab : ""} onClick={() => { if (activeView === "scanner") stopCamera(); setActiveView("queue"); void loadQueue() }}>
               Payment review <span>{registrations.length}</span>
@@ -550,6 +590,10 @@ export default function AdminPage() {
                         <div><dt>Submitted</dt><dd>{new Date(registration.created_at).toLocaleString()}</dd></div>
                         <div><dt>Registration ID</dt><dd>{registration.id}</dd></div>
                       </dl>
+                      <div className={styles.confirmedBadge}>
+                        <Check size={14} color="#54bd80" />
+                        <span>Delegate Confirmed UPI Payment (Transferred to chauhan5408k@okaxis)</span>
+                      </div>
                       {registration.screenshot_url && (
                         registration.screenshotBlobUrl ? (
                           <a href={registration.screenshotBlobUrl} target="_blank" rel="noreferrer">
@@ -603,9 +647,11 @@ export default function AdminPage() {
                           <div className={styles.actions}>
                             <button className={styles.approveButton} onClick={() => approve(registration.id)} disabled={busyId === registration.id}>
                               {busyId === registration.id ? <LoaderCircle className={styles.spinner} size={15} /> : <Check size={15} />}
-                              {busyId === registration.id ? "Working" : "Approve & issue pass"}
+                              {busyId === registration.id ? "Working…" : "Accept & issue pass"}
                             </button>
-                            <button className={styles.rejectButton} onClick={() => { setRejectingId(registration.id); setRejectReason(""); setError("") }} disabled={Boolean(busyId)}>Reject</button>
+                            <button className={styles.rejectButton} onClick={() => { setRejectingId(registration.id); setRejectReason(""); setError("") }} disabled={Boolean(busyId)}>
+                              <X size={15} /> Reject
+                            </button>
                           </div>
                         )
                       )}

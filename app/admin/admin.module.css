@@ -117,6 +117,16 @@
 .checklistItem { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(160, 150, 205, .14); border-radius: 4px; font-size: 12px; color: #d5d0e3; }
 .checklistItem.done { border-color: rgba(84, 189, 128, .3); color: #c8f1d5; }
 .checklistItem.todo { border-color: rgba(230, 165, 74, .3); color: #ffd19c; }
+
+/* Live Incoming Submissions Notification */
+.liveNotificationBanner { margin-bottom: 22px; padding: 16px 20px; background: linear-gradient(135deg, rgba(227, 38, 46, .18), rgba(18, 16, 27, .95)); border: 1px solid rgba(227, 38, 46, .55); border-radius: 6px; box-shadow: 0 10px 32px rgba(227, 38, 46, .16); display: grid; gap: 12px; }
+.notificationHeader { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #fff; }
+.livePulseDot { width: 10px; height: 10px; border-radius: 50%; background: #e3262e; box-shadow: 0 0 12px #ff4b52; animation: pulse 1.6s infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.35); opacity: .65; } }
+.notificationTag { padding: 2px 8px; background: rgba(227, 38, 46, .25); border: 1px solid rgba(227, 38, 46, .45); border-radius: 10px; font-size: 10px; font-weight: 700; color: #ffb5b8; text-transform: uppercase; }
+.notificationSubtext { margin: 0; color: #d6d0e0; font-size: 12px; line-height: 1.5; }
+.notificationSubtext code { color: #ffb5b8; font-family: monospace; }
+.confirmedBadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; margin-top: 10px; background: rgba(84, 189, 128, .12); border: 1px solid rgba(84, 189, 128, .4); border-radius: 3px; color: #b5ecc8; font-size: 11px; font-weight: 600; width: fit-content; }
 @media (max-width: 680px) {
   .adminPage { padding: 22px 16px 50px; }
   .header { grid-template-columns: 1fr auto; row-gap: 18px; }
