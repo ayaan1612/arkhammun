@@ -32,16 +32,7 @@ export default function Home() {
   const setShowRegistration = setRegistrationFlowOpen
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
-  const [activePolicy, setActivePolicy] = useState(0)
-  const [isPolicyPaused, setIsPolicyPaused] = useState(false)
 
-  const policies = [
-    ["I", "Code of conduct", "Delegates are expected to uphold honesty, integrity, respect and professionalism at all times."],
-    ["II", "Decorum expectations", "Maintaining decorum is essential. Disruptive behavior or disrespect will not be tolerated."],
-    ["III", "Device policy", "The use of electronic devices is strictly regulated as per committee guidelines."],
-    ["IV", "ID card requirement", "All delegates must wear their official ID cards at all times within the conference premises."],
-    ["V", "Refund policy", "Refunds will be processed only under exceptional circumstances as per the conference's discretion."],
-  ]
 
   const moveCommittee = (direction: number) => {
     setActiveCommittee((current) => (current + direction + committees.length) % committees.length)
@@ -53,26 +44,21 @@ export default function Home() {
     return () => window.clearInterval(autoplay)
   }, [isCommitteePaused])
 
-  useEffect(() => {
-    if (isPolicyPaused) return
-    const autoplay = window.setInterval(() => setActivePolicy((current) => (current + 1) % policies.length), 4200)
-    return () => window.clearInterval(autoplay)
-  }, [isPolicyPaused, policies.length])
 
   return (
     <main className="mun-site relative min-h-screen overflow-hidden bg-[#080812] text-white">
       <PulsingHexagonBackground />
       <div className="site-wash" aria-hidden="true" />
       <nav className="site-nav" aria-label="Primary navigation">
-        <a href="#top" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN </small></span></a>
+        <a href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></a>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="#about" onClick={() => setMenuOpen(false)}>About</a><a href="#committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="#registration" onClick={() => setMenuOpen(false)}>Register</a><a href="#policies" onClick={() => setMenuOpen(false)}>Policies</a><button className="nav-cta" onClick={() => setShowRegistration(true)}>Register <ArrowRight size={15} /></button>
+          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><a className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></a>
         </div>
       </nav>
 
       <section id="top" className="hero-shell">
-        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · New Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton size="xl" onClick={() => setShowRegistration(true)}>Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
+        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · New Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton className="home-action-button" size="xl" onClick={() => setShowRegistration(true)}>Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
         <div className="hero-emblem" aria-hidden="true"><div className="emblem-ring" /><img src={logoUrl} alt="" /></div>
         <div className="hero-meta"><div><span>DATE</span><p>24—25<br /><b>OCTOBER</b></p></div><div className="meta-line" /><div><span>VENUE</span><p>IN<br /><b>DELHI</b></p></div><div className="meta-line" /><div><span>DEADLINE</span><p>01<br /><b>OCTOBER</b></p></div></div><div className="scroll-cue"><span /> Scroll to explore</div>
       </section>
@@ -85,11 +71,9 @@ export default function Home() {
 
       <section id="schedule" className="content-section schedule-section"><div className="section-kicker">04 / The rhythm</div><div className="schedule-layout"><div><h2>Two days.<br /><em>Many voices.</em></h2><p className="section-copy">From your first moderated caucus to the final vote, every moment is designed to keep the conversation moving.</p></div><div className="timeline">{schedule.map(([date, title, place]) => <div className="timeline-row" key={title}><time>{date}</time><div><strong>{title}</strong><span>{place}</span></div><Clock3 size={16} /></div>)}</div></div></section>
 
-      <section id="registration" className="content-section registration-section"><div className="section-kicker">05 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Scan the QR code on the official brochure to register. All registrations are completed online before 01 October.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2000</strong><small>₹1800 per student for schools registering 50 or more students</small></div><div><span>Individual delegate</span><strong>₹2200</strong><small>Online payment · Registration deadline: 1st October</small></div><LiquidButton size="xl" onClick={() => setShowRegistration(true)}>Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
+      <section id="registration" className="content-section registration-section"><div className="section-kicker">05 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Scan the QR code on the official brochure to register. All registrations are completed online before 01 October.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2000</strong><small>₹1800 per student for schools registering 50 or more students</small></div><div><span>Individual delegate</span><strong>₹2200</strong><small>Online payment · Registration deadline: 1st October</small></div><LiquidButton className="home-action-button" size="xl" onClick={() => setShowRegistration(true)}>Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
 
-      <section id="policies" className="content-section policies-section"><div className="section-heading policy-heading"><div><div className="section-kicker">06 / Rules & policies</div><h2>Carry the<br /><em>standard.</em></h2></div><p>Clear expectations create the room for sharper debate, stronger diplomacy and a better conference for everyone.</p></div><div className="policy-slider" onMouseEnter={() => setIsPolicyPaused(true)} onMouseLeave={() => setIsPolicyPaused(false)}><button className="slider-arrow policy-arrow" onClick={() => setActivePolicy((current) => (current - 1 + policies.length) % policies.length)} aria-label="Previous policy"><ChevronLeft /></button><div className="policy-viewport"><div className="policy-track">{policies.map(([number, title, text], index) => <motion.article className={`policy-card ${index === activePolicy ? "is-active" : ""}`} key={number} animate={{ x: `${(index - activePolicy) * 100}%`, scale: 1, opacity: index === activePolicy ? 1 : 0 }} transition={{ type: "spring", stiffness: 62, damping: 22, mass: 1.15 }} onClick={() => setActivePolicy(index)}><span>{number}</span><div><h3>{title}</h3><p>{text}</p></div><small>{index === activePolicy ? "Current policy" : "Tap to inspect"}</small></motion.article>)}</div></div><button className="slider-arrow policy-arrow" onClick={() => setActivePolicy((current) => (current + 1) % policies.length)} aria-label="Next policy"><ChevronRight /></button></div><div className="policy-progress" aria-label="Policy slides">{policies.map(([number], index) => <button key={number} className={index === activePolicy ? "is-active" : ""} onClick={() => setActivePolicy(index)} aria-label={`Show policy ${number}`} />)}</div></section>
 
-      <section className="register-banner"><div><span className="section-kicker">07 / Your move</span><h2>Bring your<br /><em>point of view.</em></h2></div><LiquidButton size="xl" onClick={() => setShowRegistration(true)}>Register as a delegate <ArrowRight size={17} /></LiquidButton></section>
       <footer id="contact" className="site-footer"><div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div><div className="footer-details"><div><span>GET IN TOUCH</span><a href="tel:9810110713"><Users size={15} /> 9810110713</a><a href="mailto:hello@arkhammun.org"><Mail size={15} /> hello@arkhammun.org</a><a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a></div><div><span>THE CONFERENCE</span><p><MapPin size={15} /> Delhi, India</p><p><CalendarDays size={15} /> 24—25 October</p></div></div><p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p></footer>
       <EntryRegistrationFlow isOpen={registrationFlowOpen} onClose={() => setRegistrationFlowOpen(false)} />
     </main>
