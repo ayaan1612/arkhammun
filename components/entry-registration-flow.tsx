@@ -139,6 +139,13 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
             <h2 id="entry-registration-title">Reserve your seat.</h2>
             <p>Complete your delegate details before payment. Your signed entry pass will be issued after an admin verifies your payment.</p>
             {publicEvent?.registrationOpen && <p className={styles.eventSummary}><strong>{publicEvent.event.name}</strong><span>{publicEvent.event.date} · {publicEvent.event.time}</span><span>{publicEvent.event.venue}</span><span>Entry fee · INR {Number(publicEvent.amount).toFixed(2)}</span></p>}
+            {publicEvent && !publicEvent.registrationOpen && (
+              <div className={styles.setupNotice}>
+                <strong>Registration opening soon</strong>
+                <p>The secretariat is finalizing conference dates, venue, and payment setup. If you are an organizer, configure the event in the Admin Dashboard.</p>
+                <a href="/admin" className={styles.adminActionLink}>Open Admin Dashboard <ArrowRight size={14} /></a>
+              </div>
+            )}
             <form onSubmit={handleRegistration}>
               <label>Full name<input required name="name" autoComplete="name" maxLength={120} placeholder="Your full name" /></label>
               <label>Email address<input required type="email" name="email" autoComplete="email" maxLength={200} placeholder="you@example.com" /></label>
@@ -162,7 +169,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
               </form>
             </div>}
             {(status === "payment_submitted" || status === "approved") && <div className={styles.statusBlock}>
-              <p>{status === "approved" ? "Your entry QR is ready. Show it to the event team at the gate; it can only be scanned once." : "Your UTR is with the event team for review. This status refreshes automatically."}</p>
+              <p>{status === "approved" ? "Your entry QR is ready and has also been emailed to you. Show it to the event team at the gate; it can only be scanned once." : "Your UTR is with the event team for review. This status refreshes automatically."}</p>
               {entryQr && <div className={styles.entryPass}><Image src={entryQr.qr} alt="Your signed event entry QR code" width={128} height={128} unoptimized /><div><strong>{entryQr.event.name} entry pass</strong><small>Registration ID: {entryQr.registrationId}</small><small>{entryQr.event.date} · {entryQr.event.time}</small><small>{entryQr.event.venue}</small><small>Keep this QR ready for venue check-in.</small></div></div>}
               {status === "approved" && <button type="button" className={styles.refreshButton} onClick={startAgain}>Register another delegate</button>}
               {status === "payment_submitted" && <button type="button" className={styles.refreshButton} disabled={busy} onClick={refreshStatus}>{busy ? "Refreshing…" : "Refresh status"}</button>}

@@ -1,8 +1,11 @@
 "use client"
 
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { ArrowRight, CircleAlert, Clock3, LoaderCircle, ShieldCheck } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
-import { arkham } from "@/lib/arkham-data"
+import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
 
 const committees = [
   "UNCSW (Advancing women's protection, leadership and rights in conflict zone with special emphasis on women)",
@@ -14,29 +17,318 @@ const committees = [
   "IPL (Mega Auction)",
 ]
 
-function TextField({ label, name, type = "text", required = true }: { label: string; name: string; type?: string; required?: boolean }) {
-  return <label className="registration-field">{label}{required && <span aria-hidden="true"> *</span>}<input name={name} type={type} required={required} placeholder="Short-answer text" /></label>
+function TextField({ label, name, type = "text", required = true, placeholder = "Short-answer text" }: { label: string; name: string; type?: string; required?: boolean; placeholder?: string }) {
+  return (
+    <label className="registration-field">
+      {label}
+      {required && <span aria-hidden="true"> *</span>}
+      <input name={name} type={type} required={required} placeholder={placeholder} />
+    </label>
+  )
 }
 
 function CommitteeChoice({ title, name }: { title: string; name: string }) {
-  return <fieldset className="registration-choice-group"><legend>{title} <span aria-hidden="true">*</span></legend>{committees.map((committee) => <label key={committee} className="radio-row"><input type="radio" name={name} value={committee} required /> <span>{committee}</span></label>)}</fieldset>
+  return (
+    <fieldset className="registration-choice-group">
+      <legend>
+        {title} <span aria-hidden="true">*</span>
+      </legend>
+      {committees.map((committee) => (
+        <label key={committee} className="radio-row">
+          <input type="radio" name={name} value={committee} required />
+          <span>{committee}</span>
+        </label>
+      ))}
+    </fieldset>
+  )
 }
 
 export default function RegisterPage() {
-  const [submitted, setSubmitted] = useState(false)
-  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSubmitted(true) }
+  const [publicEvent, setPublicEvent] = useState<PublicEvent | null>(null)
+  const [registration, setRegistration] = useState<RegistrationStart | null>(null)
+  const [status, setStatus] = useState<RegistrationStatus | null>(null)
+  const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState("")
+  const [notice, setNotice] = useState("")
 
-  return <ArkhamShell><main>
-    <PageIntro eyebrow="06 / Registration" title={<>Take your <em>seat.</em></>}>Choose the route that fits you. Complete every required field before submitting your delegate registration.</PageIntro>
-    <form className="registration-form" onSubmit={submit}>
-      <section className="registration-section"><div className="registration-section-heading"><span>01</span><h2>Delegate details</h2></div><div className="registration-grid"><TextField label="Name" name="name" /><TextField label="Email" name="email" type="email" /><TextField label="Phone no." name="phone" type="tel" /><TextField label="School / College" name="school" /><TextField label="Class / Year / Grade" name="grade" /></div></section>
-      <section className="registration-section"><div className="registration-section-heading"><span>02</span><h2>Experience</h2></div><fieldset className="registration-choice-group"><legend>Past MUN Experience <span aria-hidden="true">*</span></legend>{["0-5", "5-12", "12-20", "20+"].map((item) => <label className="radio-row compact" key={item}><input type="radio" name="experience" value={item} required /> <span>{item}</span></label>)}</fieldset></section>
-      <section className="registration-section"><div className="registration-section-heading"><span>03</span><h2>Committee preferences</h2></div><CommitteeChoice title="Committee Preference 1" name="committee-one" /><CommitteeChoice title="Committee Preference 2" name="committee-two" /></section>
-      <section className="registration-section"><div className="registration-section-heading"><span>04</span><h2>Portfolio preferences</h2></div><div className="registration-grid"><TextField label="Portfolio Preference 1" name="portfolio-one" /><TextField label="Portfolio Preference 2" name="portfolio-two" /></div><TextField label="Are you open to being assigned to any committee or portfolio if your top preferences are full?" name="flexible-assignment" /></section>
-      <section className="registration-section"><div className="registration-section-heading"><span>05</span><h2>References</h2></div><TextField label="CA Reference (IF NO TYPE NIL)" name="ca-reference" required={false} /></section>
-      <section className="registration-section payment-section"><div className="registration-section-heading"><span>06</span><h2>Payment</h2></div><p className="payment-note"><strong>Payment (Registration Fees - 2000)</strong><br />Registration Fee: ₹8,000 for Two Delegates (Applicable for IPL committee only)</p><div className="qr-panel"><span>QR code</span><img src="/payment-qr.jpeg" alt="Arkham MUN registration payment QR code" /></div><div className="registration-grid"><TextField label="Transaction ID" name="transaction-id" /><label className="registration-field">Screenshot of the Payment <span aria-hidden="true">*</span><input name="payment-proof" type="file" accept="image/*,.pdf" required /></label></div></section>
-      <section className="registration-section"><div className="registration-section-heading"><span>07</span><h2>Anything else?</h2></div><label className="registration-field"><span className="sr-only">Message</span><textarea name="message" placeholder="Short-answer text" rows={5} /></label></section>
-      <button className="registration-submit" type="submit">{submitted ? "Registration draft prepared" : "Submit registration"}</button>{submitted && <p className="form-note">Your details are ready as a draft. Connect the official endpoint before accepting live submissions.</p>}
-    </form>
-  </main></ArkhamShell>
+  useEffect(() => {
+    let active = true
+    entryPassApi.getPublicEvent().then((details) => {
+      if (active) setPublicEvent(details)
+    }).catch((requestError) => {
+      if (active) setError(requestError instanceof Error ? requestError.message : "Unable to load event details.")
+    })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!registration || !status || status === "approved" || status === "rejected") return
+    let active = true
+    const refresh = async () => {
+      try {
+        const result = await entryPassApi.getRegistration(registration.id)
+        if (!active) return
+        setStatus(result.status)
+        if (result.status === "approved") {
+          const qr = await entryPassApi.getEntryQr(registration.id)
+          if (active) setEntryQr(qr)
+        }
+      } catch {
+        // Polling failure can silently retry on next interval
+      }
+    }
+    const timer = window.setInterval(refresh, 6000)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
+  }, [registration, status])
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+
+    const name = String(data.get("name") || "").trim()
+    const email = String(data.get("email") || "").trim()
+    const phone = String(data.get("phone") || "").trim()
+    const school = String(data.get("school") || "").trim()
+    const committee = String(data.get("committee-one") || "").trim()
+    const utr = String(data.get("transaction-id") || "").trim()
+    const proofFile = data.get("payment-proof")
+
+    if (!name || !email || !phone || !school || !committee) {
+      setError("Please complete all required delegate details.")
+      return
+    }
+
+    if (!utr) {
+      setError("Please enter the payment transaction reference (UTR).")
+      return
+    }
+
+    setBusy(true)
+    setError("")
+    setNotice("")
+
+    try {
+      // 1. Create registration record
+      const created = await entryPassApi.createRegistration({
+        name,
+        email,
+        phone,
+        organization: school,
+        committee,
+      })
+      setRegistration(created)
+
+      // 2. Submit payment proof
+      const file = proofFile instanceof File && proofFile.size > 0 ? proofFile : undefined
+      await entryPassApi.submitPaymentProof(created.id, utr, file)
+
+      setStatus("payment_submitted")
+      setNotice("Registration and payment proof submitted! The secretariat will review your submission.")
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to complete registration. Please check your details and try again.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function startOver() {
+    setRegistration(null)
+    setStatus(null)
+    setEntryQr(null)
+    setError("")
+    setNotice("")
+  }
+
+  return (
+    <ArkhamShell>
+      <main>
+        <PageIntro eyebrow="06 / Registration" title={<>Take your <em>seat.</em></>}>
+          Complete your delegate registration and submit payment details. Once verified by the secretariat, your signed entry QR pass will be issued and emailed to you.
+        </PageIntro>
+
+        {publicEvent && !publicEvent.registrationOpen && (
+          <div style={{ maxWidth: 980, margin: "0 auto 30px", padding: 20, border: "1px solid rgba(230, 165, 74, .4)", background: "rgba(230, 165, 74, .08)", borderRadius: 8 }}>
+            <h3 style={{ color: "#ffd19c", margin: "0 0 6px", fontSize: 16 }}>Registration opening soon</h3>
+            <p style={{ margin: 0, color: "#d6d0e0", fontSize: 13, lineHeight: 1.6 }}>
+              The secretariat is finalizing conference dates, venue, and payment setup. If you are an organizer or staff member, you can configure these in the Admin Dashboard.
+            </p>
+            <Link href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, color: "#ff8289", fontWeight: 700, fontSize: 12, textDecoration: "none" }}>
+              Open Admin Dashboard <ArrowRight size={14} />
+            </Link>
+          </div>
+        )}
+
+        {status === "payment_submitted" || status === "approved" ? (
+          <section style={{ maxWidth: 980, margin: "0 auto 80px", padding: 32, border: "1px solid rgba(255,255,255,.16)", borderRadius: 12, background: "rgba(10,10,10,.86)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <ShieldCheck size={28} color="#e3262e" />
+              <div>
+                <h2 style={{ margin: 0, fontSize: 24, color: "#fff" }}>
+                  {status === "approved" ? "Registration Approved & Verified" : "Payment Proof Under Review"}
+                </h2>
+                <p style={{ margin: "4px 0 0", color: "#aaa8ba", fontSize: 13 }}>
+                  Registration ID: <strong>{registration?.id}</strong>
+                </p>
+              </div>
+            </div>
+
+            {notice && (
+              <p style={{ padding: 12, background: "rgba(84, 189, 128, .1)", borderLeft: "3px solid #54bd80", color: "#b5ecc8", fontSize: 13, margin: "0 0 20px" }}>
+                {notice}
+              </p>
+            )}
+
+            {status === "payment_submitted" && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#ffd19c", fontSize: 13, padding: 14, background: "rgba(230, 165, 74, .08)", borderRadius: 6, marginBottom: 20 }}>
+                <Clock3 size={18} />
+                <span>Your payment reference is being verified by the secretariat. This page refreshes automatically.</span>
+              </div>
+            )}
+
+            {status === "approved" && entryQr && (
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 24, padding: 20, border: "1px solid rgba(84, 189, 128, .35)", background: "rgba(84, 189, 128, .07)", borderRadius: 8, marginBottom: 20 }}>
+                <Image src={entryQr.qr} alt="Signed Event Entry QR Code" width={160} height={160} unoptimized style={{ background: "#fff", padding: 8, borderRadius: 6 }} />
+                <div style={{ display: "grid", gap: 6 }}>
+                  <strong style={{ fontSize: 18, color: "#fff" }}>{entryQr.event.name} Entry Pass</strong>
+                  <span style={{ color: "#b5ecc8", fontSize: 13, fontWeight: 700 }}>VERIFIED · READY FOR CHECK-IN</span>
+                  <span style={{ color: "#aaa8ba", fontSize: 13 }}>{entryQr.event.date} · {entryQr.event.time}</span>
+                  <span style={{ color: "#aaa8ba", fontSize: 13 }}>{entryQr.event.venue}</span>
+                  <span style={{ color: "#ffd19c", fontSize: 12, marginTop: 4 }}>A copy of this signed pass has also been sent to your registered email address.</span>
+                </div>
+              </div>
+            )}
+
+            <button type="button" className="registration-submit" onClick={startOver}>
+              Register another delegate
+            </button>
+          </section>
+        ) : (
+          <form className="registration-form" onSubmit={handleSubmit}>
+            {error && (
+              <p style={{ padding: 12, background: "rgba(227, 38, 46, .1)", borderLeft: "3px solid #e3262e", color: "#ffb5b8", fontSize: 13, margin: 0 }}>
+                <CircleAlert size={16} style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
+                {error}
+              </p>
+            )}
+
+            <section className="registration-section">
+              <div className="registration-section-heading">
+                <span>01</span>
+                <h2>Delegate details</h2>
+              </div>
+              <div className="registration-grid">
+                <TextField label="Full name" name="name" placeholder="Your full name" />
+                <TextField label="Email" name="email" type="email" placeholder="you@example.com" />
+                <TextField label="Phone no." name="phone" type="tel" placeholder="+91 98765 43210" />
+                <TextField label="School / College" name="school" placeholder="School or University name" />
+                <TextField label="Class / Year / Grade" name="grade" placeholder="e.g. 11th Grade / 2nd Year" required={false} />
+              </div>
+            </section>
+
+            <section className="registration-section">
+              <div className="registration-section-heading">
+                <span>02</span>
+                <h2>Experience</h2>
+              </div>
+              <fieldset className="registration-choice-group">
+                <legend>
+                  Past MUN Experience <span aria-hidden="true">*</span>
+                </legend>
+                {["0-5", "5-12", "12-20", "20+"].map((item) => (
+                  <label className="radio-row compact" key={item}>
+                    <input type="radio" name="experience" value={item} defaultChecked={item === "0-5"} required />
+                    <span>{item} conferences</span>
+                  </label>
+                ))}
+              </fieldset>
+            </section>
+
+            <section className="registration-section">
+              <div className="registration-section-heading">
+                <span>03</span>
+                <h2>Committee preferences</h2>
+              </div>
+              <CommitteeChoice title="Committee Preference 1" name="committee-one" />
+              <CommitteeChoice title="Committee Preference 2" name="committee-two" />
+            </section>
+
+            <section className="registration-section">
+              <div className="registration-section-heading">
+                <span>04</span>
+                <h2>Portfolio preferences</h2>
+              </div>
+              <div className="registration-grid">
+                <TextField label="Portfolio Preference 1" name="portfolio-one" placeholder="Country / Portfolio 1" required={false} />
+                <TextField label="Portfolio Preference 2" name="portfolio-two" placeholder="Country / Portfolio 2" required={false} />
+              </div>
+              <TextField label="Are you open to being assigned to any committee or portfolio if your top preferences are full?" name="flexible-assignment" placeholder="Yes / No" required={false} />
+            </section>
+
+            <section className="registration-section">
+              <div className="registration-section-heading">
+                <span>05</span>
+                <h2>References</h2>
+              </div>
+              <TextField label="CA Reference (IF NO TYPE NIL)" name="ca-reference" required={false} placeholder="NIL" />
+            </section>
+
+            <section className="registration-section payment-section">
+              <div className="registration-section-heading">
+                <span>06</span>
+                <h2>Payment</h2>
+              </div>
+              <p className="payment-note">
+                <strong>Entry Fee: INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong>
+                <br />
+                Scan the official UPI QR code below in your payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR) and upload your payment screenshot.
+              </p>
+              <div className="qr-panel">
+                <span>Official Payment QR Code</span>
+                {publicEvent?.paymentQrUrl ? (
+                  <Image src={entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)} alt="Arkham MUN registration payment QR code" width={220} height={220} unoptimized />
+                ) : (
+                  <Image src="/payment-qr.jpeg" alt="Arkham MUN registration payment QR code" width={220} height={220} unoptimized style={{ objectFit: "contain" }} />
+                )}
+              </div>
+              <div className="registration-grid">
+                <TextField label="Transaction ID / UTR" name="transaction-id" placeholder="12-digit UPI transaction reference" />
+                <label className="registration-field">
+                  Screenshot of Payment <span>(optional, up to 5 MB)</span>
+                  <input name="payment-proof" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf" />
+                </label>
+              </div>
+            </section>
+
+            <section className="registration-section">
+              <div className="registration-section-heading">
+                <span>07</span>
+                <h2>Special requests / Notes</h2>
+              </div>
+              <label className="registration-field">
+                <span className="sr-only">Message</span>
+                <textarea name="message" placeholder="Any dietary restrictions, special accommodations, or notes for the secretariat" rows={4} />
+              </label>
+            </section>
+
+            <button className="registration-submit" type="submit" disabled={busy || publicEvent?.registrationOpen !== true}>
+              {busy ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <LoaderCircle className="spinner" size={16} /> Submitting registration…
+                </span>
+              ) : publicEvent?.registrationOpen === false ? (
+                "Registration currently closed"
+              ) : (
+                "Submit registration & payment proof"
+              )}
+            </button>
+          </form>
+        )}
+      </main>
+    </ArkhamShell>
+  )
 }

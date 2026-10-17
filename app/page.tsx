@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, Mail, MapPin, Menu, Users, X } from "lucide-react"
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
 import PulsingHexagonBackground from "@/components/pulsing-hexagon-background"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { EntryRegistrationFlow } from "@/components/entry-registration-flow"
@@ -54,7 +54,7 @@ export default function Home() {
         <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><a className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></a>
+          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><Link href="/admin" onClick={() => setMenuOpen(false)}>Admin</Link><a className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></a>
         </div>
       </nav>
 
@@ -75,7 +75,28 @@ export default function Home() {
       <section id="registration" className="content-section registration-section"><div className="section-kicker">05 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Scan the QR code on the official brochure to register. All registrations are completed online before 01 October.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2000</strong><small>₹1800 per student for schools registering 50 or more students</small></div><div><span>Individual delegate</span><strong>₹2200</strong><small>Online payment · Registration deadline: 1st October</small></div><LiquidButton className="home-action-button" size="xl" onClick={() => setShowRegistration(true)}>Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
 
 
-      <footer id="contact" className="site-footer"><div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div><div className="footer-details"><div><span>GET IN TOUCH</span><a href="tel:9810110713"><Users size={15} /> 9810110713</a><a href="mailto:hello@arkhammun.org"><Mail size={15} /> hello@arkhammun.org</a><a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a></div><div><span>THE CONFERENCE</span><p><MapPin size={15} /> Delhi, India</p><p><CalendarDays size={15} /> 24—25 October</p></div></div><p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p></footer>
+      <footer id="contact" className="site-footer">
+        <div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div>
+        <div className="footer-details">
+          <div>
+            <span>GET IN TOUCH</span>
+            <a href="tel:9810110713"><Users size={15} /> 9810110713</a>
+            <a href="mailto:hello@arkhammun.org"><Mail size={15} /> hello@arkhammun.org</a>
+            <a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a>
+          </div>
+          <div>
+            <span>THE CONFERENCE</span>
+            <p><MapPin size={15} /> Delhi, India</p>
+            <p><CalendarDays size={15} /> 24—25 October</p>
+          </div>
+          <div>
+            <span>SECRETARIAT</span>
+            <Link href="/admin"><ShieldCheck size={15} /> Admin Desk</Link>
+            <Link href="/register"><ArrowRight size={15} /> Delegate Portal</Link>
+          </div>
+        </div>
+        <p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p>
+      </footer>
       <EntryRegistrationFlow isOpen={registrationFlowOpen} onClose={() => setRegistrationFlowOpen(false)} />
     </main>
   )

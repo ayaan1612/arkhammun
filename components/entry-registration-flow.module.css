@@ -29,6 +29,11 @@
 .textButton { margin-top: 12px; color: #c7c3d2; font-size: 12px; }
 .adminLink { display: inline-flex; align-items: center; gap: 6px; margin-top: 22px; color: #aaa8ba; font-size: 12px; text-decoration: none; }
 .adminLink:hover { color: #fff; }
+.setupNotice { display: grid; gap: 6px; padding: 14px; border: 1px solid rgba(230, 165, 74, .35); background: rgba(230, 165, 74, .08); border-radius: 4px; margin: 14px 0; font-size: 12px; }
+.setupNotice strong { color: #ffd19c; font-size: 13px; }
+.setupNotice p { margin: 0; color: #d6d0e0; }
+.adminActionLink { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: #ffb5b8; font-weight: 600; text-decoration: none; }
+.adminActionLink:hover { color: #fff; }
 .spinner { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 520px) { .entryPass { align-items: flex-start; }.entryPass img { width: 106px; height: 106px; } }
