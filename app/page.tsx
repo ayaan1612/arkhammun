@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, Mail, MapPin, Menu, Users, X } from "lucide-react"
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, Mail, MapPin, Menu, Users, X } from "lucide-react"
 import PulsingHexagonBackground from "@/components/pulsing-hexagon-background"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { EntryRegistrationFlow } from "@/components/entry-registration-flow"
@@ -50,7 +51,7 @@ export default function Home() {
       <PulsingHexagonBackground />
       <div className="site-wash" aria-hidden="true" />
       <nav className="site-nav" aria-label="Primary navigation">
-        <a href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></a>
+        <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
           <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><a className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></a>

@@ -38,6 +38,14 @@ export type EntryQrResponse = {
   event: EventDetails
 }
 
+export type EmailStatus = "not_configured" | "pending" | "sent" | "failed"
+
+export type EmailDeliveryResult = {
+  status: EmailStatus | string
+  sentAt?: string | null
+  error?: string | null
+}
+
 export type AdminRegistration = {
   id: string
   name: string
@@ -51,8 +59,12 @@ export type AdminRegistration = {
   utr: string | null
   screenshot_path: string | null
   screenshot_url: string | null
+  reject_reason?: string | null
   created_at: string
   screenshotBlobUrl?: string
+  email_status?: EmailStatus | null
+  email_sent_at?: string | null
+  email_error?: string | null
 }
 
 export type EntryVerification =
@@ -144,8 +156,8 @@ export const entryPassApi = {
     return request<EntryQrResponse>(`/api/registrations/${encodeURIComponent(id)}/entry-qr`)
   },
 
-  getAdminRegistrations(adminKey: string) {
-    return request<{ registrations: AdminRegistration[] }>("/api/admin/registrations?status=payment_submitted", {
+  getAdminRegistrations(adminKey: string, status: RegistrationStatus = "payment_submitted") {
+    return request<{ registrations: AdminRegistration[] }>(`/api/admin/registrations?status=${encodeURIComponent(status)}`, {
       headers: adminHeaders(adminKey),
     })
   },
@@ -175,10 +187,24 @@ export const entryPassApi = {
   },
 
   approveRegistration(id: string, adminKey: string) {
-    return request<{ id: string; status: "approved" }>(`/api/admin/registrations/${encodeURIComponent(id)}/approve`, {
-      method: "POST",
-      headers: adminHeaders(adminKey),
-    })
+    return request<{ id: string; status: "approved"; email?: EmailDeliveryResult }>(
+      `/api/admin/registrations/${encodeURIComponent(id)}/approve`,
+      {
+        method: "POST",
+        headers: adminHeaders(adminKey),
+      }
+    )
+  },
+
+  retryEmail(id: string, adminKey: string, force = false) {
+    return request<{ id: string; email: EmailDeliveryResult }>(
+      `/api/admin/registrations/${encodeURIComponent(id)}/retry-email`,
+      {
+        method: "POST",
+        headers: adminHeaders(adminKey, true),
+        body: JSON.stringify({ force }),
+      }
+    )
   },
 
   rejectRegistration(id: string, reason: string, adminKey: string) {

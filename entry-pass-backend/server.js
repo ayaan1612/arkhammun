@@ -8,14 +8,16 @@ const express = require("express");
 const multer = require("multer");
 const QRCode = require("qrcode");
 const Database = require("better-sqlite3");
+const mailer = require("./mailer");
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
 const frontendOrigins = new Set((process.env.FRONTEND_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000").split(",").map((origin) => origin.trim()).filter(Boolean));
 const entryFee = Number(process.env.ENTRY_FEE);
 const publicDirectory = path.join(__dirname, "public");
-const uploadsDirectory = path.join(__dirname, "uploads");
-const dataDirectory = path.join(__dirname, "data");
+const uploadsDirectory = process.env.UPLOADS_DIRECTORY || path.join(__dirname, "uploads");
+const dataDirectory = process.env.DATA_DIRECTORY || path.join(__dirname, "data");
+const dbPath = process.env.DB_PATH || path.join(dataDirectory, "registrations.sqlite");
 
 for (const variable of ["ENTRY_FEE", "ENTRY_SECRET", "ADMIN_KEY"]) {
   if (!process.env[variable]) throw new Error(`Missing required environment variable: ${variable}`);
@@ -23,9 +25,9 @@ for (const variable of ["ENTRY_FEE", "ENTRY_SECRET", "ADMIN_KEY"]) {
 if (!Number.isFinite(entryFee) || entryFee <= 0) throw new Error("ENTRY_FEE must be a positive number");
 
 fs.mkdirSync(uploadsDirectory, { recursive: true });
-fs.mkdirSync(dataDirectory, { recursive: true });
+fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-const database = new Database(path.join(dataDirectory, "registrations.sqlite"));
+const database = new Database(dbPath);
 database.pragma("journal_mode = WAL");
 database.exec(`
   CREATE TABLE IF NOT EXISTS registrations (
@@ -43,7 +45,10 @@ database.exec(`
     reject_reason TEXT,
     entry_payload TEXT,
     used_at TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    email_status TEXT,
+    email_sent_at TEXT,
+    email_error TEXT
   );
   CREATE TABLE IF NOT EXISTS event_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -56,7 +61,15 @@ database.exec(`
 `);
 
 const registrationColumns = new Set(database.prepare("PRAGMA table_info(registrations)").all().map((column) => column.name));
-for (const [name, type] of [["email", "TEXT"], ["phone", "TEXT"], ["organization", "TEXT"], ["committee", "TEXT"]]) {
+for (const [name, type] of [
+  ["email", "TEXT"],
+  ["phone", "TEXT"],
+  ["organization", "TEXT"],
+  ["committee", "TEXT"],
+  ["email_status", "TEXT"],
+  ["email_sent_at", "TEXT"],
+  ["email_error", "TEXT"],
+]) {
   if (!registrationColumns.has(name)) database.exec(`ALTER TABLE registrations ADD COLUMN ${name} ${type}`);
 }
 database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name) VALUES (1, ?)").run(process.env.EVENT_NAME || "Arkham MUN");
@@ -79,12 +92,18 @@ const statements = {
     WHERE id = ? AND status IN ('pending_payment', 'rejected')
   `),
   queue: database.prepare(`
-    SELECT id, name, contact, email, phone, organization, committee, amount, status, utr, screenshot_path, created_at
+    SELECT id, name, contact, email, phone, organization, committee, amount, status, utr, screenshot_path, reject_reason, created_at,
+           email_status, email_sent_at, email_error
     FROM registrations WHERE status = ? ORDER BY created_at ASC
   `),
   approve: database.prepare(`
     UPDATE registrations SET status = 'approved', entry_payload = ?
     WHERE id = ? AND status = 'payment_submitted'
+  `),
+  updateEmailStatus: database.prepare(`
+    UPDATE registrations
+    SET email_status = @status, email_sent_at = @sent_at, email_error = @error
+    WHERE id = @id
   `),
   reject: database.prepare(`
     UPDATE registrations SET status = 'rejected', reject_reason = ?
@@ -335,13 +354,160 @@ app.get("/api/admin/registrations", (request, response) => {
   response.json({ registrations });
 });
 
-app.post("/api/admin/registrations/:id/approve", (request, response) => {
-  const registration = statements.byId.get(request.params.id);
-  if (!registration) return response.status(404).json({ error: "Registration not found" });
-  if (registration.status !== "payment_submitted") return response.status(409).json({ error: "Only submitted payments can be approved" });
-  const payload = issueEntryPayload(registration);
-  statements.approve.run(payload, registration.id);
-  response.json({ id: registration.id, status: "approved" });
+async function deliverApprovalEmail(registrationId) {
+  const registration = statements.byId.get(registrationId);
+  if (!registration) {
+    throw new Error("Registration not found");
+  }
+  if (registration.status !== "approved" || !registration.entry_payload) {
+    throw new Error("Only approved registrations with an entry pass can receive an email");
+  }
+
+  // Ensure event details on the pass/email are the details used when the pass was issued
+  const decoded = verifyEntryPayload(registration.entry_payload);
+  const event = decoded?.event || getEventDetails();
+
+  if (!mailer.isSmtpConfigured()) {
+    const errorMsg = "SMTP is not configured on the server";
+    statements.updateEmailStatus.run({
+      id: registration.id,
+      status: "not_configured",
+      sent_at: null,
+      error: errorMsg,
+    });
+    return {
+      status: "not_configured",
+      error: errorMsg,
+      sentAt: null,
+    };
+  }
+
+  // Mark pending
+  statements.updateEmailStatus.run({
+    id: registration.id,
+    status: "pending",
+    sent_at: null,
+    error: null,
+  });
+
+  try {
+    const qrBuffer = await QRCode.toBuffer(registration.entry_payload, {
+      errorCorrectionLevel: "M",
+      margin: 2,
+      width: 360,
+    });
+
+    await mailer.sendApprovalMail({
+      registration,
+      event,
+      qrBuffer,
+    });
+
+    const sentAt = new Date().toISOString();
+    statements.updateEmailStatus.run({
+      id: registration.id,
+      status: "sent",
+      sent_at: sentAt,
+      error: null,
+    });
+
+    return {
+      status: "sent",
+      sentAt,
+      error: null,
+    };
+  } catch (err) {
+    const sanitized = mailer.sanitizeEmailError(err);
+    console.error(`Approval email delivery failed for registration ${registration.id}:`, sanitized);
+    statements.updateEmailStatus.run({
+      id: registration.id,
+      status: "failed",
+      sent_at: null,
+      error: sanitized,
+    });
+
+    return {
+      status: "failed",
+      sentAt: null,
+      error: sanitized,
+    };
+  }
+}
+
+app.post("/api/admin/registrations/:id/approve", async (request, response, next) => {
+  try {
+    const registration = statements.byId.get(request.params.id);
+    if (!registration) return response.status(404).json({ error: "Registration not found" });
+    if (registration.status !== "payment_submitted") return response.status(409).json({ error: "Only submitted payments can be approved" });
+    const payload = issueEntryPayload(registration);
+    statements.approve.run(payload, registration.id);
+
+    // Deliver email safely after approval is committed
+    const emailResult = await deliverApprovalEmail(registration.id);
+
+    response.json({
+      id: registration.id,
+      status: "approved",
+      email: emailResult,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/registrations/:id/retry-email", async (request, response, next) => {
+  try {
+    const registration = statements.byId.get(request.params.id);
+    if (!registration) return response.status(404).json({ error: "Registration not found" });
+    if (registration.status !== "approved" || !registration.entry_payload) {
+      return response.status(409).json({ error: "Only approved registrations can be sent an entry pass email" });
+    }
+
+    const force = Boolean(request.body?.force);
+    if (registration.email_status === "sent" && !force) {
+      return response.status(409).json({
+        error: "Email has already been confirmed sent to this delegate",
+        alreadySent: true,
+        email: {
+          status: registration.email_status,
+          sentAt: registration.email_sent_at,
+          error: registration.email_error,
+        },
+      });
+    }
+
+    if (registration.email_status === "pending" && !force) {
+      return response.status(409).json({
+        error: "Email delivery is currently in progress",
+        email: {
+          status: "pending",
+        },
+      });
+    }
+
+    const emailResult = await deliverApprovalEmail(registration.id);
+
+    if (emailResult.status === "failed") {
+      return response.status(502).json({
+        error: `Email delivery failed: ${emailResult.error}`,
+        email: emailResult,
+      });
+    }
+
+    if (emailResult.status === "not_configured") {
+      return response.status(503).json({
+        error: "SMTP is not configured on the server",
+        email: emailResult,
+      });
+    }
+
+    response.json({
+      id: registration.id,
+      email: emailResult,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/admin/registrations/:id/reject", (request, response) => {
@@ -405,4 +571,16 @@ app.use((error, request, response, next) => {
   response.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(port, () => console.log(`Entry pass backend listening on http://localhost:${port}`));
+if (require.main === module) {
+  app.listen(port, () => console.log(`Entry pass backend listening on http://localhost:${port}`));
+}
+
+module.exports = {
+  app,
+  database,
+  statements,
+  issueEntryPayload,
+  verifyEntryPayload,
+  deliverApprovalEmail,
+  getEventDetails,
+};

@@ -185,7 +185,23 @@
           <img class="qr-image" id="admin-payment-qr-preview" alt="Current event payment QR" hidden>
         </form>
       </section>
-      <section class="card"><div class="registration-head"><div><h2>Payment review queue</h2><p class="subtle">Showing registrations that have submitted a UTR.</p></div><button class="button secondary" type="button" id="reload-queue">Refresh</button></div><div class="queue" id="queue" style="margin-top:18px"><div class="empty">Enter the admin key to load registrations.</div></div></section>
+      <section class="card">
+        <div class="registration-head">
+          <div>
+            <h2>Payment review queue</h2>
+            <p class="subtle">Filter by status to review proofs, manage approved passes, and retry emails.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="admin-queue-status" style="min-height:38px;padding:6px 10px;border:1px solid #cbd3dd;border-radius:3px;font-size:13px;background:var(--surface);color:var(--ink);">
+              <option value="payment_submitted" selected>Needs review</option>
+              <option value="approved">Approved passes</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button class="button secondary" type="button" id="reload-queue">Refresh</button>
+          </div>
+        </div>
+        <div class="queue" id="queue" style="margin-top:18px"><div class="empty">Enter the admin key to load registrations.</div></div>
+      </section>
       <section class="card">
         <span class="eyebrow">Venue check-in</span><h2>Scan entry at venue</h2><p class="subtle">Camera access requires HTTPS outside localhost. A valid QR is marked used as soon as it is checked.</p>
         <div class="scanner-layout" style="margin-top:18px">
@@ -393,17 +409,23 @@
       }
     });
 
+    const queueStatusSelect = byId("admin-queue-status");
+    if (queueStatusSelect) {
+      queueStatusSelect.addEventListener("change", () => void loadQueue());
+    }
+
     async function loadQueue() {
       const key = adminKeyInput.value;
       sessionStorage.setItem("entry-pass-admin-key", key);
       if (!key) return setMessage("admin-message", "Enter the admin key first.", "error");
-      setMessage("admin-message", "Loading review queue…");
+      const currentStatus = queueStatusSelect ? queueStatusSelect.value : "payment_submitted";
+      setMessage("admin-message", "Loading queue…");
       byId("queue").replaceChildren();
       screenshotUrls.forEach(URL.revokeObjectURL);
       screenshotUrls = [];
       try {
         const [result, settings] = await Promise.all([
-          readResponse(await fetch("/api/admin/registrations?status=payment_submitted", { headers: { "x-admin-key": key } })),
+          readResponse(await fetch(`/api/admin/registrations?status=${encodeURIComponent(currentStatus)}`, { headers: { "x-admin-key": key } })),
           readResponse(await fetch("/api/admin/settings", { headers: { "x-admin-key": key } })),
         ]);
         byId("event-name").value = settings.event.name;
@@ -415,7 +437,8 @@
           byId("admin-payment-qr-preview").hidden = false;
         }
         if (!result.registrations.length) {
-          byId("queue").innerHTML = '<div class="empty">No payment proofs are waiting for review.</div>';
+          const emptyText = currentStatus === "payment_submitted" ? "No payment proofs are waiting for review." : currentStatus === "approved" ? "No registrations have been approved yet." : "No registrations have been rejected.";
+          byId("queue").innerHTML = `<div class="empty">${emptyText}</div>`;
         }
         for (const registration of result.registrations) {
           const article = document.createElement("article");
@@ -451,18 +474,59 @@
             screenshot.src = await fetchScreenshot(registration.screenshot_url, key);
             article.append(screenshot);
           }
-          const actions = document.createElement("div");
-          actions.className = "actions";
-          const approve = document.createElement("button");
-          approve.className = "button";
-          approve.textContent = "Approve & issue pass";
-          approve.addEventListener("click", () => reviewRegistration(registration.id, "approve"));
-          const reject = document.createElement("button");
-          reject.className = "button danger";
-          reject.textContent = "Reject";
-          reject.addEventListener("click", () => reviewRegistration(registration.id, "reject"));
-          actions.append(approve, reject);
-          article.append(actions);
+
+          if (registration.status === "approved") {
+            const emailBlock = document.createElement("div");
+            emailBlock.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:10px 14px;background:var(--canvas);border:1px solid var(--line);border-radius:3px;font-size:12px;flex-wrap:wrap;";
+            const emailInfo = document.createElement("div");
+            const statusLabel = registration.email_status === "sent" ? "Sent" : registration.email_status === "failed" ? "Failed" : registration.email_status === "not_configured" ? "Not configured" : "Pending";
+            const badgeClass = registration.email_status === "sent" ? "approved" : registration.email_status === "failed" ? "rejected" : "";
+            emailInfo.innerHTML = `<strong>Email delivery:</strong> <span class="status-label ${badgeClass}">${statusLabel}</span> ${registration.email_sent_at ? ` · Sent ${new Date(registration.email_sent_at).toLocaleTimeString()}` : ""} ${registration.email_error ? ` · <span style="color:var(--bad)">${registration.email_error}</span>` : ""}`;
+            
+            const retryButton = document.createElement("button");
+            retryButton.className = "button secondary";
+            retryButton.style.minHeight = "34px";
+            retryButton.style.padding = "6px 12px";
+            retryButton.textContent = registration.email_status === "sent" ? "Resend email" : registration.email_status === "not_configured" ? "Send email" : "Retry email";
+            retryButton.addEventListener("click", async () => {
+              retryButton.disabled = true;
+              retryButton.textContent = "Sending…";
+              try {
+                await readResponse(await fetch(`/api/admin/registrations/${encodeURIComponent(registration.id)}/retry-email`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "x-admin-key": adminKeyInput.value },
+                  body: JSON.stringify({ force: registration.email_status === "sent" }),
+                }));
+                setMessage("admin-message", "Approval email sent successfully.", "success");
+                await loadQueue();
+              } catch (err) {
+                setMessage("admin-message", err.message, "error");
+                retryButton.disabled = false;
+                retryButton.textContent = registration.email_status === "sent" ? "Resend email" : "Retry email";
+              }
+            });
+            emailBlock.append(emailInfo, retryButton);
+            article.append(emailBlock);
+          } else if (registration.status === "payment_submitted") {
+            const actions = document.createElement("div");
+            actions.className = "actions";
+            const approve = document.createElement("button");
+            approve.className = "button";
+            approve.textContent = "Approve & issue pass";
+            approve.addEventListener("click", () => reviewRegistration(registration.id, "approve"));
+            const reject = document.createElement("button");
+            reject.className = "button danger";
+            reject.textContent = "Reject";
+            reject.addEventListener("click", () => reviewRegistration(registration.id, "reject"));
+            actions.append(approve, reject);
+            article.append(actions);
+          } else if (registration.status === "rejected" && registration.reject_reason) {
+            const rej = document.createElement("p");
+            rej.className = "subtle";
+            rej.textContent = `Rejection reason: ${registration.reject_reason}`;
+            article.append(rej);
+          }
+
           byId("queue").append(article);
         }
         setMessage("admin-message", `Loaded ${result.registrations.length} registration${result.registrations.length === 1 ? "" : "s"}.`, "success");
@@ -491,12 +555,24 @@
         body = { reason };
       }
       try {
-        await readResponse(await fetch(`/api/admin/registrations/${encodeURIComponent(id)}/${action}`, {
+        const result = await readResponse(await fetch(`/api/admin/registrations/${encodeURIComponent(id)}/${action}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-admin-key": adminKeyInput.value },
           body: JSON.stringify(body || {}),
         }));
-        setMessage("admin-message", action === "approve" ? "Registration approved and entry pass issued." : "Registration rejected.", "success");
+        if (action === "approve") {
+          let msg = "Registration approved and entry pass issued.";
+          if (result.email?.status === "sent") {
+            msg = "Registration approved and entry pass emailed to delegate.";
+          } else if (result.email?.status === "failed") {
+            msg = `Registration approved, but email delivery failed: ${result.email.error || "error"}. You can retry from Approved passes.`;
+          } else if (result.email?.status === "not_configured") {
+            msg = "Registration approved. Email delivery is not configured on the server.";
+          }
+          setMessage("admin-message", msg, "success");
+        } else {
+          setMessage("admin-message", "Registration rejected.", "success");
+        }
         await loadQueue();
       } catch (error) {
         setMessage("admin-message", error.message, "error");

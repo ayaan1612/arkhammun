@@ -69,6 +69,20 @@
 .settingsForm input:focus { border-color: #e3262e; box-shadow: 0 0 0 3px rgba(227, 38, 46, .13); }
 .settingsForm input[type="file"] { padding: 8px; }
 .paymentQrPreview { width: 180px; height: 180px; padding: 7px; object-fit: contain; background: #fff; }
+.subtabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.subtab { padding: 6px 12px; font-size: 11px; font-weight: 600; color: #858194; background: rgba(255, 255, 255, .05); border: 1px solid rgba(160, 150, 205, .16); border-radius: 3px; cursor: pointer; transition: all .2s; }
+.subtab:hover { color: #fff; background: rgba(255, 255, 255, .09); }
+.activeSubtab { color: #fff; background: rgba(227, 38, 46, .15); border-color: rgba(227, 38, 46, .45); }
+.emailBlock { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 10px 14px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(160, 150, 205, .12); border-radius: 3px; font-size: 11px; flex-wrap: wrap; }
+.emailInfo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.emailBadge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.emailBadge.sent { color: #a8dfb9; background: rgba(84, 189, 128, .12); border: 1px solid rgba(84, 189, 128, .3); }
+.emailBadge.failed { color: #ffb5b8; background: rgba(227, 38, 46, .12); border: 1px solid rgba(227, 38, 46, .3); }
+.emailBadge.not_configured { color: #ffd19c; background: rgba(230, 165, 74, .12); border: 1px solid rgba(230, 165, 74, .3); }
+.emailBadge.pending { color: #d3cfdd; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .18); }
+.retryButton { padding: 6px 11px; font-size: 11px; color: #fff; background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .2); border-radius: 3px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.retryButton:hover { background: rgba(255, 255, 255, .14); }
+.retryButton:disabled { opacity: .5; cursor: wait; }
 .spinner { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 680px) {

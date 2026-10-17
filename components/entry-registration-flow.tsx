@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useEffect, useState } from "react"
+import Image from "next/image"
 import { ArrowRight, LoaderCircle, ShieldCheck, X } from "lucide-react"
 import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
 import styles from "./entry-registration-flow.module.css"
@@ -153,7 +154,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
             <p className={styles.statusLine}><span className={`${styles.statusDot} ${status === "approved" ? styles.approved : status === "rejected" ? styles.rejected : ""}`} />{status ? statusLabels[status] : "Preparing registration"} · INR {Number(registration.amount).toFixed(2)}</p>
             {(status === "pending_payment" || status === "rejected") && <div className={styles.paymentBlock}>
               <div><h3>{status === "rejected" ? "Submit corrected payment proof" : "Pay the entry fee"}</h3><p>Scan the admin’s UPI QR in your payment app. This payment QR is separate from your entry pass.</p></div>
-              {publicEvent?.paymentQrUrl && <img className={styles.paymentQr} src={entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)} alt="Event payment QR code" />}
+              {publicEvent?.paymentQrUrl && <Image className={styles.paymentQr} src={entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)} alt="Event payment QR code" width={176} height={176} unoptimized />}
               <form className={styles.proofForm} onSubmit={handleProof}>
                 <label>Transaction reference (UTR)<input required name="utr" maxLength={120} autoComplete="off" placeholder="Enter the UPI transaction reference" /></label>
                 <label>Payment screenshot <span>(optional, up to 5 MB)</span><input type="file" name="screenshot" accept="image/jpeg,image/png,image/webp,image/gif" /></label>
@@ -162,7 +163,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
             </div>}
             {(status === "payment_submitted" || status === "approved") && <div className={styles.statusBlock}>
               <p>{status === "approved" ? "Your entry QR is ready. Show it to the event team at the gate; it can only be scanned once." : "Your UTR is with the event team for review. This status refreshes automatically."}</p>
-              {entryQr && <div className={styles.entryPass}><img src={entryQr.qr} alt="Your signed event entry QR code" /><div><strong>{entryQr.event.name} entry pass</strong><small>Registration ID: {entryQr.registrationId}</small><small>{entryQr.event.date} · {entryQr.event.time}</small><small>{entryQr.event.venue}</small><small>Keep this QR ready for venue check-in.</small></div></div>}
+              {entryQr && <div className={styles.entryPass}><Image src={entryQr.qr} alt="Your signed event entry QR code" width={128} height={128} unoptimized /><div><strong>{entryQr.event.name} entry pass</strong><small>Registration ID: {entryQr.registrationId}</small><small>{entryQr.event.date} · {entryQr.event.time}</small><small>{entryQr.event.venue}</small><small>Keep this QR ready for venue check-in.</small></div></div>}
               {status === "approved" && <button type="button" className={styles.refreshButton} onClick={startAgain}>Register another delegate</button>}
               {status === "payment_submitted" && <button type="button" className={styles.refreshButton} disabled={busy} onClick={refreshStatus}>{busy ? "Refreshing…" : "Refresh status"}</button>}
             </div>}
