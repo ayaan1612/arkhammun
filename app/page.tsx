@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "motion/react"
 import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
 import PulsingHexagonBackground from "@/components/pulsing-hexagon-background"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
-import { EntryRegistrationFlow } from "@/components/entry-registration-flow"
 
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
@@ -30,11 +29,8 @@ const schedule = [
 
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [registrationFlowOpen, setRegistrationFlowOpen] = useState(false)
-  const setShowRegistration = setRegistrationFlowOpen
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
-
 
   const moveCommittee = (direction: number) => {
     setActiveCommittee((current) => (current + direction + committees.length) % committees.length)
@@ -46,7 +42,6 @@ export default function Home() {
     return () => window.clearInterval(autoplay)
   }, [isCommitteePaused])
 
-
   return (
     <main className="mun-site relative min-h-screen overflow-hidden bg-[#080812] text-white">
       <PulsingHexagonBackground />
@@ -55,12 +50,12 @@ export default function Home() {
         <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><Link href="/admin" onClick={() => setMenuOpen(false)}>Admin</Link><a className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></a>
+          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><Link href="/admin" onClick={() => setMenuOpen(false)}>Admin</Link><Link className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></Link>
         </div>
       </nav>
 
       <section id="top" className="hero-shell">
-        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton className="home-action-button" size="xl" onClick={() => setShowRegistration(true)}>Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
+        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
         <div className="hero-emblem" aria-hidden="true"><div className="emblem-ring" /><img src={logoUrl} alt="" /></div>
         <div className="hero-meta"><div><span>DATE</span><p>24—25<br /><b>OCTOBER</b></p></div><div className="meta-line" /><div><span>VENUE</span><p>IN<br /><b>CENTRAL DELHI</b></p></div><div className="meta-line" /><div><span>DEADLINE</span><p>01<br /><b>OCTOBER</b></p></div></div><div className="scroll-cue"><span /> Scroll to explore</div>
       </section>
@@ -73,8 +68,7 @@ export default function Home() {
 
       <section id="schedule" className="content-section schedule-section"><div className="section-kicker">04 / The rhythm</div><div className="schedule-layout"><div><h2>Two days.<br /><em>Many voices.</em></h2><p className="section-copy">From your first moderated caucus to the final vote, every moment is designed to keep the conversation moving.</p></div><div className="timeline">{schedule.map(([date, title, place]) => <div className="timeline-row" key={title}><time>{date}</time><div><strong>{title}</strong><span>{place}</span></div><Clock3 size={16} /></div>)}</div></div></section>
 
-      <section id="registration" className="content-section registration-section"><div className="section-kicker">05 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div><div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div><LiquidButton className="home-action-button" size="xl" onClick={() => setShowRegistration(true)}>Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
-
+      <section id="registration" className="content-section registration-section"><div className="section-kicker">05 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div><div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div><LiquidButton href="/register" className="home-action-button" size="xl">Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
 
       <footer id="contact" className="site-footer">
         <div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div>
@@ -98,7 +92,6 @@ export default function Home() {
         </div>
         <p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p>
       </footer>
-      <EntryRegistrationFlow isOpen={registrationFlowOpen} onClose={() => setRegistrationFlowOpen(false)} />
     </main>
   )
 }

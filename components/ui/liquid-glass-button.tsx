@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
@@ -27,19 +28,29 @@ export interface LiquidButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof liquidButtonVariants> {
   asChild?: boolean
+  href?: string
 }
 
-export function LiquidButton({ className, variant, size, asChild = false, children, ...props }: LiquidButtonProps) {
+export function LiquidButton({ className, variant, size, asChild = false, href, children, ...props }: LiquidButtonProps) {
+  if (href) {
+    return (
+      <Link href={href} className={cn(liquidButtonVariants({ variant, size, className: cn("group", className) }))} {...(props as any)}>
+        <span className="absolute inset-0 overflow-hidden rounded-full bg-gradient-to-br from-white/20 via-white/[0.04] to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_0_28px_rgba(227,27,35,0.18)]" aria-hidden="true" />
+        <span className="absolute -inset-x-8 top-0 h-full -translate-x-full skew-x-[-18deg] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" aria-hidden="true" />
+        <span className="relative z-10 inline-flex items-center gap-2">{children}</span>
+      </Link>
+    )
+  }
+
   const Comp = asChild ? Slot : "button"
 
   return (
     <Comp className={cn(liquidButtonVariants({ variant, size, className: cn("group", className) }))} {...props}>
       <span className="absolute inset-0 overflow-hidden rounded-full bg-gradient-to-br from-white/20 via-white/[0.04] to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_0_28px_rgba(227,27,35,0.18)]" aria-hidden="true" />
       <span className="absolute -inset-x-8 top-0 h-full -translate-x-full skew-x-[-18deg] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" aria-hidden="true" />
-      <span className="relative z-10">{children}</span>
+      <span className="relative z-10 inline-flex items-center gap-2">{children}</span>
     </Comp>
   )
 }
 
 export { liquidButtonVariants }
-

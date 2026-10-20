@@ -43,8 +43,21 @@ function CommitteeChoice({ title, name }: { title: string; name: string }) {
   )
 }
 
+const DEFAULT_EVENT: PublicEvent = {
+  event: {
+    name: "Arkham MUN",
+    date: "24–25 October 2026",
+    time: "9:00 AM – 5:00 PM",
+    venue: "Central Delhi, India",
+  },
+  amount: 2300,
+  upiId: "chauhan5408k@okaxis",
+  paymentQrUrl: "/api/payment-qr.png",
+  registrationOpen: true,
+}
+
 export default function RegisterPage() {
-  const [publicEvent, setPublicEvent] = useState<PublicEvent | null>(null)
+  const [publicEvent, setPublicEvent] = useState<PublicEvent>(DEFAULT_EVENT)
   const [registration, setRegistration] = useState<RegistrationStart | null>(null)
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
   const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
@@ -59,8 +72,8 @@ export default function RegisterPage() {
     let active = true
     entryPassApi.getPublicEvent().then((details) => {
       if (active) setPublicEvent(details)
-    }).catch((requestError) => {
-      if (active) setError(requestError instanceof Error ? requestError.message : "Unable to load event details.")
+    }).catch(() => {
+      // Backend may be starting or offline; defaults remain active
     })
     return () => { active = false }
   }, [])
@@ -108,6 +121,11 @@ export default function RegisterPage() {
 
     if (!utr) {
       setError("Please enter the payment transaction reference (UTR).")
+      return
+    }
+
+    if (!paymentConfirmed) {
+      setError("Please confirm your payment transfer by checking the payment confirmation box in section 06.")
       return
     }
 
@@ -368,7 +386,7 @@ export default function RegisterPage() {
               </label>
             </section>
 
-            <button className="registration-submit" type="submit" disabled={busy || publicEvent?.registrationOpen !== true || !paymentConfirmed}>
+            <button className="registration-submit" type="submit" disabled={busy || publicEvent?.registrationOpen === false}>
               {busy ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <LoaderCircle className="spinner" size={16} /> Submitting registration…

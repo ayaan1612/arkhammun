@@ -18,11 +18,24 @@ const statusLabels: Record<RegistrationStatus, string> = {
   rejected: "Payment proof rejected",
 }
 
+const DEFAULT_EVENT: PublicEvent = {
+  event: {
+    name: "Arkham MUN",
+    date: "24–25 October 2026",
+    time: "9:00 AM – 5:00 PM",
+    venue: "Central Delhi, India",
+  },
+  amount: 2300,
+  upiId: "chauhan5408k@okaxis",
+  paymentQrUrl: "/api/payment-qr.png",
+  registrationOpen: true,
+}
+
 export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
   const [registration, setRegistration] = useState<RegistrationStart | null>(null)
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
   const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
-  const [publicEvent, setPublicEvent] = useState<PublicEvent | null>(null)
+  const [publicEvent, setPublicEvent] = useState<PublicEvent>(DEFAULT_EVENT)
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -54,8 +67,8 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     let active = true
     entryPassApi.getPublicEvent().then((details) => {
       if (active) setPublicEvent(details)
-    }).catch((requestError) => {
-      if (active) setError(requestError instanceof Error ? requestError.message : "Unable to load event details.")
+    }).catch(() => {
+      // Backend may be starting or offline; defaults remain active
     })
     return () => { active = false }
   }, [isOpen])
@@ -164,7 +177,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
               <label>Phone number<input required type="tel" name="phone" autoComplete="tel" maxLength={40} placeholder="Your contact number" /></label>
               <label>School / organization<input required name="organization" maxLength={160} placeholder="Your school or organization" /></label>
               <label>Committee<input required name="committee" maxLength={160} placeholder="Committee preference" /></label>
-              <button className="modal-submit" type="submit" disabled={busy || publicEvent?.registrationOpen !== true}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Creating registration" : publicEvent ? publicEvent.registrationOpen ? "Continue registration" : "Registration unavailable" : "Loading event details"}<ArrowRight size={17} /></button>
+              <button className="modal-submit" type="submit" disabled={busy || publicEvent?.registrationOpen === false}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Creating registration" : publicEvent ? publicEvent.registrationOpen ? "Continue registration" : "Registration unavailable" : "Loading event details"}<ArrowRight size={17} /></button>
             </form>
           </>
         ) : (

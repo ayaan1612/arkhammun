@@ -99,10 +99,25 @@ for (const [name, type, defaultVal] of [
   if (!eventSettingsColumns.has(name)) database.exec(`ALTER TABLE event_settings ADD COLUMN ${name} ${type} DEFAULT ${defaultVal}`);
 }
 
-database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name, entry_fee, upi_id, registration_open) VALUES (1, ?, ?, ?, 1)").run(
+database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name, event_date, event_time, venue, entry_fee, upi_id, registration_open) VALUES (1, ?, ?, ?, ?, ?, ?, 1)").run(
   process.env.EVENT_NAME || "Arkham MUN",
+  process.env.EVENT_DATE || "24–25 October 2026",
+  process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
+  process.env.EVENT_VENUE || "Central Delhi, India",
   entryFee,
   "chauhan5408k@okaxis"
+);
+
+database.prepare(`
+  UPDATE event_settings
+  SET event_date = CASE WHEN event_date IS NULL OR TRIM(event_date) = '' THEN ? ELSE event_date END,
+      event_time = CASE WHEN event_time IS NULL OR TRIM(event_time) = '' THEN ? ELSE event_time END,
+      venue = CASE WHEN venue IS NULL OR TRIM(venue) = '' THEN ? ELSE venue END
+  WHERE id = 1
+`).run(
+  process.env.EVENT_DATE || "24–25 October 2026",
+  process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
+  process.env.EVENT_VENUE || "Central Delhi, India"
 );
 
 const statements = {
@@ -211,10 +226,10 @@ const upload = multer({
 function getEventDetails() {
   const settings = statements.eventSettings.get();
   return {
-    name: settings.event_name,
-    date: settings.event_date,
-    time: settings.event_time,
-    venue: settings.venue,
+    name: settings.event_name || process.env.EVENT_NAME || "Arkham MUN",
+    date: settings.event_date || process.env.EVENT_DATE || "24–25 October 2026",
+    time: settings.event_time || process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
+    venue: settings.venue || process.env.EVENT_VENUE || "Central Delhi, India",
   };
 }
 
@@ -257,7 +272,8 @@ app.get("/api/event", (request, response) => {
   const settings = statements.eventSettings.get();
   const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
   const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
-  const isConfigured = Boolean(hasQr && settings.event_date && settings.event_time && settings.venue);
+  const eventDetails = getEventDetails();
+  const isConfigured = Boolean(hasQr && eventDetails.date && eventDetails.time && eventDetails.venue);
   const isOpen = Boolean(isConfigured && (settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1));
   const currentFee = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
     ? Number(settings.entry_fee)
@@ -293,7 +309,8 @@ app.post("/api/registrations", (request, response) => {
   const settings = statements.eventSettings.get();
   const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
   const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
-  const isConfigured = Boolean(hasQr && settings.event_date && settings.event_time && settings.venue);
+  const eventDetails = getEventDetails();
+  const isConfigured = Boolean(hasQr && eventDetails.date && eventDetails.time && eventDetails.venue);
   const isOpen = Boolean(isConfigured && (settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1));
 
   if (!isOpen) {
