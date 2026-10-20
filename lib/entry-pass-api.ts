@@ -117,7 +117,11 @@ export class EntryPassApiError extends Error {
   }
 }
 
-function getApiBaseUrl(): string {
+export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const custom = localStorage.getItem("arkham_backend_url")
+    if (custom && custom.trim()) return custom.trim().replace(/\/+$/, "")
+  }
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
   }
@@ -127,27 +131,59 @@ function getApiBaseUrl(): string {
   return "http://localhost:3001"
 }
 
+export function setCustomBackendUrl(url: string) {
+  if (typeof window !== "undefined") {
+    const clean = url.trim().replace(/\/+$/, "")
+    if (clean) {
+      localStorage.setItem("arkham_backend_url", clean)
+    } else {
+      localStorage.removeItem("arkham_backend_url")
+    }
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   let response: Response
-  const primaryUrl = `${getApiBaseUrl()}${endpoint}`
+  const baseUrl = getApiBaseUrl()
+  const primaryUrl = `${baseUrl}${endpoint}`
+
   try {
     response = await fetch(primaryUrl, options)
   } catch {
-    const fallbackUrl = `http://localhost:3001${endpoint}`
-    if (primaryUrl !== fallbackUrl) {
+    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    if (isLocal && baseUrl !== "http://localhost:3001") {
       try {
-        response = await fetch(fallbackUrl, options)
+        response = await fetch(`http://localhost:3001${endpoint}`, options)
       } catch {
-        throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
+        throw new Error("Could not reach backend service at http://localhost:3001. Ensure the local backend is running.")
       }
     } else {
+      const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
+      if (isVercel) {
+        throw new Error("Could not connect to backend from Vercel. Please enter your Render backend URL below.")
+      }
       throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
     }
   }
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>
   if (!response.ok) {
-    throw new EntryPassApiError(typeof body.error === "string" ? body.error : "The request could not be completed.", response.status, body)
+    let errorMessage = typeof body.error === "string" ? body.error : ""
+    if (!errorMessage) {
+      if (response.status === 401) {
+        errorMessage = "Invalid admin authorization key. Please re-enter your password."
+      } else if (response.status === 404 || response.status === 502 || response.status === 503) {
+        const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
+        if (isVercel) {
+          errorMessage = "Backend service is not connected to this Vercel site. Please enter your Render backend URL below."
+        } else {
+          errorMessage = `Backend service unavailable (${response.status}). Check backend status.`
+        }
+      } else {
+        errorMessage = `The request could not be completed (${response.status}).`
+      }
+    }
+    throw new EntryPassApiError(errorMessage, response.status, body)
   }
   return body as T
 }

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: arkhammun-backend
+    runtime: node
+    plan: free
+    rootDir: entry-pass-backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: ENTRY_FEE
+        value: 2300
+      - key: EVENT_NAME
+        value: Arkham MUN
+      - key: ADMIN_KEY
+        value: admin12345
+      - key: ENTRY_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGINS
+        value: https://arkhammun.vercel.app,http://localhost:3000
