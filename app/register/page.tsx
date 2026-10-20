@@ -54,6 +54,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
 
+
   useEffect(() => {
     let active = true
     entryPassApi.getPublicEvent().then((details) => {
@@ -383,4 +384,5 @@ export default function RegisterPage() {
       </main>
     </ArkhamShell>
   )
+
 }
