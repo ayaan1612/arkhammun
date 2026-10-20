@@ -32,7 +32,6 @@ import {
   RegistrationStatus,
   ScannedRegistration,
   entryPassApi,
-  setCustomBackendUrl,
 } from "@/lib/entry-pass-api"
 import styles from "./admin.module.css"
 
@@ -44,17 +43,6 @@ export default function AdminPage() {
   const [keyInput, setKeyInput] = useState("")
   const [authenticated, setAuthenticated] = useState(false)
   const [activeView, setActiveView] = useState<AdminView>("overview")
-  const [customBackend, setCustomBackend] = useState("")
-  const [showBackendConfig, setShowBackendConfig] = useState(false)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("arkham_backend_url") || ""
-      setCustomBackend(saved)
-      if (window.location.hostname.includes("vercel.app") && !process.env.NEXT_PUBLIC_API_URL && !saved) {
-        setShowBackendConfig(true)
-      }
-    }
-  }, [])
 
   // Queue state
   const [queueFilter, setQueueFilter] = useState<RegistrationStatus>("payment_submitted")
@@ -208,9 +196,6 @@ export default function AdminPage() {
 
   async function handleKeySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (customBackend.trim()) {
-      setCustomBackendUrl(customBackend.trim())
-    }
     await loadData(keyInput)
   }
 
@@ -520,29 +505,6 @@ export default function AdminPage() {
                 placeholder="Enter admin authorization key"
               />
             </label>
-            {showBackendConfig && (
-              <label style={{ marginTop: 12 }}>
-                Backend API URL (Render / Live Server)
-                <input
-                  type="url"
-                  value={customBackend}
-                  onChange={(event) => setCustomBackend(event.target.value)}
-                  placeholder="https://your-backend.onrender.com"
-                />
-                <small style={{ color: "#aaa8ba", fontSize: 11, display: "block", marginTop: 4 }}>
-                  Enter your deployed Render backend URL when using Vercel.
-                </small>
-              </label>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, marginBottom: 14 }}>
-              <button
-                type="button"
-                onClick={() => setShowBackendConfig(!showBackendConfig)}
-                style={{ background: "none", border: "none", color: "#8d8a9e", fontSize: 11, cursor: "pointer", padding: 0, textDecoration: "underline" }}
-              >
-                {showBackendConfig ? "Hide backend server URL" : "Configure Backend Server URL"}
-              </button>
-            </div>
             <button className={styles.primaryButton} type="submit" disabled={loading}>
               {loading ? <LoaderCircle className={styles.spinner} size={16} /> : null}
               {loading ? "Verifying key…" : "Access Admin Center"}

@@ -118,10 +118,6 @@ export class EntryPassApiError extends Error {
 }
 
 export function getApiBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    const custom = localStorage.getItem("arkham_backend_url")
-    if (custom && custom.trim()) return custom.trim().replace(/\/+$/, "")
-  }
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
   }
@@ -129,17 +125,6 @@ export function getApiBaseUrl(): string {
     return ""
   }
   return "http://localhost:3001"
-}
-
-export function setCustomBackendUrl(url: string) {
-  if (typeof window !== "undefined") {
-    const clean = url.trim().replace(/\/+$/, "")
-    if (clean) {
-      localStorage.setItem("arkham_backend_url", clean)
-    } else {
-      localStorage.removeItem("arkham_backend_url")
-    }
-  }
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -160,7 +145,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     } else {
       const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
       if (isVercel) {
-        throw new Error("Could not connect to backend from Vercel. Please enter your Render backend URL below.")
+        throw new Error("Could not connect to backend. Please ensure your backend is deployed and NEXT_PUBLIC_API_URL is configured.")
       }
       throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
     }
@@ -175,7 +160,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       } else if (response.status === 404 || response.status === 502 || response.status === 503) {
         const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
         if (isVercel) {
-          errorMessage = "Backend service is not connected to this Vercel site. Please enter your Render backend URL below."
+          errorMessage = "Backend service is not connected. Please ensure your backend is deployed and NEXT_PUBLIC_API_URL is configured in Vercel."
         } else {
           errorMessage = `Backend service unavailable (${response.status}). Check backend status.`
         }
