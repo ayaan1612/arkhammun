@@ -117,17 +117,35 @@ export class EntryPassApiError extends Error {
   }
 }
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/+$/, "")
+function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
+  }
+  if (typeof window !== "undefined") {
+    return ""
+  }
+  return "http://localhost:3001"
+}
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   let response: Response
+  const primaryUrl = `${getApiBaseUrl()}${endpoint}`
   try {
-    response = await fetch(`${API_BASE_URL}${endpoint}`, options)
+    response = await fetch(primaryUrl, options)
   } catch {
-    throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
+    const fallbackUrl = `http://localhost:3001${endpoint}`
+    if (primaryUrl !== fallbackUrl) {
+      try {
+        response = await fetch(fallbackUrl, options)
+      } catch {
+        throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
+      }
+    } else {
+      throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
+    }
   }
 
-  const body = await response.json().catch(() => ({})) as Record<string, unknown>
+  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>
   if (!response.ok) {
     throw new EntryPassApiError(typeof body.error === "string" ? body.error : "The request could not be completed.", response.status, body)
   }
@@ -155,7 +173,8 @@ export const entryPassApi = {
   },
 
   paymentQrUrl(url: string) {
-    return `${API_BASE_URL}${url}`
+    const base = getApiBaseUrl()
+    return base ? `${base}${url}` : url
   },
 
   submitPaymentProof(id: string, utr: string, screenshot?: File) {
@@ -287,10 +306,16 @@ export const entryPassApi = {
 
   async getScreenshot(url: string, adminKey: string) {
     let response: Response
+    const primaryUrl = `${getApiBaseUrl()}${url}`
     try {
-      response = await fetch(`${API_BASE_URL}${url}`, { headers: adminHeaders(adminKey) })
+      response = await fetch(primaryUrl, { headers: adminHeaders(adminKey) })
     } catch {
-      throw new Error("Could not reach the entry service while loading the payment screenshot.")
+      const fallbackUrl = `http://localhost:3001${url}`
+      try {
+        response = await fetch(fallbackUrl, { headers: adminHeaders(adminKey) })
+      } catch {
+        throw new Error("Could not reach the entry service while loading the payment screenshot.")
+      }
     }
     if (!response.ok) {
       const body = await response.json().catch(() => ({})) as { error?: string }

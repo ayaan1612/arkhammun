@@ -181,13 +181,35 @@ const statements = {
 app.disable("x-powered-by");
 app.use((request, response, next) => {
   const origin = request.get("origin");
-  if (origin && frontendOrigins.has(origin)) {
+  const isAllowedOrigin = Boolean(
+    origin && (
+      frontendOrigins.has(origin) ||
+      process.env.NODE_ENV !== "production" ||
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.startsWith("http://192.168.") ||
+      origin.startsWith("http://10.") ||
+      origin.startsWith("http://172.")
+    )
+  );
+
+  if (isAllowedOrigin) {
     response.set("Access-Control-Allow-Origin", origin);
     response.set("Vary", "Origin");
     response.set("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
     response.set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
   }
-  if (request.method === "OPTIONS") return response.sendStatus(204);
+
+  if (request.method === "OPTIONS") {
+    if (isAllowedOrigin) return response.sendStatus(204);
+    if (process.env.NODE_ENV !== "production") {
+      response.set("Access-Control-Allow-Origin", origin || "*");
+      response.set("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
+      response.set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
+      return response.sendStatus(204);
+    }
+    return response.sendStatus(204);
+  }
   next();
 });
 app.use(express.json({ limit: "32kb" }));
