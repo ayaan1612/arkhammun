@@ -1,9 +1,11 @@
 export const arkham = {
   name: 'Arkham MUN',
   dates: '24–25 October',
-  location: 'Delhi, India',
+  location: 'Central Delhi, India',
   deadline: '1 October',
-  fees: { school: '₹2,000', individual: '₹2,200' },
+  fees: { school: '₹2,300', individual: '₹2,500' },
+  paymentUpi: '9718884945@ptsbi',
+  venueNote: 'In Central Delhi',
   logo: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg',
   email: 'hello@arkhammun.org',
   phone: '9810110713',
@@ -14,6 +16,7 @@ export const arkham = {
     { acronym: 'UNHRC', level: 'Advanced', agenda: 'Deliberating on safeguarding Political Leaders under International Human Rights Law' },
     { acronym: 'UNGA', level: 'General Assembly', agenda: 'Strengthening Nuclear Weapon-Free Zones with focus on the Middle East & South Asia' },
     { acronym: 'UNCSW', level: 'Specialized', agenda: "Advancing women's protection, leadership & rights in conflict zones with special emphasis on the Russia-Ukraine war" },
+    { acronym: 'IPL', level: 'Specialized', agenda: 'Mega Auction' },
     { acronym: 'IP', level: 'International Press', agenda: 'Journalists, Caricaturists & Photographers to cover conference proceedings' },
   ],
   schedule: [
