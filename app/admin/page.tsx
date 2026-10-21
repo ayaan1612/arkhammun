@@ -87,6 +87,10 @@ export default function AdminPage() {
   const animationRef = useRef<number | null>(null)
   const scanBusyRef = useRef(false)
   const previousPayloadRef = useRef<string | null>(null)
+  const scannedRegistrationRef = useRef<ScannedRegistration | null>(null)
+  useEffect(() => {
+    scannedRegistrationRef.current = scannedRegistration
+  }, [scannedRegistration])
 
   // General state
   const [loading, setLoading] = useState(false)
@@ -493,7 +497,7 @@ export default function AdminPage() {
       const video = videoRef.current
       const canvas = canvasRef.current
       if (!active || !video || !canvas || !localStream) return
-      if (!scanBusyRef.current && video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+      if (!scannedRegistrationRef.current && !scanBusyRef.current && video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
         canvas.width = video.videoWidth
         canvas.height = video.videoHeight
         const context = canvas.getContext("2d", { willReadFrequently: true })
@@ -1116,155 +1120,237 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className={styles.scannerGrid}>
-            <div>
-              <div className={styles.videoFrame}>
-                <video ref={videoRef} playsInline muted />
-                <canvas ref={canvasRef} className={styles.hiddenCanvas} />
-                {!cameraOn && (
-                  <div className={styles.cameraPlaceholder}>
-                    <Camera size={34} />
-                    <span>Camera is currently stopped</span>
-                  </div>
-                )}
-                {cameraOn && <div className={styles.scanFrame} />}
-              </div>
-
-              <div className={styles.actions} style={{ marginTop: 14 }}>
-                <button
-                  className={styles.primaryButton}
-                  type="button"
-                  onClick={() => setCameraOn(!cameraOn)}
-                >
-                  <Camera size={14} />
-                  {cameraOn ? "Turn Camera Off" : "Start Entrance Camera"}
-                </button>
-              </div>
-
-              {/* Manual code input */}
-              <div className={styles.manualVerifyCard} style={{ marginTop: 20 }}>
-                <h3>Manual Code Verification</h3>
-                <p>If the camera cannot read a damaged screen, paste the signed QR payload or registration ID below:</p>
-                <form className={styles.manualForm} onSubmit={handleManualVerify}>
-                  <input
-                    type="text"
-                    placeholder="Enter payload string or Registration ID"
-                    value={manualPayload}
-                    onChange={(e) => setManualPayload(e.target.value)}
-                  />
-                  <button className={styles.secondaryButton} type="submit" disabled={manualBusy}>
-                    {manualBusy ? <LoaderCircle className={styles.spinner} size={14} /> : <Search size={14} />}
-                    Inspect Pass
-                  </button>
-                </form>
-              </div>
-            </div>
-
-            <div className={styles.scanControls}>
-              <div className={`${styles.scanResult} ${styles[scanState.type]}`}>
-                {scanState.message}
-              </div>
-
-              {scannedRegistration ? (
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 18, marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 12 }}>
-                    <div>
-                      <h3 style={{ margin: "0 0 4px 0", fontSize: "1.2rem", color: "#ffffff", fontWeight: 700 }}>{scannedRegistration.name}</h3>
-                      <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
-                        Committee: <strong style={{ color: "#ffffff" }}>{scannedRegistration.committee || "Unassigned"}</strong> · ID: <code>{scannedRegistration.id}</code>
-                      </span>
+          {/* CAMERA & SCANNER VIEW: Visible when NO pass is currently being reviewed */}
+          <div style={{ display: scannedRegistration ? "none" : "block" }}>
+            <div className={styles.scannerGrid}>
+              <div>
+                <div className={styles.videoFrame}>
+                  <video ref={videoRef} playsInline muted />
+                  <canvas ref={canvasRef} className={styles.hiddenCanvas} />
+                  {!cameraOn && (
+                    <div className={styles.cameraPlaceholder}>
+                      <Camera size={34} />
+                      <span>Camera is currently stopped</span>
                     </div>
-
-                    <span style={{
-                      padding: "4px 10px",
-                      borderRadius: 9999,
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      background: scannedRegistration.checkedInAt ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.2)",
-                      border: scannedRegistration.checkedInAt ? "1px solid rgba(239, 68, 68, 0.6)" : "1px solid rgba(34, 197, 94, 0.6)",
-                      color: scannedRegistration.checkedInAt ? "#f87171" : "#4ade80",
-                    }}>
-                      {scannedRegistration.checkedInAt ? "Already Checked In" : "Ready For Entry"}
-                    </span>
-                  </div>
-
-                  {/* Whole Info Grid */}
-                  <dl className={styles.scanDetails} style={{ background: "rgba(0,0,0,0.3)", borderRadius: 8, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-                    <div><dt>Delegate Full Name</dt><dd><strong>{scannedRegistration.name}</strong></dd></div>
-                    <div><dt>Allotted Committee</dt><dd><strong>{scannedRegistration.committee || "None"}</strong></dd></div>
-                    <div><dt>School / Organization</dt><dd>{scannedRegistration.organization || "Independent"}</dd></div>
-                    <div><dt>Email Address</dt><dd>{scannedRegistration.email}</dd></div>
-                    <div><dt>Contact Phone</dt><dd>{scannedRegistration.phone || "Not provided"}</dd></div>
-                    <div><dt>Payment UTR</dt><dd><code>{scannedRegistration.utr || "Verified"}</code></dd></div>
-                    <div><dt>Amount Paid</dt><dd>₹{scannedRegistration.amount || 2300} (Payment Approved)</dd></div>
-                    <div><dt>Conference Venue</dt><dd>{scannedRegistration.event.venue}</dd></div>
-                    <div><dt>Check-in Status</dt><dd>{scannedRegistration.checkedInAt ? `Admitted at ${new Date(scannedRegistration.checkedInAt).toLocaleTimeString()}` : "Pending Gate Admission"}</dd></div>
-                  </dl>
-
-                  {/* ENTRY BUTTON AT BOTTOM LAST TO INFO PAGE */}
-                  <div style={{ marginTop: 12, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      style={{ padding: "10px 16px" }}
-                      onClick={() => {
-                        setScannedRegistration(null)
-                        setScannedPayload("")
-                        setScanState({ type: "idle", message: "Scanner ready. Point camera at delegate pass or enter code." })
-                      }}
-                    >
-                      Scan Next Delegate
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={Boolean(scannedRegistration.checkedInAt) || admitting}
-                      style={{
-                        padding: "12px 28px",
-                        fontSize: "0.95rem",
-                        fontWeight: 700,
-                        borderRadius: 8,
-                        border: "1px solid",
-                        cursor: scannedRegistration.checkedInAt ? "not-allowed" : "pointer",
-                        background: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.06)" : "#16a34a",
-                        borderColor: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.14)" : "#22c55e",
-                        color: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.4)" : "#ffffff",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        boxShadow: scannedRegistration.checkedInAt ? "none" : "0 4px 16px rgba(34, 197, 94, 0.4)",
-                        transition: "all 0.15s ease",
-                      }}
-                      onClick={() => handleConfirmEntry(scannedPayload || scannedRegistration.id)}
-                    >
-                      {admitting ? (
-                        <>
-                          <LoaderCircle className={styles.spinner} size={16} /> Admitting...
-                        </>
-                      ) : scannedRegistration.checkedInAt ? (
-                        <>
-                          <Check size={16} /> Already Admitted
-                        </>
-                      ) : (
-                        <>
-                          <Check size={18} /> Confirm Venue Entry (Admit)
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  )}
+                  {cameraOn && <div className={styles.scanFrame} />}
                 </div>
-              ) : (
-                <div style={{ padding: "36px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.1)", marginTop: 12 }}>
-                  <Camera size={36} style={{ margin: "0 auto 10px", opacity: 0.3 }} />
-                  <p style={{ margin: 0, fontSize: "0.85rem" }}>
-                    Scan a delegate's QR pass with the camera or verify manually above to inspect whole info and confirm gate entry.
+
+                <div className={styles.actions} style={{ marginTop: 14 }}>
+                  <button
+                    className={styles.primaryButton}
+                    type="button"
+                    onClick={() => setCameraOn(!cameraOn)}
+                  >
+                    <Camera size={14} />
+                    {cameraOn ? "Turn Camera Off" : "Start Entrance Camera"}
+                  </button>
+                </div>
+
+                {/* Manual code input */}
+                <div className={styles.manualVerifyCard} style={{ marginTop: 20 }}>
+                  <h3>Manual Code Verification</h3>
+                  <p>If the camera cannot read a damaged screen, paste the signed QR payload or registration ID below:</p>
+                  <form className={styles.manualForm} onSubmit={handleManualVerify}>
+                    <input
+                      type="text"
+                      placeholder="Enter payload string or Registration ID"
+                      value={manualPayload}
+                      onChange={(e) => setManualPayload(e.target.value)}
+                    />
+                    <button className={styles.secondaryButton} type="submit" disabled={manualBusy}>
+                      {manualBusy ? <LoaderCircle className={styles.spinner} size={14} /> : <Search size={14} />}
+                      Inspect Pass
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              <div className={styles.scanControls}>
+                <div className={`${styles.scanResult} ${styles[scanState.type]}`}>
+                  {scanState.message}
+                </div>
+
+                <div style={{ padding: "40px 24px", textAlign: "center", color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.1)", marginTop: 14 }}>
+                  <Camera size={40} style={{ margin: "0 auto 12px", opacity: 0.35 }} />
+                  <h4 style={{ color: "#ffffff", margin: "0 0 6px 0", fontSize: "1rem" }}>Gate Scanner Active</h4>
+                  <p style={{ margin: 0, fontSize: "0.85rem", maxWidth: 320, marginLeft: "auto", marginRight: "auto" }}>
+                    Hold the delegate's Entry QR Pass in front of the camera. When recognized, the whole info page will open automatically.
                   </p>
                 </div>
-              )}
+              </div>
             </div>
           </div>
+
+          {/* WHOLE-PAGE FULLSCREEN DELEGATE DOSSIER: Hides camera & all others */}
+          {scannedRegistration && (
+            <div style={{
+              background: "linear-gradient(180deg, #121020 0%, #0a0914 100%)",
+              border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 16,
+              padding: "24px 28px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 20
+            }}>
+              {/* Top Bar inside Full Info */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 18 }}>
+                <div>
+                  <span style={{ fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "#e3262e", fontWeight: 700, display: "block", marginBottom: 4 }}>
+                    VERIFIED DELEGATE DOSSIER
+                  </span>
+                  <h2 style={{ margin: 0, fontSize: "1.8rem", color: "#ffffff", fontWeight: 800 }}>{scannedRegistration.name}</h2>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                    <span style={{ background: "rgba(227,38,46,0.18)", border: "1px solid rgba(227,38,46,0.5)", color: "#ff8289", padding: "2px 10px", borderRadius: 9999, fontSize: "0.78rem", fontWeight: 700 }}>
+                      {scannedRegistration.committee || "Committee Unassigned"}
+                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.82rem" }}>
+                      ID: <code>{scannedRegistration.id}</code>
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{
+                  padding: "8px 16px",
+                  borderRadius: 9999,
+                  fontSize: "0.82rem",
+                  fontWeight: 800,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: scannedRegistration.checkedInAt ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.2)",
+                  border: scannedRegistration.checkedInAt ? "1px solid rgba(239, 68, 68, 0.6)" : "1px solid rgba(34, 197, 94, 0.6)",
+                  color: scannedRegistration.checkedInAt ? "#f87171" : "#4ade80",
+                }}>
+                  {scannedRegistration.checkedInAt ? (
+                    <>
+                      <CircleAlert size={16} /> Already Checked In ({new Date(scannedRegistration.checkedInAt).toLocaleTimeString()})
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} /> Pass Verified · Ready For Gate Entry
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Full Details Grid */}
+              <dl style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 16,
+                margin: 0,
+                background: "rgba(0,0,0,0.35)",
+                padding: "20px 22px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.06)"
+              }}>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Full Name</dt>
+                  <dd style={{ margin: 0, fontSize: "1rem", color: "#ffffff", fontWeight: 600 }}>{scannedRegistration.name}</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Committee Allotted</dt>
+                  <dd style={{ margin: 0, fontSize: "1rem", color: "#ffffff", fontWeight: 600 }}>{scannedRegistration.committee || "Not Assigned"}</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>School / Organization</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: "#e2e8f0" }}>{scannedRegistration.organization || "Independent Delegate"}</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Email Address</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: "#e2e8f0", wordBreak: "break-all" }}>{scannedRegistration.email}</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Phone Number</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: "#e2e8f0" }}>{scannedRegistration.phone || "Not provided"}</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Transaction UTR</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: "#e2e8f0" }}><code>{scannedRegistration.utr || "Verified"}</code></dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Amount Paid</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: "#4ade80", fontWeight: 700 }}>₹{scannedRegistration.amount || 2300} (Payment Approved)</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Conference Venue</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: "#e2e8f0" }}>{scannedRegistration.event.venue} ({scannedRegistration.event.date})</dd>
+                </div>
+                <div>
+                  <dt style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>Gate Check-in State</dt>
+                  <dd style={{ margin: 0, fontSize: "0.95rem", color: scannedRegistration.checkedInAt ? "#f87171" : "#e2e8f0" }}>
+                    {scannedRegistration.checkedInAt ? `Admitted at ${new Date(scannedRegistration.checkedInAt).toLocaleTimeString()}` : "Awaiting Gate Entry Confirmation"}
+                  </dd>
+                </div>
+              </dl>
+
+              {/* ENTRY BUTTON AT BOTTOM LAST TO INFO PAGE */}
+              <div style={{
+                marginTop: 10,
+                paddingTop: 20,
+                borderTop: "1px solid rgba(255,255,255,0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 16
+              }}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  style={{ padding: "14px 22px", fontSize: "0.9rem" }}
+                  onClick={() => {
+                    setScannedRegistration(null)
+                    setScannedPayload("")
+                    previousPayloadRef.current = null
+                    setScanState({ type: "idle", message: "Scanner ready. Point camera at delegate pass or enter code." })
+                  }}
+                >
+                  ← Cancel & Back to Camera
+                </button>
+
+                <button
+                  type="button"
+                  disabled={Boolean(scannedRegistration.checkedInAt) || admitting}
+                  style={{
+                    padding: "16px 40px",
+                    fontSize: "1.05rem",
+                    fontWeight: 800,
+                    borderRadius: 10,
+                    border: "1px solid",
+                    cursor: scannedRegistration.checkedInAt ? "not-allowed" : "pointer",
+                    background: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.06)" : "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+                    borderColor: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.15)" : "#22c55e",
+                    color: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.4)" : "#ffffff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
+                    boxShadow: scannedRegistration.checkedInAt ? "none" : "0 8px 25px rgba(34, 197, 94, 0.45)",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={() => handleConfirmEntry(scannedPayload || scannedRegistration.id)}
+                >
+                  {admitting ? (
+                    <>
+                      <LoaderCircle className={styles.spinner} size={20} /> Admitting Delegate...
+                    </>
+                  ) : scannedRegistration.checkedInAt ? (
+                    <>
+                      <Check size={20} /> Already Admitted
+                    </>
+                  ) : (
+                    <>
+                      <Check size={22} /> Confirm Venue Entry (Admit)
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
