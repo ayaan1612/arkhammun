@@ -38,6 +38,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
   const [publicEvent, setPublicEvent] = useState<PublicEvent>(DEFAULT_EVENT)
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [rejectReason, setRejectReason] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
@@ -50,6 +51,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
         const result = await entryPassApi.getRegistration(registration.id)
         if (!active) return
         setStatus(result.status)
+        if (result.reject_reason) setRejectReason(result.reject_reason)
         if (result.status === "approved") setEntryQr(await entryPassApi.getEntryQr(registration.id))
       } catch (requestError) {
         if (active) setError(requestError instanceof Error ? requestError.message : "Unable to refresh registration status.")
@@ -249,7 +251,13 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
               {status === "approved" && <button type="button" className={styles.refreshButton} onClick={startAgain}>Register another delegate</button>}
               {status === "payment_submitted" && <button type="button" className={styles.refreshButton} disabled={busy} onClick={refreshStatus}>{busy ? "Refreshing…" : "Refresh status"}</button>}
             </div>}
-            {status === "rejected" && <p className={styles.rejectedNote}>The previous proof was not approved. Submit the corrected UTR or screenshot above; the event team will review it again.</p>}
+            {status === "rejected" && (
+              <div className={styles.rejectedNote} style={{ borderLeft: "3px solid #ef4444", padding: "10px 14px", background: "rgba(239, 68, 68, 0.1)" }}>
+                <strong style={{ display: "block", color: "#f87171", marginBottom: 3 }}>Secretariat Rejection Reason:</strong>
+                <p style={{ margin: 0, color: "#fca5a5" }}>{rejectReason || "Payment reference or proof could not be verified by Secretariat."}</p>
+                <p style={{ margin: "6px 0 0 0", fontSize: "0.8rem", color: "rgba(255,255,255,0.7)" }}>Submit corrected UTR or screenshot above; the event team will review it again.</p>
+              </div>
+            )}
             {notice && <p className={styles.notice} role="status">{notice}</p>}
             {status === "rejected" && <button className={styles.textButton} type="button" onClick={startAgain}>Start a new registration instead</button>}
           </>

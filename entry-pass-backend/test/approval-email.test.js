@@ -373,7 +373,7 @@ test("6. Retry endpoint enforces authentication, status validation, and duplicat
   assert.equal(sentMails.length, 2, "Explicit forced resend must send email");
 });
 
-test("7. Rejection flow never triggers email and rejected registrations cannot receive emails", async () => {
+test("7. Rejection flow sends notification email with reason and rejected registrations cannot receive pass retry emails", async () => {
   const reg = createSubmittedRegistration({ name: "Edward Nigma", email: "riddler@arkham.org" });
 
   const sentMails = [];
@@ -393,7 +393,9 @@ test("7. Rejection flow never triggers email and rejected registrations cannot r
 
   assert.equal(rejRes.status, 200);
   assert.equal(rejRes.body.status, "rejected");
-  assert.equal(sentMails.length, 0, "No email must be sent on rejection");
+  assert.equal(sentMails.length, 1, "Rejection email must be sent when SMTP is configured");
+  assert.match(sentMails[0].text, /Invalid UTR reference number/);
+  assert.equal(sentMails[0].to, "riddler@arkham.org");
 
   // Attempting to call retry-email on a rejected registration must fail with 409
   const retryRej = await apiRequest(`/api/admin/registrations/${reg.id}/retry-email`, {
@@ -401,7 +403,7 @@ test("7. Rejection flow never triggers email and rejected registrations cannot r
     headers: { "x-admin-key": process.env.ADMIN_KEY },
   });
   assert.equal(retryRej.status, 409);
-  assert.equal(sentMails.length, 0);
+  assert.equal(sentMails.length, 1);
 });
 
 test("8. Admin can update amount, UPI ID, and toggle registration open/closed", async () => {
@@ -509,4 +511,17 @@ test("9. User can submit contact inquiry and admin can view and reply via email"
   assert.equal(sentReplies[0].to, "barbara@gotham-pd.gov");
   assert.match(sentReplies[0].subject, /Re: \[Arkham MUN Enquiry\] Committee Allotment Query/);
   assert.match(sentReplies[0].text, /UNODC has remaining delegate seats/);
+});
+
+test("10. Notifications lookup returns delegate passes, rejection reasons, inquiry replies, and event info", async () => {
+  // Test lookup endpoint with a registered email
+  const lookupRes = await apiRequest("/api/notifications/lookup?query=riddler@arkham.org");
+  assert.equal(lookupRes.status, 200);
+  assert.ok(Array.isArray(lookupRes.body.registrations));
+  assert.ok(Array.isArray(lookupRes.body.queries));
+  assert.ok(lookupRes.body.event);
+  assert.ok(lookupRes.body.announcements);
+  assert.equal(lookupRes.body.registrations[0].email, "riddler@arkham.org");
+  assert.equal(lookupRes.body.registrations[0].status, "rejected");
+  assert.equal(lookupRes.body.registrations[0].reject_reason, "Invalid UTR reference number");
 });

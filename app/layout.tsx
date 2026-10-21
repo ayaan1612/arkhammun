@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { GlobalMouseAura } from '@/components/global-mouse-aura'
+import { NotificationSystem } from '@/components/notification-center'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -38,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
+        <NotificationSystem />
         <GlobalMouseAura>{children}</GlobalMouseAura>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

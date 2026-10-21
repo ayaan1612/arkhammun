@@ -368,7 +368,17 @@ app.post("/api/registrations", (request, response) => {
 app.get("/api/registrations/:id", (request, response) => {
   const registration = statements.byId.get(request.params.id);
   if (!registration) return response.status(404).json({ error: "Registration not found" });
-  response.json({ id: registration.id, amount: registration.amount, status: registration.status });
+  response.json({
+    id: registration.id,
+    name: registration.name,
+    amount: registration.amount,
+    status: registration.status,
+    committee: registration.committee || "",
+    organization: registration.organization || "",
+    reject_reason: registration.reject_reason || null,
+    hasQr: Boolean(registration.status === "approved" && registration.entry_payload),
+    event: getEventDetails(),
+  });
 });
 
 app.post("/api/registrations/:id/payment-proof", (request, response, next) => {
@@ -716,7 +726,7 @@ app.post("/api/admin/registrations/:id/retry-email", async (request, response, n
   }
 });
 
-app.post("/api/admin/registrations/:id/reject", (request, response) => {
+app.post("/api/admin/registrations/:id/reject", async (request, response) => {
   const reason = typeof request.body?.reason === "string" ? request.body.reason.trim() : "";
   if (!reason || reason.length > 500) return response.status(400).json({ error: "A rejection reason is required (maximum 500 characters)" });
   const result = statements.reject.run(reason, request.params.id);
@@ -724,7 +734,80 @@ app.post("/api/admin/registrations/:id/reject", (request, response) => {
     const registration = statements.byId.get(request.params.id);
     return response.status(registration ? 409 : 404).json({ error: registration ? "Only submitted payments can be rejected" : "Registration not found" });
   }
-  response.json({ id: request.params.id, status: "rejected" });
+
+  const registration = statements.byId.get(request.params.id);
+  let emailResult = { status: "not_configured" };
+  if (mailer.isSmtpConfigured() && registration) {
+    try {
+      await mailer.sendRejectionMail({
+        registration,
+        event: getEventDetails(),
+        reason,
+      });
+      emailResult = { status: "sent" };
+    } catch (e) {
+      emailResult = { status: "failed", error: mailer.sanitizeEmailError(e) };
+    }
+  }
+
+  response.json({ id: request.params.id, status: "rejected", email: emailResult });
+});
+
+
+app.get("/api/notifications/lookup", (request, response) => {
+  const rawQuery = typeof request.query.query === "string" ? request.query.query.trim() : "";
+  const query = rawQuery.toLowerCase();
+  const settings = statements.eventSettings.get();
+  const event = getEventDetails();
+
+  let registrations = [];
+  let queries = [];
+
+  if (query) {
+    registrations = database.prepare(`
+      SELECT id, name, email, phone, organization, committee, amount, status, utr, reject_reason, entry_payload, created_at
+      FROM registrations
+      WHERE LOWER(email) = ? OR LOWER(id) = ?
+      ORDER BY created_at DESC
+    `).all(query, query).map((reg) => ({
+      id: reg.id,
+      name: reg.name,
+      email: reg.email,
+      phone: reg.phone,
+      organization: reg.organization,
+      committee: reg.committee,
+      amount: reg.amount,
+      status: reg.status,
+      utr: reg.utr,
+      reject_reason: reg.reject_reason || null,
+      hasQr: Boolean(reg.status === "approved" && reg.entry_payload),
+      created_at: reg.created_at,
+      event,
+    }));
+
+    queries = database.prepare(`
+      SELECT id, name, email, subject, message, status, reply_message, replied_at, created_at
+      FROM contact_queries
+      WHERE LOWER(email) = ?
+      ORDER BY created_at DESC
+    `).all(query);
+  }
+
+  response.json({
+    query: rawQuery,
+    registrations,
+    queries,
+    event,
+    announcements: {
+      registrationOpen: Boolean(settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1),
+      registrationNotice: settings.registration_notice || "",
+      conferenceDates: event.date || "24–25 October 2026",
+      conferenceVenue: event.venue || "Central Delhi, India",
+      conferenceTimings: event.time || "9:00 AM – 5:00 PM",
+      conferenceName: event.name || "Arkham MUN",
+      countdownTarget: "2026-10-24T09:00:00+05:30",
+    },
+  });
 });
 
 app.get("/api/admin/queries", (request, response) => {

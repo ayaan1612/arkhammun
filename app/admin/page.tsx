@@ -8,6 +8,8 @@ import {
   Check,
   CircleAlert,
   Clock3,
+  Eye,
+  Image as ImageIcon,
   Layers,
   LoaderCircle,
   LogOut,
@@ -123,7 +125,12 @@ export default function AdminPage() {
           approved: approvedRes.registrations.length,
           rejected: rejectedRes.registrations.length,
         })
-        setAllApprovedRegistrations(approvedRes.registrations)
+        setAllApprovedRegistrations((prev) =>
+          approvedRes.registrations.map((newReg) => {
+            const existing = prev.find((p) => p.id === newReg.id)
+            return existing?.screenshotBlobUrl ? { ...newReg, screenshotBlobUrl: existing.screenshotBlobUrl } : newReg
+          })
+        )
         setQueries(queriesRes.queries)
       } catch {
         // Silently retry on next interval
@@ -153,7 +160,21 @@ export default function AdminPage() {
         rejected: rejectedRes.registrations.length,
       })
 
-      setAllApprovedRegistrations(approvedRes.registrations)
+      const approvedWithBlobs = await Promise.all(
+        approvedRes.registrations.map(async (reg) => {
+          if (!reg.screenshot_url) return reg
+          try {
+            const blob = await entryPassApi.getScreenshot(reg.screenshot_url, key)
+            return { ...reg, screenshotBlobUrl: URL.createObjectURL(blob) }
+          } catch {
+            return reg
+          }
+        })
+      )
+      allApprovedRegistrations.forEach((reg) => {
+        if (reg.screenshotBlobUrl) URL.revokeObjectURL(reg.screenshotBlobUrl)
+      })
+      setAllApprovedRegistrations(approvedWithBlobs)
       setQueries(queriesRes.queries)
 
       const targetList = filter === "payment_submitted" ? submittedRes.registrations : filter === "approved" ? approvedRes.registrations : rejectedRes.registrations
@@ -956,6 +977,60 @@ export default function AdminPage() {
                       <div><dt>School / Organization</dt><dd>{reg.organization || "Not provided"}</dd></div>
                       <div><dt>Payment UTR</dt><dd><code>{reg.utr || "Verified"}</code></dd></div>
                     </dl>
+
+                    {/* Submitted Payment Screenshot Proof */}
+                    <div className={styles.approvedProofBlock} style={{ marginTop: 14, marginBottom: 14, padding: "12px 14px", background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        {reg.screenshotBlobUrl ? (
+                          <img
+                            src={reg.screenshotBlobUrl}
+                            alt={`Payment proof for ${reg.name}`}
+                            className={styles.proofImage}
+                            onClick={() => setScreenshotModalUrl(reg.screenshotBlobUrl || null)}
+                            style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 8, border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer", margin: 0 }}
+                            title="Click to view full screenshot"
+                          />
+                        ) : (
+                          <div style={{ width: 52, height: 52, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", border: "1px dashed rgba(255,255,255,0.2)" }}>
+                            <ImageIcon size={22} style={{ opacity: 0.6 }} />
+                          </div>
+                        )}
+                        <div>
+                          <strong style={{ display: "block", fontSize: "0.86rem", color: "#f3f4f6" }}>Payment Screenshot Proof</strong>
+                          <span style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.55)" }}>
+                            {reg.screenshot_url ? "Click thumbnail or button to inspect payment proof" : "No screenshot attached by delegate"}
+                          </span>
+                        </div>
+                      </div>
+                      {reg.screenshot_url && (
+                        <button
+                          type="button"
+                          className={styles.retryButton}
+                          style={{ padding: "8px 14px", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: 6 }}
+                          onClick={async () => {
+                            if (reg.screenshotBlobUrl) {
+                              setScreenshotModalUrl(reg.screenshotBlobUrl)
+                            } else {
+                              try {
+                                if (!reg.screenshot_url) return;
+                                const blob = await entryPassApi.getScreenshot(reg.screenshot_url, adminKey)
+                                const url = URL.createObjectURL(blob)
+                                setAllApprovedRegistrations((prev) =>
+                                  prev.map((item) => (item.id === reg.id ? { ...item, screenshotBlobUrl: url } : item))
+                                )
+                                setScreenshotModalUrl(url)
+                              } catch {
+                                alert("Unable to load payment screenshot.")
+                              }
+                            }
+                          }}
+                        >
+                          <Eye size={13} />
+                          View Screenshot
+                        </button>
+                      )}
+                    </div>
+
 
                     <div className={styles.emailBlock}>
                       <div className={styles.emailInfo}>

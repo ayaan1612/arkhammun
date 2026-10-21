@@ -35,6 +35,11 @@ export type RegistrationStatusResponse = {
   id: string
   amount: number
   status: RegistrationStatus
+  reject_reason?: string | null
+  committee?: string | null
+  organization?: string | null
+  hasQr?: boolean
+  event?: EventDetails
 }
 
 export type EntryQrResponse = {
@@ -86,6 +91,41 @@ export type ContactQuery = {
   replied_at: string | null
   created_at: string
 }
+
+export type NotificationAnnouncement = {
+  registrationOpen: boolean
+  registrationNotice: string
+  conferenceDates: string
+  conferenceVenue: string
+  conferenceTimings: string
+  conferenceName: string
+  countdownTarget: string
+}
+
+export type NotificationRegistration = {
+  id: string
+  name: string
+  email: string
+  phone: string
+  organization: string
+  committee: string
+  amount: number
+  status: RegistrationStatus
+  utr: string | null
+  reject_reason: string | null
+  hasQr: boolean
+  created_at: string
+  event: EventDetails
+}
+
+export type NotificationsLookupResponse = {
+  query: string
+  registrations: NotificationRegistration[]
+  queries: ContactQuery[]
+  event: EventDetails
+  announcements: NotificationAnnouncement
+}
+
 
 export type EntryVerification =
   | { valid: true; registration: ScannedRegistration }
@@ -324,6 +364,11 @@ export const entryPassApi = {
       body: JSON.stringify({ payload }),
     })
   },
+
+  lookupNotifications(query: string) {
+    return request<NotificationsLookupResponse>(`/api/notifications/lookup?query=${encodeURIComponent(query)}`)
+  },
+
 
   async getScreenshot(url: string, adminKey: string) {
     let response: Response

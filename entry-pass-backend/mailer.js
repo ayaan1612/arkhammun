@@ -325,6 +325,114 @@ async function sendQueryReplyMail({ query, replyMessage, transporter }) {
   return info;
 }
 
+
+function buildRejectionEmailPayload({ registration, event, reason }) {
+  const fromAddress = (process.env.SMTP_FROM || "").trim() ||
+    (process.env.SMTP_USER ? `"Arkham MUN Secretariat" <${process.env.SMTP_USER.trim()}>` : '"Arkham MUN Secretariat" <no-reply@arkhammun.org>');
+  const toAddress = registration.email || registration.contact;
+  const subject = `Payment Verification Notice: ${event.name || "Arkham MUN"} (${registration.id})`;
+
+  const textBody = [
+    `Dear ${registration.name},`,
+    "",
+    `Thank you for registering for ${event.name || "Arkham MUN"}.`,
+    "",
+    "We reviewed your payment submission, but unfortunately your payment proof could not be approved at this time.",
+    "",
+    "--- REASON FOR REJECTION ---",
+    reason,
+    "",
+    "--- WHAT TO DO NEXT ---",
+    "1. Visit https://arkhammun.vercel.app/register or open the Notification Center on our website.",
+    "2. Enter your genuine 12-digit UPI transaction reference (UTR) and upload clear proof.",
+    "3. Once re-submitted, our Secretariat will review your payment promptly.",
+    "",
+    `Registration ID: ${registration.id}`,
+    registration.committee ? `Committee:       ${registration.committee}` : null,
+    registration.organization ? `School / Org:    ${registration.organization}` : null,
+    "",
+    "Warm regards,",
+    "Arkham MUN Secretariat",
+    "hello@arkhammun.org",
+  ].filter((line) => line !== null).join("\n");
+
+  const htmlBody = `<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>${escapeHtml(subject)}</title></head>
+<body style="margin:0;padding:0;background-color:#080812;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#efedf9;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#080812;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#12101b;border:1px solid #2a2538;border-radius:8px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+          <tr>
+            <td style="padding:28px 32px 20px;background:linear-gradient(180deg, #241419 0%, #12101b 100%);border-bottom:1px solid #382025;text-align:center;">
+              <span style="display:inline-block;color:#e3262e;font-size:11px;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:6px;">ARKHAM MODEL UNITED NATIONS</span>
+              <h1 style="margin:4px 0 0;font-size:22px;font-weight:600;color:#ffffff;">Payment Verification Notice</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px 20px;">
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#d5d1e2;">
+                Dear <strong>${escapeHtml(registration.name)}</strong>,
+              </p>
+              <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:#a8a3b8;">
+                We reviewed your payment submission for <strong>${escapeHtml(event.name || "Arkham MUN")}</strong>, but your payment reference could not be verified.
+              </p>
+              <div style="background-color:#210e12;border-left:3px solid #e3262e;padding:16px 20px;border-radius:4px;margin-bottom:24px;color:#ffc5c8;font-size:14px;line-height:1.7;">
+                <strong style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#ff8289;margin-bottom:6px;">Reason Provided by Secretariat:</strong>
+                ${escapeHtml(reason)}
+              </div>
+              
+              <div style="background-color:#0c0b17;border:1px solid #2a2538;border-radius:6px;padding:16px 18px;margin-bottom:24px;">
+                <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.12em;color:#8f8b9e;margin-bottom:10px;">How to Correct & Resubmit</span>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#d6d1e4;">
+                  1. Visit our portal at <a href="https://arkhammun.vercel.app/register" style="color:#ff8289;text-decoration:none;font-weight:600;">arkhammun.vercel.app/register</a>.
+                </p>
+                <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#d6d1e4;">
+                  2. Enter your genuine 12-digit UPI transaction reference (UTR) and upload clear payment proof.
+                </p>
+                <p style="margin:0;font-size:13px;line-height:1.6;color:#d6d1e4;">
+                  3. Our Secretariat will immediately re-review your payment upon submission.
+                </p>
+              </div>
+
+              <p style="margin:0;font-size:12px;color:#8f8b9e;">
+                Registration ID: <code style="color:#efedf9;">${escapeHtml(registration.id)}</code>
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 32px 24px;border-top:1px solid #231f31;text-align:center;font-size:11px;color:#6d687c;">
+              Arkham Model United Nations Secretariat · All rights reserved.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  return {
+    from: fromAddress,
+    to: toAddress,
+    subject,
+    text: textBody,
+    html: htmlBody,
+  };
+}
+
+async function sendRejectionMail({ registration, event, reason, transporter }) {
+  const mailTransporter = transporter || getTransporter();
+  if (!mailTransporter) {
+    throw new Error("SMTP server is not configured");
+  }
+
+  const mailOptions = buildRejectionEmailPayload({ registration, event, reason });
+  const info = await mailTransporter.sendMail(mailOptions);
+  return info;
+}
+
 module.exports = {
   isSmtpConfigured,
   setTestTransporter,
@@ -335,4 +443,6 @@ module.exports = {
   sendApprovalMail,
   buildQueryReplyPayload,
   sendQueryReplyMail,
+  buildRejectionEmailPayload,
+  sendRejectionMail,
 };

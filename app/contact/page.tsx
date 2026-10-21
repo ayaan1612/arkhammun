@@ -41,6 +41,11 @@ export default function ContactPage() {
       })
       setQueryId(res.id)
       setSent(true)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("arkham_delegate_email", email.toLowerCase())
+        localStorage.setItem("arkham_last_query_id", res.id)
+        window.dispatchEvent(new Event("arkham_notification_update"))
+      }
       form.reset()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to deliver your enquiry. Please check your connection.")
