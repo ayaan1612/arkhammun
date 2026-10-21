@@ -147,62 +147,7 @@ export function NotificationSystem() {
 
   return (
     <>
-      {/* 1. TOP NOTIFICATION & TICKER BAR */}
-      {!isBarDismissed && (
-        <aside className={styles.topBar} aria-label="Conference announcements and notifications">
-          <div className={styles.topBarInner}>
-            <div className={styles.tickerSection}>
-              <span className={styles.livePill}>
-                <span className={styles.liveDot} />
-                LIVE
-              </span>
-              <div className={styles.tickerText}>
-                <span>
-                  <strong>Arkham MUN 2026:</strong> {data?.announcements?.conferenceDates || "24–25 October 2026"}
-                </span>
-                <span className={styles.tickerSeparator}>·</span>
-                <span>
-                  <strong>Venue:</strong> {data?.announcements?.conferenceVenue || "Central Delhi, India"}
-                </span>
-                <span className={styles.tickerSeparator}>·</span>
-                <span>
-                  <strong>Countdown:</strong> {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
-                </span>
-                {data?.announcements?.registrationNotice && (
-                  <>
-                    <span className={styles.tickerSeparator}>·</span>
-                    <span style={{ color: "#fca5a5" }}>{data.announcements.registrationNotice}</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className={styles.topBarActions}>
-              <button
-                type="button"
-                className={styles.openDeskBtn}
-                onClick={() => setIsOpen(true)}
-                title="Open Delegate Notification & Pass Desk"
-              >
-                <Bell size={13} />
-                <span>Pass & Notification Desk</span>
-                {totalBadges > 0 && <span className={styles.badgeCount}>{totalBadges}</span>}
-              </button>
-              <button
-                type="button"
-                className={styles.closeBarBtn}
-                onClick={() => setIsBarDismissed(true)}
-                title="Dismiss notification bar"
-                aria-label="Dismiss notification bar"
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </div>
-        </aside>
-      )}
-
-      {/* 2. FLOATING BELL BADGE (Visible if bar is dismissed or on scroll) */}
+      {/* FLOATING BELL BADGE (Visible if bar is dismissed or on scroll) */}
       <button
         type="button"
         className={styles.floatingBell}

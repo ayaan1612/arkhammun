@@ -77,6 +77,8 @@ export default function AdminPage() {
   const [manualPayload, setManualPayload] = useState("")
   const [manualBusy, setManualBusy] = useState(false)
   const [scannedRegistration, setScannedRegistration] = useState<ScannedRegistration | null>(null)
+  const [scannedPayload, setScannedPayload] = useState("")
+  const [admitting, setAdmitting] = useState(false)
   const [cameraOn, setCameraOn] = useState(false)
   const [scanState, setScanState] = useState<ScanState>({ type: "idle", message: "Enter admin key to enable venue check-in." })
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -369,8 +371,9 @@ export default function AdminPage() {
     const input = rawInput.trim()
     if (!input) return
     scanBusyRef.current = true
-    setScanState({ type: "idle", message: "Verifying pass at gate…" })
+    setScanState({ type: "idle", message: "Inspecting pass at venue gate..." })
     setScannedRegistration(null)
+    setScannedPayload("")
 
     let payload = input
     try {
@@ -379,14 +382,22 @@ export default function AdminPage() {
         payload = pass.payload
       }
 
-      const result = await entryPassApi.verifyEntry(payload, adminKey)
+      // Step 1: Inspect pass without marking as used
+      const result = await entryPassApi.verifyEntry(payload, adminKey, false)
       if (result.valid) {
+        setScannedPayload(payload)
         setScannedRegistration(result.registration)
-        setScanState({ type: "valid", message: `VALID PASS · ${result.registration.name} · entry cleared` })
-        setNotice(`Delegate ${result.registration.name} checked in successfully.`)
-        // Refresh approved list
-        const approvedRes = await entryPassApi.getAdminRegistrations(adminKey, "approved")
-        setAllApprovedRegistrations(approvedRes.registrations)
+        if (result.alreadyUsed || result.registration.checkedInAt) {
+          setScanState({
+            type: "used",
+            message: `ALREADY ADMITTED · ${result.registration.name} was checked in earlier at ${new Date(result.registration.checkedInAt!).toLocaleTimeString()}.`,
+          })
+        } else {
+          setScanState({
+            type: "valid",
+            message: `PASS VALID · ${result.registration.name} · Review details below and click Confirm Venue Entry.`,
+          })
+        }
       } else {
         setScanState({ type: "invalid", message: "INVALID PASS · This is not a valid signed entry QR." })
       }
@@ -402,6 +413,36 @@ export default function AdminPage() {
       }
     } finally {
       scanBusyRef.current = false
+    }
+  }
+
+  async function handleConfirmEntry(payloadToAdmit: string) {
+    if (!payloadToAdmit) return
+    setAdmitting(true)
+    setError("")
+    try {
+      const res = await entryPassApi.verifyEntry(payloadToAdmit, adminKey, true)
+      if (res.valid) {
+        setScannedRegistration(res.registration)
+        const checkinTime = res.registration.checkedInAt || new Date().toISOString()
+        setScanState({
+          type: "valid",
+          message: `ENTRY CLEARED · ${res.registration.name} admitted at ${new Date(checkinTime).toLocaleTimeString()}!`,
+        })
+        setNotice(`Delegate ${res.registration.name} checked in successfully.`)
+        // Update allApprovedRegistrations so the Venue Checked-in bar updates immediately!
+        setAllApprovedRegistrations((prev) =>
+          prev.map((item) => (item.id === res.registration.id ? { ...item, used_at: checkinTime } : item))
+        )
+      }
+    } catch (err) {
+      if (err instanceof EntryPassApiError && err.status === 409) {
+        setScanState({ type: "used", message: `ALREADY ADMITTED · Pass was already checked in.` })
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to admit delegate.")
+      }
+    } finally {
+      setAdmitting(false)
     }
   }
 
@@ -1066,8 +1107,12 @@ export default function AdminPage() {
               <h2>Gate Access Scanner</h2>
               <p>Strictly authorized gate staff tool. Validates entry passes and enforces single-use admittance.</p>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span className={styles.subtle}>Checked in: <strong>{checkedInCount} / {totalApproved}</strong></span>
+            {/* VENUE CHECKED-IN BAR */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end", minWidth: 220 }}>
+              <span className={styles.subtle}>Venue Checked-in: <strong>{checkedInCount} / {totalApproved}</strong> ({totalApproved > 0 ? Math.round((checkedInCount / totalApproved) * 100) : 0}%)</span>
+              <div style={{ width: "100%", height: 8, borderRadius: 9999, background: "rgba(255,255,255,0.08)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)" }}>
+                <div style={{ width: `${totalApproved > 0 ? (checkedInCount / totalApproved) * 100 : 0}%`, height: "100%", background: "linear-gradient(90deg, #16a34a, #22c55e)", transition: "width 0.4s ease" }} />
+              </div>
             </div>
           </div>
 
@@ -1095,25 +1140,9 @@ export default function AdminPage() {
                   {cameraOn ? "Turn Camera Off" : "Start Entrance Camera"}
                 </button>
               </div>
-            </div>
-
-            <div className={styles.scanControls}>
-              <div className={`${styles.scanResult} ${styles[scanState.type]}`}>
-                {scanState.message}
-              </div>
-
-              {scannedRegistration && (
-                <dl className={styles.scanDetails}>
-                  <div><dt>Delegate</dt><dd><strong>{scannedRegistration.name}</strong></dd></div>
-                  <div><dt>Committee</dt><dd>{scannedRegistration.committee}</dd></div>
-                  <div><dt>School / Org</dt><dd>{scannedRegistration.organization}</dd></div>
-                  <div><dt>Payment UTR</dt><dd><code>{scannedRegistration.utr}</code></dd></div>
-                  <div><dt>Admitted At</dt><dd>{new Date(scannedRegistration.checkedInAt).toLocaleTimeString()}</dd></div>
-                </dl>
-              )}
 
               {/* Manual code input */}
-              <div className={styles.manualVerifyCard}>
+              <div className={styles.manualVerifyCard} style={{ marginTop: 20 }}>
                 <h3>Manual Code Verification</h3>
                 <p>If the camera cannot read a damaged screen, paste the signed QR payload or registration ID below:</p>
                 <form className={styles.manualForm} onSubmit={handleManualVerify}>
@@ -1124,11 +1153,116 @@ export default function AdminPage() {
                     onChange={(e) => setManualPayload(e.target.value)}
                   />
                   <button className={styles.secondaryButton} type="submit" disabled={manualBusy}>
-                    {manualBusy ? <LoaderCircle className={styles.spinner} size={14} /> : <Check size={14} />}
-                    Verify & Admit
+                    {manualBusy ? <LoaderCircle className={styles.spinner} size={14} /> : <Search size={14} />}
+                    Inspect Pass
                   </button>
                 </form>
               </div>
+            </div>
+
+            <div className={styles.scanControls}>
+              <div className={`${styles.scanResult} ${styles[scanState.type]}`}>
+                {scanState.message}
+              </div>
+
+              {scannedRegistration ? (
+                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 18, marginTop: 12, display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10, borderBottom: "1px solid rgba(255,255,255,0.08)", paddingBottom: 12 }}>
+                    <div>
+                      <h3 style={{ margin: "0 0 4px 0", fontSize: "1.2rem", color: "#ffffff", fontWeight: 700 }}>{scannedRegistration.name}</h3>
+                      <span style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.6)" }}>
+                        Committee: <strong style={{ color: "#ffffff" }}>{scannedRegistration.committee || "Unassigned"}</strong> · ID: <code>{scannedRegistration.id}</code>
+                      </span>
+                    </div>
+
+                    <span style={{
+                      padding: "4px 10px",
+                      borderRadius: 9999,
+                      fontSize: "0.75rem",
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      background: scannedRegistration.checkedInAt ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 94, 0.2)",
+                      border: scannedRegistration.checkedInAt ? "1px solid rgba(239, 68, 68, 0.6)" : "1px solid rgba(34, 197, 94, 0.6)",
+                      color: scannedRegistration.checkedInAt ? "#f87171" : "#4ade80",
+                    }}>
+                      {scannedRegistration.checkedInAt ? "Already Checked In" : "Ready For Entry"}
+                    </span>
+                  </div>
+
+                  {/* Whole Info Grid */}
+                  <dl className={styles.scanDetails} style={{ background: "rgba(0,0,0,0.3)", borderRadius: 8, gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
+                    <div><dt>Delegate Full Name</dt><dd><strong>{scannedRegistration.name}</strong></dd></div>
+                    <div><dt>Allotted Committee</dt><dd><strong>{scannedRegistration.committee || "None"}</strong></dd></div>
+                    <div><dt>School / Organization</dt><dd>{scannedRegistration.organization || "Independent"}</dd></div>
+                    <div><dt>Email Address</dt><dd>{scannedRegistration.email}</dd></div>
+                    <div><dt>Contact Phone</dt><dd>{scannedRegistration.phone || "Not provided"}</dd></div>
+                    <div><dt>Payment UTR</dt><dd><code>{scannedRegistration.utr || "Verified"}</code></dd></div>
+                    <div><dt>Amount Paid</dt><dd>₹{scannedRegistration.amount || 2300} (Payment Approved)</dd></div>
+                    <div><dt>Conference Venue</dt><dd>{scannedRegistration.event.venue}</dd></div>
+                    <div><dt>Check-in Status</dt><dd>{scannedRegistration.checkedInAt ? `Admitted at ${new Date(scannedRegistration.checkedInAt).toLocaleTimeString()}` : "Pending Gate Admission"}</dd></div>
+                  </dl>
+
+                  {/* ENTRY BUTTON AT BOTTOM LAST TO INFO PAGE */}
+                  <div style={{ marginTop: 12, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      style={{ padding: "10px 16px" }}
+                      onClick={() => {
+                        setScannedRegistration(null)
+                        setScannedPayload("")
+                        setScanState({ type: "idle", message: "Scanner ready. Point camera at delegate pass or enter code." })
+                      }}
+                    >
+                      Scan Next Delegate
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={Boolean(scannedRegistration.checkedInAt) || admitting}
+                      style={{
+                        padding: "12px 28px",
+                        fontSize: "0.95rem",
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        border: "1px solid",
+                        cursor: scannedRegistration.checkedInAt ? "not-allowed" : "pointer",
+                        background: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.06)" : "#16a34a",
+                        borderColor: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.14)" : "#22c55e",
+                        color: scannedRegistration.checkedInAt ? "rgba(255,255,255,0.4)" : "#ffffff",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        boxShadow: scannedRegistration.checkedInAt ? "none" : "0 4px 16px rgba(34, 197, 94, 0.4)",
+                        transition: "all 0.15s ease",
+                      }}
+                      onClick={() => handleConfirmEntry(scannedPayload || scannedRegistration.id)}
+                    >
+                      {admitting ? (
+                        <>
+                          <LoaderCircle className={styles.spinner} size={16} /> Admitting...
+                        </>
+                      ) : scannedRegistration.checkedInAt ? (
+                        <>
+                          <Check size={16} /> Already Admitted
+                        </>
+                      ) : (
+                        <>
+                          <Check size={18} /> Confirm Venue Entry (Admit)
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: "36px 20px", textAlign: "center", color: "rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.1)", marginTop: 12 }}>
+                  <Camera size={36} style={{ margin: "0 auto 10px", opacity: 0.3 }} />
+                  <p style={{ margin: 0, fontSize: "0.85rem" }}>
+                    Scan a delegate's QR pass with the camera or verify manually above to inspect whole info and confirm gate entry.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </section>

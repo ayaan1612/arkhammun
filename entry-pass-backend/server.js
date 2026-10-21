@@ -889,11 +889,44 @@ app.post("/api/entry/verify", requireAdminKey, (request, response) => {
   if (!registration || registration.status !== "approved" || registration.entry_payload !== request.body.payload) {
     return response.status(200).json({ valid: false, reason: "invalid" });
   }
-  if (registration.used_at) return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
-  const result = statements.markUsed.run(new Date().toISOString(), registration.id, request.body.payload);
-  if (!result.changes) return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
+
+  const admit = request.body?.admit !== false;
+
+  // Inspect mode: return complete delegate info without marking used
+  if (!admit) {
+    return response.json({
+      valid: true,
+      alreadyUsed: Boolean(registration.used_at),
+      registration: {
+        id: registration.id,
+        name: registration.name,
+        email: registration.email || registration.contact,
+        phone: registration.phone || "",
+        organization: registration.organization || "",
+        committee: registration.committee || "",
+        amount: registration.amount,
+        utr: registration.utr,
+        paymentStatus: registration.status,
+        checkedInAt: registration.used_at || null,
+        event: decoded.event || getEventDetails(),
+      },
+    });
+  }
+
+  // Admit mode: mark pass as used and admit delegate
+  if (registration.used_at) {
+    return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
+  }
+
+  const checkinTime = new Date().toISOString();
+  const result = statements.markUsed.run(checkinTime, registration.id, request.body.payload);
+  if (!result.changes) {
+    return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
+  }
+
   response.json({
     valid: true,
+    alreadyUsed: false,
     registration: {
       id: registration.id,
       name: registration.name,
@@ -904,7 +937,7 @@ app.post("/api/entry/verify", requireAdminKey, (request, response) => {
       amount: registration.amount,
       utr: registration.utr,
       paymentStatus: registration.status,
-      checkedInAt: new Date().toISOString(),
+      checkedInAt: checkinTime,
       event: decoded.event || getEventDetails(),
     },
   });

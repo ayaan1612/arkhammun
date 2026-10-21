@@ -129,7 +129,7 @@ export type NotificationsLookupResponse = {
 
 
 export type EntryVerification =
-  | { valid: true; registration: ScannedRegistration }
+  | { valid: true; alreadyUsed?: boolean; registration: ScannedRegistration }
   | { valid: false; reason: "invalid" }
 
 export type ScannedRegistration = {
@@ -142,7 +142,7 @@ export type ScannedRegistration = {
   amount: number
   utr: string | null
   paymentStatus: RegistrationStatus
-  checkedInAt: string
+  checkedInAt: string | null
   event: EventDetails
 }
 
@@ -358,11 +358,11 @@ export const entryPassApi = {
     })
   },
 
-  verifyEntry(payload: string, adminKey: string) {
+  verifyEntry(payload: string, adminKey: string, admit = true) {
     return request<EntryVerification>("/api/entry/verify", {
       method: "POST",
       headers: adminHeaders(adminKey, true),
-      body: JSON.stringify({ payload }),
+      body: JSON.stringify({ payload, admit }),
     })
   },
 
