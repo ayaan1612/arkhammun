@@ -52,12 +52,15 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
         if (!active) return
         setStatus(result.status)
         if (result.reject_reason) setRejectReason(result.reject_reason)
-        if (result.status === "approved") setEntryQr(await entryPassApi.getEntryQr(registration.id))
+        if (result.status === "approved") {
+          setEntryQr(await entryPassApi.getEntryQr(registration.id))
+          if (typeof window !== "undefined") window.dispatchEvent(new Event("arkham_notification_update"))
+        }
       } catch (requestError) {
         if (active) setError(requestError instanceof Error ? requestError.message : "Unable to refresh registration status.")
       }
     }
-    const timer = window.setInterval(refresh, 8000)
+    const timer = window.setInterval(refresh, 3000)
     return () => {
       active = false
       window.clearInterval(timer)

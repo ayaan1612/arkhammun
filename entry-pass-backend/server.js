@@ -754,7 +754,7 @@ app.post("/api/admin/registrations/:id/reject", async (request, response) => {
 });
 
 
-app.get("/api/notifications/lookup", (request, response) => {
+app.get("/api/notifications/lookup", async (request, response) => {
   const rawQuery = typeof request.query.query === "string" ? request.query.query.trim() : "";
   const query = rawQuery.toLowerCase();
   const settings = statements.eventSettings.get();
@@ -764,25 +764,38 @@ app.get("/api/notifications/lookup", (request, response) => {
   let queries = [];
 
   if (query) {
-    registrations = database.prepare(`
+    const rawRegs = database.prepare(`
       SELECT id, name, email, phone, organization, committee, amount, status, utr, reject_reason, entry_payload, created_at
       FROM registrations
       WHERE LOWER(email) = ? OR LOWER(id) = ?
       ORDER BY created_at DESC
-    `).all(query, query).map((reg) => ({
-      id: reg.id,
-      name: reg.name,
-      email: reg.email,
-      phone: reg.phone,
-      organization: reg.organization,
-      committee: reg.committee,
-      amount: reg.amount,
-      status: reg.status,
-      utr: reg.utr,
-      reject_reason: reg.reject_reason || null,
-      hasQr: Boolean(reg.status === "approved" && reg.entry_payload),
-      created_at: reg.created_at,
-      event,
+    `).all(query, query);
+
+    registrations = await Promise.all(rawRegs.map(async (reg) => {
+      let qr = null;
+      if (reg.status === "approved" && reg.entry_payload) {
+        try {
+          qr = await QRCode.toDataURL(reg.entry_payload, { errorCorrectionLevel: "M", margin: 2, width: 320 });
+        } catch {
+          // ignore qr error
+        }
+      }
+      return {
+        id: reg.id,
+        name: reg.name,
+        email: reg.email,
+        phone: reg.phone,
+        organization: reg.organization,
+        committee: reg.committee,
+        amount: reg.amount,
+        status: reg.status,
+        utr: reg.utr,
+        reject_reason: reg.reject_reason || null,
+        hasQr: Boolean(reg.status === "approved" && reg.entry_payload),
+        qr,
+        created_at: reg.created_at,
+        event,
+      };
     }));
 
     queries = database.prepare(`

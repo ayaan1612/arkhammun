@@ -389,9 +389,9 @@ export function NotificationSystem() {
                         {reg.status === "approved" && (
                           <div className={styles.qrPassContainer}>
                             <div className={styles.qrImageWrapper}>
-                              {entryQrs[reg.id] ? (
+                              {(reg.qr || entryQrs[reg.id]) ? (
                                 <img
-                                  src={entryQrs[reg.id]}
+                                  src={reg.qr || entryQrs[reg.id]}
                                   alt={`Gate check-in QR pass for ${reg.name}`}
                                   className={styles.qrImage}
                                 />
@@ -420,10 +420,10 @@ export function NotificationSystem() {
                               <p className={styles.venueNotice}>
                                 Present this signed QR code at the venue check-in desk. Each QR is single-use and verifiable offline.
                               </p>
-                              {entryQrs[reg.id] && (
+                              {(reg.qr || entryQrs[reg.id]) && (
                                 <button
                                   type="button"
-                                  onClick={() => handleDownloadQr(entryQrs[reg.id], reg.id, reg.name)}
+                                  onClick={() => handleDownloadQr((reg.qr || entryQrs[reg.id])!, reg.id, reg.name)}
                                   className={styles.resubmitBtn}
                                   style={{ marginTop: 6, alignSelf: "flex-start", padding: "6px 12px", fontSize: "0.75rem" }}
                                 >

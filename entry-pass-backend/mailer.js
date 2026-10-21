@@ -44,6 +44,9 @@ function getTransporter() {
     host,
     port,
     secure,
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 8000,
   };
 
   if (user || pass) {

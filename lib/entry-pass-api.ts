@@ -114,6 +114,7 @@ export type NotificationRegistration = {
   utr: string | null
   reject_reason: string | null
   hasQr: boolean
+  qr?: string | null
   created_at: string
   event: EventDetails
 }
