@@ -13,6 +13,7 @@ const bcrypt = require("bcryptjs");
 const mailer = require("./mailer");
 const {
   connectToDatabase,
+  isMongoConnected,
   User,
   Event,
   Registration,
@@ -72,6 +73,18 @@ app.use(async (req, res, next) => {
     // Non-fatal if URI not provided yet in local development
   }
   next();
+});
+
+// Health & System Storage Diagnostic
+app.get("/api/health", (req, res) => {
+  const mongo = isMongoConnected();
+  res.json({
+    status: "ok",
+    storage: mongo ? "mongodb_atlas" : "resilient_fallback",
+    mongoConnected: mongo,
+    mongoConfigured: Boolean(process.env.MONGODB_URI),
+    time: new Date().toISOString(),
+  });
 });
 
 // -------------------------------------------------------------
@@ -295,7 +308,8 @@ app.post("/api/auth/signup", async (req, res) => {
     });
   } catch (err) {
     console.error("Signup error:", err);
-    res.status(500).json({ error: "Failed to create account. Please try again." });
+    const detail = (err && err.message) ? err.message : "Failed to create account. Please try again.";
+    res.status(500).json({ error: detail });
   }
 });
 
@@ -374,7 +388,8 @@ app.post("/api/auth/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ error: "Failed to log in. Please try again." });
+    const detail = (err && err.message) ? err.message : "Failed to log in. Please try again.";
+    res.status(500).json({ error: detail });
   }
 });
 

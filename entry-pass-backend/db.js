@@ -8,7 +8,7 @@ if (!cached) {
 }
 
 // -------------------------------------------------------------
-// 1. DATA SCHEMAS
+// 1. DATA SCHEMAS (Mongoose)
 // -------------------------------------------------------------
 
 // User Schema
@@ -71,7 +71,6 @@ const registrationSchema = new mongoose.Schema(
   { collection: "registrations" }
 );
 
-// Unique compound index: No duplicate registration per user and event
 registrationSchema.index({ userId: 1, eventId: 1 }, { unique: true });
 
 // Notification Schema
@@ -107,14 +106,380 @@ const contactQuerySchema = new mongoose.Schema(
   { collection: "contact_queries" }
 );
 
-const User = mongoose.models.User || mongoose.model("User", userSchema);
-const Event = mongoose.models.Event || mongoose.model("Event", eventSchema);
-const Registration = mongoose.models.Registration || mongoose.model("Registration", registrationSchema);
-const Notification = mongoose.models.Notification || mongoose.model("Notification", notificationSchema);
-const ContactQuery = mongoose.models.ContactQuery || mongoose.model("ContactQuery", contactQuerySchema);
+const RealUser = mongoose.models.User || mongoose.model("User", userSchema);
+const RealEvent = mongoose.models.Event || mongoose.model("Event", eventSchema);
+const RealRegistration = mongoose.models.Registration || mongoose.model("Registration", registrationSchema);
+const RealNotification = mongoose.models.Notification || mongoose.model("Notification", notificationSchema);
+const RealContactQuery = mongoose.models.ContactQuery || mongoose.model("ContactQuery", contactQuerySchema);
+
+// Disable buffering so disconnected calls don't hang for 10 seconds
+mongoose.set("bufferCommands", false);
 
 // -------------------------------------------------------------
-// 2. CONNECTION FUNCTION WITH SERVERLESS CACHING
+// 2. IN-MEMORY RESILIENT FALLBACK DATA STORE
+// (Ensures zero-downtime if MONGODB_URI is pending in Vercel)
+// -------------------------------------------------------------
+
+const memoryStore = {
+  users: [],
+  events: [],
+  registrations: [],
+  notifications: [],
+  queries: [],
+};
+
+// Seed default event into memory
+const defaultMemoryEventId = new mongoose.Types.ObjectId();
+memoryStore.events.push({
+  _id: defaultMemoryEventId,
+  title: "Arkham MUN 2026",
+  description:
+    "Arkham Model United Nations — diplomacy, debate and ideas that move nations. Join international delegates and future leaders.",
+  date: "October 24-25, 2026",
+  venue: "Arkham Assembly Hall & International Dais, New Delhi",
+  time: "09:00 AM - 05:00 PM",
+  entryFee: Number(process.env.ENTRY_FEE) || 2200,
+  upiId: "chauhan5408k@okaxis",
+  registrationOpen: true,
+  registrationNotice: "Early bird delegate registration is currently live. Limited seats per committee.",
+  paymentQrUrl: null,
+  createdAt: new Date(),
+  save: async function () {
+    return this;
+  },
+});
+
+function matchesQuery(doc, query = {}) {
+  if (!doc) return false;
+  for (const [key, val] of Object.entries(query)) {
+    if (val === undefined) continue;
+    if (key === "_id" || key === "id") {
+      const docId = doc._id ? doc._id.toString() : String(doc.id);
+      const targetId = val && val.toString ? val.toString() : String(val);
+      if (docId !== targetId) return false;
+    } else if (key === "userId" || key === "eventId") {
+      const docVal = doc[key] ? (doc[key]._id ? doc[key]._id.toString() : doc[key].toString()) : "";
+      const targetVal = val && val.toString ? val.toString() : String(val);
+      if (docVal !== targetVal) return false;
+    } else if (typeof val === "boolean") {
+      if (Boolean(doc[key]) !== val) return false;
+    } else if (doc[key] !== val) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function cloneDoc(doc) {
+  if (!doc) return null;
+  const copy = { ...doc };
+  copy.save = async function () {
+    return copy;
+  };
+  return copy;
+}
+
+class FallbackQuery {
+  constructor(promise) {
+    this._promise = promise;
+  }
+  sort(criteria) {
+    this._promise = this._promise.then((res) => {
+      if (!Array.isArray(res)) return res;
+      const [field, dir] = Object.entries(criteria || {})[0] || [];
+      if (!field) return res;
+      const order = dir === -1 || dir === "desc" ? -1 : 1;
+      return [...res].sort((a, b) => {
+        const valA = a[field] instanceof Date ? a[field].getTime() : a[field];
+        const valB = b[field] instanceof Date ? b[field].getTime() : b[field];
+        if (valA < valB) return -1 * order;
+        if (valA > valB) return 1 * order;
+        return 0;
+      });
+    });
+    return this;
+  }
+  populate(field) {
+    this._promise = this._promise.then((res) => {
+      if (!res) return res;
+      const populateOne = (item) => {
+        if (!item) return item;
+        const copy = { ...item };
+        if (field === "eventId" && copy.eventId) {
+          const evId = copy.eventId._id ? copy.eventId._id.toString() : copy.eventId.toString();
+          const found = memoryStore.events.find((e) => e._id.toString() === evId);
+          if (found) copy.eventId = found;
+        }
+        return copy;
+      };
+      if (Array.isArray(res)) return res.map(populateOne);
+      return populateOne(res);
+    });
+    return this;
+  }
+  select(fields) {
+    this._promise = this._promise.then((res) => {
+      if (!res) return res;
+      const stripOne = (item) => {
+        if (!item || typeof item !== "object") return item;
+        const copy = { ...item };
+        if (typeof fields === "string") {
+          for (const token of fields.split(" ")) {
+            if (token.startsWith("-")) {
+              delete copy[token.slice(1)];
+            }
+          }
+        }
+        return copy;
+      };
+      if (Array.isArray(res)) return res.map(stripOne);
+      return stripOne(res);
+    });
+    return this;
+  }
+  then(resolve, reject) {
+    return this._promise.then(resolve, reject);
+  }
+  catch(reject) {
+    return this._promise.catch(reject);
+  }
+}
+
+// -------------------------------------------------------------
+// 3. HYBRID PROXIES (Auto-switches to MongoDB Atlas when active)
+// -------------------------------------------------------------
+
+function isMongoConnected() {
+  return mongoose.connection && mongoose.connection.readyState === 1;
+}
+
+const User = {
+  findOne(query) {
+    if (isMongoConnected()) return RealUser.findOne(query);
+    const found = memoryStore.users.find((u) => matchesQuery(u, query));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  findById(id) {
+    if (isMongoConnected()) return RealUser.findById(id);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const found = memoryStore.users.find((u) => u._id.toString() === targetId);
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  find(query = {}) {
+    if (isMongoConnected()) return RealUser.find(query);
+    const list = memoryStore.users.filter((u) => matchesQuery(u, query)).map(cloneDoc);
+    return new FallbackQuery(Promise.resolve(list));
+  },
+  async create(data) {
+    if (isMongoConnected()) return RealUser.create(data);
+    const doc = {
+      _id: new mongoose.Types.ObjectId(),
+      createdAt: new Date(),
+      role: "user",
+      ...data,
+    };
+    doc.save = async function () {
+      const idx = memoryStore.users.findIndex((u) => u._id.toString() === doc._id.toString());
+      if (idx >= 0) memoryStore.users[idx] = doc;
+      else memoryStore.users.push(doc);
+      return doc;
+    };
+    memoryStore.users.push(doc);
+    return doc;
+  },
+};
+
+const Event = {
+  findOne(query = {}) {
+    if (isMongoConnected()) return RealEvent.findOne(query);
+    const found = memoryStore.events.find((e) => matchesQuery(e, query));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  findById(id) {
+    if (isMongoConnected()) return RealEvent.findById(id);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const found = memoryStore.events.find((e) => e._id.toString() === targetId);
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  find(query = {}) {
+    if (isMongoConnected()) return RealEvent.find(query);
+    const list = memoryStore.events.filter((e) => matchesQuery(e, query)).map(cloneDoc);
+    return new FallbackQuery(Promise.resolve(list));
+  },
+  async create(data) {
+    if (isMongoConnected()) return RealEvent.create(data);
+    const doc = {
+      _id: new mongoose.Types.ObjectId(),
+      createdAt: new Date(),
+      registrationOpen: true,
+      entryFee: 2200,
+      upiId: "chauhan5408k@okaxis",
+      ...data,
+    };
+    doc.save = async function () {
+      const idx = memoryStore.events.findIndex((e) => e._id.toString() === doc._id.toString());
+      if (idx >= 0) memoryStore.events[idx] = doc;
+      else memoryStore.events.push(doc);
+      return doc;
+    };
+    memoryStore.events.push(doc);
+    return doc;
+  },
+  async findByIdAndUpdate(id, update, opts = {}) {
+    if (isMongoConnected()) return RealEvent.findByIdAndUpdate(id, update, opts);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const idx = memoryStore.events.findIndex((e) => e._id.toString() === targetId);
+    if (idx < 0) return null;
+    const existing = memoryStore.events[idx];
+    const updated = { ...existing, ...update };
+    updated.save = async function () {
+      return updated;
+    };
+    memoryStore.events[idx] = updated;
+    return updated;
+  },
+  async findByIdAndDelete(id) {
+    if (isMongoConnected()) return RealEvent.findByIdAndDelete(id);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const idx = memoryStore.events.findIndex((e) => e._id.toString() === targetId);
+    if (idx < 0) return null;
+    const deleted = memoryStore.events.splice(idx, 1)[0];
+    return deleted;
+  },
+  async countDocuments(query = {}) {
+    if (isMongoConnected()) return RealEvent.countDocuments(query);
+    return memoryStore.events.filter((e) => matchesQuery(e, query)).length;
+  },
+};
+
+const Registration = {
+  findOne(query) {
+    if (isMongoConnected()) return RealRegistration.findOne(query);
+    const found = memoryStore.registrations.find((r) => matchesQuery(r, query));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  findById(id) {
+    if (isMongoConnected()) return RealRegistration.findById(id);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const found = memoryStore.registrations.find((r) => r._id.toString() === targetId);
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  find(query = {}) {
+    if (isMongoConnected()) return RealRegistration.find(query);
+    const list = memoryStore.registrations.filter((r) => matchesQuery(r, query)).map(cloneDoc);
+    return new FallbackQuery(Promise.resolve(list));
+  },
+  async create(data) {
+    if (isMongoConnected()) return RealRegistration.create(data);
+    const doc = {
+      _id: new mongoose.Types.ObjectId(),
+      registeredAt: new Date(),
+      status: "payment_submitted",
+      ...data,
+    };
+    doc.save = async function () {
+      const idx = memoryStore.registrations.findIndex((r) => r._id.toString() === doc._id.toString());
+      if (idx >= 0) memoryStore.registrations[idx] = doc;
+      else memoryStore.registrations.push(doc);
+      return doc;
+    };
+    memoryStore.registrations.push(doc);
+    return doc;
+  },
+  async deleteMany(query = {}) {
+    if (isMongoConnected()) return RealRegistration.deleteMany(query);
+    const before = memoryStore.registrations.length;
+    memoryStore.registrations = memoryStore.registrations.filter((r) => !matchesQuery(r, query));
+    return { deletedCount: before - memoryStore.registrations.length };
+  },
+};
+
+const Notification = {
+  find(query = {}) {
+    if (isMongoConnected()) return RealNotification.find(query);
+    const list = memoryStore.notifications.filter((n) => matchesQuery(n, query)).map(cloneDoc);
+    return new FallbackQuery(Promise.resolve(list));
+  },
+  async countDocuments(query = {}) {
+    if (isMongoConnected()) return RealNotification.countDocuments(query);
+    return memoryStore.notifications.filter((n) => matchesQuery(n, query)).length;
+  },
+  async create(data) {
+    if (isMongoConnected()) return RealNotification.create(data);
+    const doc = {
+      _id: new mongoose.Types.ObjectId(),
+      read: false,
+      createdAt: new Date(),
+      ...data,
+    };
+    doc.save = async function () {
+      return doc;
+    };
+    memoryStore.notifications.push(doc);
+    return doc;
+  },
+  async insertMany(docs = []) {
+    if (isMongoConnected()) return RealNotification.insertMany(docs);
+    const created = docs.map((d) => ({
+      _id: new mongoose.Types.ObjectId(),
+      read: false,
+      createdAt: new Date(),
+      ...d,
+      save: async function () {
+        return this;
+      },
+    }));
+    memoryStore.notifications.push(...created);
+    return created;
+  },
+  async findOneAndUpdate(query, update, opts = {}) {
+    if (isMongoConnected()) return RealNotification.findOneAndUpdate(query, update, opts);
+    const found = memoryStore.notifications.find((n) => matchesQuery(n, query));
+    if (!found) return null;
+    Object.assign(found, update);
+    return cloneDoc(found);
+  },
+  async deleteMany(query = {}) {
+    if (isMongoConnected()) return RealNotification.deleteMany(query);
+    const before = memoryStore.notifications.length;
+    memoryStore.notifications = memoryStore.notifications.filter((n) => !matchesQuery(n, query));
+    return { deletedCount: before - memoryStore.notifications.length };
+  },
+};
+
+const ContactQuery = {
+  find(query = {}) {
+    if (isMongoConnected()) return RealContactQuery.find(query);
+    const list = memoryStore.queries.filter((q) => matchesQuery(q, query)).map(cloneDoc);
+    return new FallbackQuery(Promise.resolve(list));
+  },
+  findById(id) {
+    if (isMongoConnected()) return RealContactQuery.findById(id);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const found = memoryStore.queries.find((q) => q._id.toString() === targetId);
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+  },
+  async create(data) {
+    if (isMongoConnected()) return RealContactQuery.create(data);
+    const doc = {
+      _id: new mongoose.Types.ObjectId(),
+      status: "pending",
+      createdAt: new Date(),
+      ...data,
+    };
+    doc.save = async function () {
+      const idx = memoryStore.queries.findIndex((q) => q._id.toString() === doc._id.toString());
+      if (idx >= 0) memoryStore.queries[idx] = doc;
+      else memoryStore.queries.push(doc);
+      return doc;
+    };
+    memoryStore.queries.push(doc);
+    return doc;
+  },
+};
+
+// -------------------------------------------------------------
+// 4. CONNECTION FUNCTION WITH SERVERLESS REUSE & 5S TIMEOUT
 // -------------------------------------------------------------
 async function connectToDatabase() {
   const uri = process.env.MONGODB_URI;
@@ -122,7 +487,7 @@ async function connectToDatabase() {
     return null;
   }
 
-  if (cached.conn) {
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
   }
 
@@ -130,34 +495,40 @@ async function connectToDatabase() {
     const opts = {
       bufferCommands: false,
       maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
     };
-    cached.promise = mongoose.connect(uri, opts).then(async (m) => {
-      console.log("[MongoDB] Connected successfully to MongoDB Atlas");
-      await seedDefaults();
-      return m;
-    });
+    cached.promise = mongoose
+      .connect(uri, opts)
+      .then(async (m) => {
+        console.log("[MongoDB Atlas] Connected successfully to cloud database");
+        await seedDefaults();
+        return m;
+      })
+      .catch((error) => {
+        cached.promise = null;
+        console.warn("[MongoDB Atlas] Connection attempt failed (using resilient fallback store):", error.message);
+        return null;
+      });
   }
 
   try {
     cached.conn = await cached.promise;
-  } catch (error) {
+    return cached.conn;
+  } catch (err) {
+    cached.conn = null;
     cached.promise = null;
-    console.error("[MongoDB] Connection error:", error.message);
-    throw error;
+    return null;
   }
-
-  return cached.conn;
 }
 
 // -------------------------------------------------------------
-// 3. SEED INITIAL DEFAULTS (Arkham Conference & First Admin)
+// 5. SEED INITIAL DEFAULTS TO MONGODB ATLAS
 // -------------------------------------------------------------
 async function seedDefaults() {
   try {
-    // 1. Seed default Event if database has 0 events
-    const eventCount = await Event.countDocuments();
+    const eventCount = await RealEvent.countDocuments();
     if (eventCount === 0) {
-      await Event.create({
+      await RealEvent.create({
         title: "Arkham MUN 2026",
         description:
           "Arkham Model United Nations — diplomacy, debate and ideas that move nations. Join international delegates and future leaders.",
@@ -172,15 +543,14 @@ async function seedDefaults() {
       console.log("[MongoDB Seed] Created initial Arkham MUN 2026 conference event");
     }
 
-    // 2. Seed Admin user if ADMIN_EMAIL is set
     const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
     if (adminEmail) {
-      const existingAdmin = await User.findOne({ email: adminEmail });
+      const existingAdmin = await RealUser.findOne({ email: adminEmail });
       if (!existingAdmin) {
         const defaultPassword = process.env.ADMIN_PASSWORD || "AdminArkham2026!";
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(defaultPassword, salt);
-        await User.create({
+        await RealUser.create({
           name: "Arkham MUN Administrator",
           email: adminEmail,
           passwordHash,
@@ -200,6 +570,7 @@ async function seedDefaults() {
 
 module.exports = {
   connectToDatabase,
+  isMongoConnected,
   User,
   Event,
   Registration,
