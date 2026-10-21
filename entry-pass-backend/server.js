@@ -230,7 +230,7 @@ function verifyEntryPayload(payload) {
 // POST /api/auth/signup
 app.post("/api/auth/signup", async (req, res) => {
   try {
-    const { name, email, password } = req.body || {};
+    const { name, email, password, adminKey: suppliedKey, role: requestedRole } = req.body || {};
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "Please enter your full name." });
     }
@@ -251,11 +251,25 @@ app.post("/api/auth/signup", async (req, res) => {
       });
     }
 
-    // Role cannot be chosen by client. Default is 'user', or 'admin' if email matches ADMIN_EMAIL.
     let role = "user";
     const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    const systemAdminKey = process.env.ADMIN_KEY;
+
     if (adminEmail && cleanEmail === adminEmail) {
       role = "admin";
+    }
+
+    if (requestedRole === "admin" || suppliedKey) {
+      if (
+        (suppliedKey && systemAdminKey && suppliedKey.trim() === systemAdminKey.trim()) ||
+        (adminEmail && cleanEmail === adminEmail)
+      ) {
+        role = "admin";
+      } else {
+        return res.status(403).json({
+          error: "Invalid Secretariat Admin Key. Only authorized personnel can register as an administrator.",
+        });
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -277,7 +291,7 @@ app.post("/api/auth/signup", async (req, res) => {
         email: user.email,
         role: user.role,
       },
-      message: "Account created successfully.",
+      message: `${role === "admin" ? "Secretariat Administrator" : "Delegate"} account created successfully.`,
     });
   } catch (err) {
     console.error("Signup error:", err);
@@ -288,7 +302,38 @@ app.post("/api/auth/signup", async (req, res) => {
 // POST /api/auth/login
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const { email, password } = req.body || {};
+    const { email, password, adminKey: suppliedKey, role: requestedRole } = req.body || {};
+
+    // Allow Secretariat to sign in using Admin Key directly
+    const systemAdminKey = process.env.ADMIN_KEY;
+    if (suppliedKey && systemAdminKey && suppliedKey.trim() === systemAdminKey.trim()) {
+      const adminEmail = (process.env.ADMIN_EMAIL || "admin@arkhammun.org").trim().toLowerCase();
+      let adminUser = await User.findOne({ email: adminEmail });
+      if (!adminUser) {
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password || "AdminArkham2026!", salt);
+        adminUser = await User.create({
+          name: "Secretariat Administrator",
+          email: adminEmail,
+          passwordHash,
+          role: "admin",
+        });
+      } else if (adminUser.role !== "admin") {
+        adminUser.role = "admin";
+        await adminUser.save();
+      }
+      const token = signToken(adminUser);
+      return res.json({
+        token,
+        user: {
+          id: adminUser._id.toString(),
+          name: adminUser.name,
+          email: adminUser.email,
+          role: adminUser.role,
+        },
+      });
+    }
+
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required." });
     }
@@ -309,6 +354,12 @@ app.post("/api/auth/login", async (req, res) => {
     if (adminEmail && cleanEmail === adminEmail && user.role !== "admin") {
       user.role = "admin";
       await user.save();
+    }
+
+    if (requestedRole === "admin" && user.role !== "admin") {
+      return res.status(403).json({
+        error: "This account does not have Secretariat Administrator privileges. Please sign in as a Delegate.",
+      });
     }
 
     const token = signToken(user);

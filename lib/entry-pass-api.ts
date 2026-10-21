@@ -312,7 +312,7 @@ export const entryPassApi = {
   // -----------------------------------------------------------
   // AUTHENTICATION
   // -----------------------------------------------------------
-  signup(data: { name: string; email: string; password: string }) {
+  signup(data: { name: string; email: string; password: string; adminKey?: string; role?: "user" | "admin" }) {
     return request<AuthResponse>("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -320,7 +320,7 @@ export const entryPassApi = {
     })
   },
 
-  login(data: { email: string; password: string }) {
+  login(data: { email?: string; password?: string; adminKey?: string; role?: "user" | "admin" }) {
     return request<AuthResponse>("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

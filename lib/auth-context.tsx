@@ -8,8 +8,8 @@ type AuthContextType = {
   token: string | null
   isLoading: boolean
   isAdmin: boolean
-  login: (email: string, password: string) => Promise<UserProfile>
-  signup: (name: string, email: string, password: string) => Promise<UserProfile>
+  login: (email?: string, password?: string, adminKey?: string, role?: "user" | "admin") => Promise<UserProfile>
+  signup: (name: string, email: string, password: string, adminKey?: string, role?: "user" | "admin") => Promise<UserProfile>
   logout: () => void
   refreshUser: () => Promise<void>
 }
@@ -49,16 +49,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth()
   }, [])
 
-  async function login(email: string, password: string): Promise<UserProfile> {
-    const res = await entryPassApi.login({ email, password })
+  async function login(email?: string, password?: string, adminKey?: string, role?: "user" | "admin"): Promise<UserProfile> {
+    const res = await entryPassApi.login({ email, password, adminKey, role })
     localStorage.setItem(TOKEN_KEY, res.token)
     setToken(res.token)
     setUser(res.user)
     return res.user
   }
 
-  async function signup(name: string, email: string, password: string): Promise<UserProfile> {
-    const res = await entryPassApi.signup({ name, email, password })
+  async function signup(name: string, email: string, password: string, adminKey?: string, role?: "user" | "admin"): Promise<UserProfile> {
+    const res = await entryPassApi.signup({ name, email, password, adminKey, role })
     localStorage.setItem(TOKEN_KEY, res.token)
     setToken(res.token)
     setUser(res.user)

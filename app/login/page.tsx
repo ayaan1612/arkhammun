@@ -1,27 +1,63 @@
 "use client"
 
-import { FormEvent, Suspense, useState, useEffect } from "react"
+import { FormEvent, Suspense, useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Eye, EyeOff, LoaderCircle, Lock, Mail, ShieldAlert, ArrowRight } from "lucide-react"
+import {
+  ArrowRight,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  KeyRound,
+  LoaderCircle,
+  Lock,
+  LogIn,
+  Mail,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  User,
+  UserPlus,
+} from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { useAuth } from "@/lib/auth-context"
 
-function LoginForm() {
+type AuthMode = "signin" | "signup"
+type UserType = "delegate" | "admin"
+
+export function AuthPortalForm({ initialMode = "signin" }: { initialMode?: AuthMode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTarget = searchParams.get("redirect") || ""
+  const paramMode = (searchParams.get("mode") as AuthMode) || initialMode
+  const paramRole = (searchParams.get("role") as UserType) || "delegate"
 
-  const { login, user, isLoading: authLoading } = useAuth()
+  const { login, signup, user, isLoading: authLoading } = useAuth()
 
+  const [mode, setMode] = useState<AuthMode>(paramMode)
+  const [userType, setUserType] = useState<UserType>(paramRole)
+
+  // Form fields
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [adminKey, setAdminKey] = useState("")
   const [showPassword, setShowPassword] = useState(false)
+
+  // Status
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({})
+  const [successNotice, setSuccessNotice] = useState("")
+  const [validationErrors, setValidationErrors] = useState<{
+    name?: string
+    email?: string
+    password?: string
+    confirmPassword?: string
+    adminKey?: string
+  }>({})
 
-  // If already logged in, redirect immediately
+  // If already authenticated, redirect
   useEffect(() => {
     if (!authLoading && user) {
       if (user.role === "admin") {
@@ -33,15 +69,44 @@ function LoginForm() {
   }, [user, authLoading, router, redirectTarget])
 
   function validate() {
-    const errors: { email?: string; password?: string } = {}
+    const errors: {
+      name?: string
+      email?: string
+      password?: string
+      confirmPassword?: string
+      adminKey?: string
+    } = {}
+
+    if (mode === "signup" && !name.trim()) {
+      errors.name = "Please provide your full legal name."
+    }
+
+    // For admin sign-in, allow either email+password OR direct adminKey
+    if (mode === "signin" && userType === "admin" && adminKey.trim() && !email.trim()) {
+      // Key-only sign-in is allowed for admin
+      return true
+    }
+
     if (!email.trim()) {
-      errors.email = "Please enter your registered email address."
+      errors.email = "Please enter your email address."
     } else if (!email.includes("@") || !email.includes(".")) {
       errors.email = "Please enter a valid email address."
     }
+
     if (!password) {
-      errors.password = "Please enter your account password."
+      errors.password = "Password is required."
+    } else if (mode === "signup" && password.length < 6) {
+      errors.password = "Password must be at least 6 characters long."
     }
+
+    if (mode === "signup" && password !== confirmPassword) {
+      errors.confirmPassword = "Passwords do not match."
+    }
+
+    if (mode === "signup" && userType === "admin" && !adminKey.trim()) {
+      errors.adminKey = "Secretariat Verification Key is required to create an administrator account."
+    }
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -49,18 +114,43 @@ function LoginForm() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError("")
+    setSuccessNotice("")
     if (!validate()) return
 
     setLoading(true)
     try {
-      const loggedInUser = await login(email.trim(), password)
-      if (loggedInUser.role === "admin") {
-        router.push(redirectTarget || "/admin")
+      if (mode === "signin") {
+        // Sign In
+        const loggedInUser = await login(
+          email.trim() || undefined,
+          password || undefined,
+          adminKey.trim() || undefined,
+          userType === "admin" ? "admin" : "user"
+        )
+
+        if (loggedInUser.role === "admin") {
+          router.push(redirectTarget || "/admin")
+        } else {
+          router.push(redirectTarget || "/dashboard")
+        }
       } else {
-        router.push(redirectTarget || "/dashboard")
+        // Sign Up
+        const createdUser = await signup(
+          name.trim(),
+          email.trim(),
+          password,
+          adminKey.trim() || undefined,
+          userType === "admin" ? "admin" : "user"
+        )
+
+        if (createdUser.role === "admin") {
+          router.push(redirectTarget || "/admin")
+        } else {
+          router.push(redirectTarget || "/dashboard")
+        }
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to sign in. Please verify your credentials."
+      const msg = err instanceof Error ? err.message : "Authentication failed. Please verify your details."
       setError(msg)
     } finally {
       setLoading(false)
@@ -70,40 +160,186 @@ function LoginForm() {
   return (
     <>
       <PageIntro
-        eyebrow="AUTHENTICATION PORTAL"
+        eyebrow="ARKHAM OPERATIONS PORTAL"
         title={
           <>
-            Delegate &amp; <em>Admin</em> Login
+            {mode === "signin" ? "Portal" : "Registration"}{" "}
+            <em>{userType === "admin" ? "Secretariat" : "Delegates"}</em>
           </>
         }
       >
-        Sign in to access your registered events, official venue entry passes, committee assignments, and conference
-        announcements.
+        Access your committee allocations, cloud records, venue check-in verification, and official secretariat commands.
       </PageIntro>
 
-      <div className="page-section" style={{ minHeight: "60vh", display: "flex", justifyContent: "center" }}>
+      <div className="page-section" style={{ minHeight: "65vh", display: "flex", justifyContent: "center", paddingTop: "20px" }}>
         <div
           className="contact-card"
           style={{
             width: "100%",
-            maxWidth: "460px",
+            maxWidth: "520px",
             background: "rgba(12, 12, 12, 0.94)",
             border: "1px solid rgba(255, 255, 255, 0.16)",
-            borderRadius: "8px",
-            padding: "36px 32px",
-            boxShadow: "0 18px 48px rgba(0, 0, 0, 0.4)",
+            borderRadius: "10px",
+            padding: "32px 30px",
+            boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(227, 38, 46, 0.1)",
           }}
         >
-          <div style={{ marginBottom: "26px" }}>
-            <span className="section-kicker">SECURE DELEGATE DAIS</span>
-            <h2 style={{ fontSize: "28px", margin: "10px 0 6px", fontWeight: 500 }}>
-              Access <em>Portal</em>
+          {/* TOP MODE TOGGLE (Sign In vs Sign Up) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "4px",
+              background: "#080808",
+              padding: "4px",
+              borderRadius: "6px",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              marginBottom: "20px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signin")
+                setError("")
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                padding: "10px",
+                borderRadius: "4px",
+                border: 0,
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                background: mode === "signin" ? "#e3262e" : "transparent",
+                color: mode === "signin" ? "#fff" : "#aaa8ba",
+                transition: "all 0.2s",
+              }}
+            >
+              <LogIn size={14} /> Sign In
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode("signup")
+                setError("")
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                padding: "10px",
+                borderRadius: "4px",
+                border: 0,
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                textTransform: "uppercase",
+                background: mode === "signup" ? "#e3262e" : "transparent",
+                color: mode === "signup" ? "#fff" : "#aaa8ba",
+                transition: "all 0.2s",
+              }}
+            >
+              <UserPlus size={14} /> Sign Up
+            </button>
+          </div>
+
+          {/* USER TYPE TOGGLE (Delegate vs Secretariat Admin) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "8px",
+              marginBottom: "24px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setUserType("delegate")
+                setError("")
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                padding: "10px 14px",
+                borderRadius: "6px",
+                border: userType === "delegate" ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.15)",
+                background: userType === "delegate" ? "rgba(227, 38, 46, 0.14)" : "rgba(255, 255, 255, 0.03)",
+                color: userType === "delegate" ? "#fff" : "#aaa8ba",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.2s",
+              }}
+            >
+              <User size={14} style={{ color: userType === "delegate" ? "#e3262e" : "inherit" }} />
+              Delegate Access
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setUserType("admin")
+                setError("")
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                padding: "10px 14px",
+                borderRadius: "6px",
+                border: userType === "admin" ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.15)",
+                background: userType === "admin" ? "rgba(227, 38, 46, 0.14)" : "rgba(255, 255, 255, 0.03)",
+                color: userType === "admin" ? "#fff" : "#aaa8ba",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.2s",
+              }}
+            >
+              <Shield size={14} style={{ color: userType === "admin" ? "#e3262e" : "inherit" }} />
+              Secretariat Admin
+            </button>
+          </div>
+
+          {/* Heading description */}
+          <div style={{ marginBottom: "22px" }}>
+            <span className="section-kicker">
+              {userType === "admin" ? "SECRETARIAT COMMAND DAIS" : "VERIFIED DELEGATE ACCESS"}
+            </span>
+            <h2 style={{ fontSize: "24px", margin: "6px 0 4px", fontWeight: 500 }}>
+              {mode === "signin"
+                ? userType === "admin"
+                  ? "Admin Sign In"
+                  : "Delegate Sign In"
+                : userType === "admin"
+                ? "Register Secretariat Admin"
+                : "Create Delegate Account"}
             </h2>
             <p style={{ color: "#aaa8ba", fontSize: "13px", margin: 0, lineHeight: 1.5 }}>
-              Use your registered credentials to sign in. Administrators will be automatically redirected to the Command Dais.
+              {mode === "signin"
+                ? userType === "admin"
+                  ? "Sign in with your administrator credentials or shared secretariat passkey."
+                  : "Enter your registered email and password to access your dashboard and passes."
+                : userType === "admin"
+                ? "Create an administrator account. Requires the Secretariat Verification Key."
+                : "Join Arkham MUN as an official delegate. All submissions are preserved in the cloud."}
             </p>
           </div>
 
+          {/* Error Alert */}
           {error && (
             <div
               style={{
@@ -125,14 +361,73 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
-            <label style={{ display: "grid", gap: "8px", color: "#e8e4f3", fontSize: "12px" }}>
+          {/* Success Notice */}
+          {successNotice && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "12px 14px",
+                backgroundColor: "rgba(34, 197, 94, 0.12)",
+                border: "1px solid rgba(34, 197, 94, 0.5)",
+                borderRadius: "5px",
+                color: "#4ade80",
+                fontSize: "13px",
+                marginBottom: "20px",
+              }}
+            >
+              <CheckCircle2 size={16} />
+              <div>{successNotice}</div>
+            </div>
+          )}
+
+          {/* MAIN AUTH FORM */}
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+            {/* Full Name (Sign Up only) */}
+            {mode === "signup" && (
+              <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <User size={13} style={{ color: "#e3262e" }} />
+                  {userType === "admin" ? "ADMINISTRATOR FULL NAME" : "DELEGATE LEGAL NAME"}
+                </span>
+                <input
+                  type="text"
+                  placeholder={userType === "admin" ? "e.g. Secretariat Chair" : "e.g. Elena Rostova"}
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    if (validationErrors.name) setValidationErrors({ ...validationErrors, name: undefined })
+                  }}
+                  disabled={loading}
+                  autoComplete="name"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "13px 14px",
+                    color: "#fff",
+                    backgroundColor: "#080808",
+                    border: validationErrors.name ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                    borderRadius: "4px",
+                    outline: "none",
+                    fontSize: "14px",
+                  }}
+                />
+                {validationErrors.name && (
+                  <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.name}</span>
+                )}
+              </label>
+            )}
+
+            {/* Email Address */}
+            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Mail size={13} style={{ color: "#e3262e" }} /> EMAIL ADDRESS
+                <Mail size={13} style={{ color: "#e3262e" }} />
+                {userType === "admin" ? "ADMINISTRATIVE EMAIL" : "EMAIL ADDRESS"}
               </span>
               <input
                 type="email"
-                placeholder="delegate@arkhammun.org"
+                placeholder={userType === "admin" ? "admin@arkhammun.org" : "delegate@example.com"}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value)
@@ -157,21 +452,22 @@ function LoginForm() {
               )}
             </label>
 
-            <label style={{ display: "grid", gap: "8px", color: "#e8e4f3", fontSize: "12px" }}>
+            {/* Password Field */}
+            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <Lock size={13} style={{ color: "#e3262e" }} /> PASSWORD
               </span>
               <div style={{ position: "relative" }}>
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
+                  placeholder={mode === "signup" ? "At least 6 characters" : "Enter your password"}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
                     if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
                   }}
                   disabled={loading}
-                  autoComplete="current-password"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
@@ -211,6 +507,78 @@ function LoginForm() {
               )}
             </label>
 
+            {/* Confirm Password (Sign Up only) */}
+            {mode === "signup" && (
+              <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <CheckCircle2 size={13} style={{ color: "#e3262e" }} /> CONFIRM PASSWORD
+                </span>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Re-enter password to verify"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value)
+                    if (validationErrors.confirmPassword)
+                      setValidationErrors({ ...validationErrors, confirmPassword: undefined })
+                  }}
+                  disabled={loading}
+                  autoComplete="new-password"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "13px 14px",
+                    color: "#fff",
+                    backgroundColor: "#080808",
+                    border: validationErrors.confirmPassword
+                      ? "1px solid #e3262e"
+                      : "1px solid rgba(255, 255, 255, 0.25)",
+                    borderRadius: "4px",
+                    outline: "none",
+                    fontSize: "14px",
+                  }}
+                />
+                {validationErrors.confirmPassword && (
+                  <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.confirmPassword}</span>
+                )}
+              </label>
+            )}
+
+            {/* Secretariat Verification Key (Required for Admin Sign Up, Optional for Admin Sign In) */}
+            {userType === "admin" && (
+              <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <KeyRound size={13} style={{ color: "#e3262e" }} />
+                  SECRETARIAT KEY {mode === "signin" ? "(OPTIONAL FOR DIRECT ACCESS)" : "(REQUIRED)"}
+                </span>
+                <input
+                  type="password"
+                  placeholder="Enter Secretariat Admin Passkey"
+                  value={adminKey}
+                  onChange={(e) => {
+                    setAdminKey(e.target.value)
+                    if (validationErrors.adminKey) setValidationErrors({ ...validationErrors, adminKey: undefined })
+                  }}
+                  disabled={loading}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "13px 14px",
+                    color: "#fff",
+                    backgroundColor: "#080808",
+                    border: validationErrors.adminKey ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                    borderRadius: "4px",
+                    outline: "none",
+                    fontSize: "14px",
+                  }}
+                />
+                {validationErrors.adminKey && (
+                  <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.adminKey}</span>
+                )}
+              </label>
+            )}
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -229,16 +597,31 @@ function LoginForm() {
             >
               {loading ? (
                 <>
-                  <LoaderCircle size={16} className="animate-spin" /> VERIFYING CREDENTIALS...
+                  <LoaderCircle size={16} className="animate-spin" /> VERIFYING ACCESS...
+                </>
+              ) : mode === "signin" ? (
+                userType === "admin" ? (
+                  <>
+                    ENTER SECRETARIAT DAIS <ArrowRight size={14} />
+                  </>
+                ) : (
+                  <>
+                    SIGN IN TO DELEGATE PORTAL <ArrowRight size={14} />
+                  </>
+                )
+              ) : userType === "admin" ? (
+                <>
+                  REGISTER SECRETARIAT ACCOUNT <ShieldCheck size={14} />
                 </>
               ) : (
                 <>
-                  SIGN IN TO PORTAL <ArrowRight size={14} />
+                  ENROLL AS DELEGATE <ArrowRight size={14} />
                 </>
               )}
             </button>
           </form>
 
+          {/* Bottom Switcher Footer */}
           <div
             style={{
               marginTop: "24px",
@@ -252,18 +635,53 @@ function LoginForm() {
               color: "#aaa8ba",
             }}
           >
-            <div>
-              Don&apos;t have an account yet?{" "}
-              <Link
-                href={`/signup${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
-                style={{ color: "#e3262e", fontWeight: 600, textDecoration: "none" }}
-              >
-                Sign Up as Delegate
-              </Link>
-            </div>
+            {mode === "signin" ? (
+              <div>
+                Don&apos;t have an account yet?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signup")
+                    setError("")
+                  }}
+                  style={{
+                    background: "none",
+                    border: 0,
+                    color: "#e3262e",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Create {userType === "admin" ? "Admin" : "Delegate"} Account
+                </button>
+              </div>
+            ) : (
+              <div>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signin")
+                    setError("")
+                  }}
+                  style={{
+                    background: "none",
+                    border: 0,
+                    color: "#e3262e",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Sign In to {userType === "admin" ? "Admin Dais" : "Delegate Portal"}
+                </button>
+              </div>
+            )}
+
             <div>
               <Link href="/contact" style={{ color: "#8d8a9e", textDecoration: "none", fontSize: "12px" }}>
-                Need help accessing your pass or account? Contact Secretariat
+                Need technical assistance or credentials support? Contact Secretariat
               </Link>
             </div>
           </div>
@@ -283,7 +701,7 @@ export default function LoginPage() {
           </div>
         }
       >
-        <LoginForm />
+        <AuthPortalForm initialMode="signin" />
       </Suspense>
     </ArkhamShell>
   )

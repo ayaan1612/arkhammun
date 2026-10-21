@@ -146,23 +146,14 @@ export function ArkhamHeader() {
             </button>
           </>
         ) : (
-          <>
-            <Link
-              href="/login"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-                color: "#aaa8ba",
-              }}
-            >
-              <LogIn size={13} />
-              Login
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+            <Link href="/login" className="arkham-nav-cta">
+              <LogIn size={13} /> Login
             </Link>
             <Link href="/register" className="arkham-nav-cta">
               Register <ArrowRight size={14} />
             </Link>
-          </>
+          </div>
         )}
       </nav>
 
