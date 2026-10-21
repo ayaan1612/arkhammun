@@ -182,7 +182,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
               <label>Phone number<input required type="tel" name="phone" autoComplete="tel" maxLength={40} placeholder="Your contact number" /></label>
               <label>School / organization<input required name="organization" maxLength={160} placeholder="Your school or organization" /></label>
               <label>Committee<input required name="committee" maxLength={160} placeholder="Committee preference" /></label>
-              <button className="modal-submit" type="submit" disabled={busy || publicEvent?.registrationOpen === false}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Creating registration" : publicEvent ? publicEvent.registrationOpen ? "Continue registration" : "Registration unavailable" : "Loading event details"}<ArrowRight size={17} /></button>
+              <button className="modal-submit" type="submit" disabled={busy || publicEvent?.registrationOpen === false}>{busy ? <LoaderCircle className={styles.spinner} size={17} /> : null}{busy ? "Creating registration..." : publicEvent?.registrationOpen === false ? "Registration currently closed" : "Continue registration"}<ArrowRight size={17} /></button>
             </form>
           </>
         ) : (

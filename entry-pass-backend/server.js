@@ -292,33 +292,49 @@ function verifyEntryPayload(payload) {
 
 app.get("/api/event", (request, response) => {
   const settings = statements.eventSettings.get();
-  const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
-  const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
   const eventDetails = getEventDetails();
-  const isConfigured = Boolean(hasQr && eventDetails.date && eventDetails.time && eventDetails.venue);
-  const isOpen = Boolean(isConfigured && (settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1));
+  // Registration remains open until the admin explicitly closes it (registration_open === 0)
+  const isOpen = (settings.registration_open === null || settings.registration_open === undefined)
+    ? true
+    : Number(settings.registration_open) === 1;
   const currentFee = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
     ? Number(settings.entry_fee)
     : entryFee;
 
   response.json({
-    event: getEventDetails(),
+    event: eventDetails,
     amount: currentFee,
     upiId: settings.upi_id || "chauhan5408k@okaxis",
-    paymentQrUrl: hasQr ? "/api/payment-qr.png" : null,
+    paymentQrUrl: "/api/payment-qr.png",
+    paymentQrConfigured: true,
     registrationOpen: isOpen,
     registrationNotice: settings.registration_notice || "",
   });
 });
 
-app.get("/api/payment-qr.png", (request, response, next) => {
-  const settings = statements.eventSettings.get();
-  const filename = settings.payment_qr_filename || (fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg")) ? "default-payment-qr.jpg" : null);
-  if (!filename) return response.status(404).json({ error: "Payment QR has not been configured" });
-  response.set("X-Content-Type-Options", "nosniff").set("Cache-Control", "no-store");
-  response.sendFile(path.join(uploadsDirectory, filename), (error) => {
-    if (error && !response.headersSent) next(error);
-  });
+app.get("/api/payment-qr.png", async (request, response, next) => {
+  try {
+    const settings = statements.eventSettings.get();
+    const filename = settings.payment_qr_filename || (fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg")) ? "default-payment-qr.jpg" : null);
+
+    if (filename && fs.existsSync(path.join(uploadsDirectory, filename))) {
+      response.set("X-Content-Type-Options", "nosniff").set("Cache-Control", "no-store");
+      return response.sendFile(path.join(uploadsDirectory, filename), (error) => {
+        if (error && !response.headersSent) next(error);
+      });
+    }
+
+    // Dynamic UPI payment QR fallback - generates valid QR for delegate payment
+    const upiId = settings.upi_id || "chauhan5408k@okaxis";
+    const fee = (settings.entry_fee && Number(settings.entry_fee) > 0) ? Number(settings.entry_fee) : entryFee;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Arkham%20MUN&am=${encodeURIComponent(fee)}&cu=INR`;
+    const buffer = await QRCode.toBuffer(upiUri, { errorCorrectionLevel: "M", margin: 2, width: 360 });
+
+    response.set("Content-Type", "image/png").set("Cache-Control", "public, max-age=60");
+    response.send(buffer);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/registrations", (request, response) => {
@@ -327,20 +343,19 @@ app.post("/api/registrations", (request, response) => {
   const phone = typeof request.body?.phone === "string" ? request.body.phone.trim() : "";
   const organization = typeof request.body?.organization === "string" ? request.body.organization.trim() : "";
   const committee = typeof request.body?.committee === "string" ? request.body.committee.trim() : "";
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailPattern = /^[^s@]+@[^s@]+.[^s@]+$/;
   const settings = statements.eventSettings.get();
-  const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
-  const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
-  const eventDetails = getEventDetails();
-  const isConfigured = Boolean(hasQr && eventDetails.date && eventDetails.time && eventDetails.venue);
-  const isOpen = Boolean(isConfigured && (settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1));
+
+  // Registration is ONLY closed if admin explicitly sets it to closed (0)
+  const isOpen = (settings.registration_open === null || settings.registration_open === undefined)
+    ? true
+    : Number(settings.registration_open) === 1;
 
   if (!isOpen) {
-    const errorMsg = !isConfigured
-      ? "Registration is not open until the event details and payment QR are configured"
-      : (settings.registration_notice || "Registration has been temporarily closed by the Secretariat");
+    const errorMsg = settings.registration_notice || "Registration has been temporarily closed by the Secretariat";
     return response.status(503).json({ error: errorMsg });
   }
+
   if (!name || name.length > 120 || !emailPattern.test(email) || email.length > 200 ||
       !phone || phone.length > 40 || !organization || organization.length > 160 ||
       !committee || committee.length > 160) {
