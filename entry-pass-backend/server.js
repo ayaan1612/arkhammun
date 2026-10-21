@@ -5,227 +5,132 @@ const path = require("node:path");
 require("dotenv").config();
 
 const express = require("express");
+const cors = require("cors");
 const multer = require("multer");
 const QRCode = require("qrcode");
-const Database = require("better-sqlite3");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 const mailer = require("./mailer");
+const {
+  connectToDatabase,
+  User,
+  Event,
+  Registration,
+  Notification,
+  ContactQuery,
+} = require("./db");
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
-const frontendOrigins = new Set((process.env.FRONTEND_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000").split(",").map((origin) => origin.trim()).filter(Boolean));
-const entryFee = Number(process.env.ENTRY_FEE);
-const publicDirectory = path.join(__dirname, "public");
+const entryFee = Number(process.env.ENTRY_FEE || 2200);
 const uploadsDirectory = process.env.UPLOADS_DIRECTORY || path.join(__dirname, "uploads");
-const dataDirectory = process.env.DATA_DIRECTORY || path.join(__dirname, "data");
-const dbPath = process.env.DB_PATH || path.join(dataDirectory, "registrations.sqlite");
-
-for (const variable of ["ENTRY_FEE", "ENTRY_SECRET", "ADMIN_KEY"]) {
-  if (!process.env[variable]) throw new Error(`Missing required environment variable: ${variable}`);
-}
-if (!Number.isFinite(entryFee) || entryFee <= 0) throw new Error("ENTRY_FEE must be a positive number");
+const jwtSecret = process.env.JWT_SECRET || process.env.ENTRY_SECRET || "arkham-mun-jwt-secret-key-2026";
+const entrySecret = process.env.ENTRY_SECRET || "arkham-entry-secret-default-change-in-prod";
+const adminKey = process.env.ADMIN_KEY || "arkham-admin-key-default-2026";
 
 fs.mkdirSync(uploadsDirectory, { recursive: true });
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-const database = new Database(dbPath);
-database.pragma("journal_mode = WAL");
-database.exec(`
-  CREATE TABLE IF NOT EXISTS registrations (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    contact TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    organization TEXT,
-    committee TEXT,
-    amount REAL NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('pending_payment', 'payment_submitted', 'approved', 'rejected')),
-    utr TEXT,
-    screenshot_path TEXT,
-    reject_reason TEXT,
-    entry_payload TEXT,
-    used_at TEXT,
-    created_at TEXT NOT NULL,
-    email_status TEXT,
-    email_sent_at TEXT,
-    email_error TEXT
-  );
-  CREATE TABLE IF NOT EXISTS event_settings (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    event_name TEXT NOT NULL,
-    event_date TEXT NOT NULL DEFAULT '',
-    event_time TEXT NOT NULL DEFAULT '',
-    venue TEXT NOT NULL DEFAULT '',
-    payment_qr_filename TEXT,
-    entry_fee REAL,
-    upi_id TEXT DEFAULT 'chauhan5408k@okaxis',
-    registration_open INTEGER DEFAULT 1,
-    registration_notice TEXT DEFAULT ''
-  );
-  CREATE TABLE IF NOT EXISTS contact_queries (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    phone TEXT,
-    subject TEXT NOT NULL,
-    message TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'replied')),
-    reply_message TEXT,
-    replied_at TEXT,
-    created_at TEXT NOT NULL
-  );
-`);
-
-const registrationColumns = new Set(database.prepare("PRAGMA table_info(registrations)").all().map((column) => column.name));
-for (const [name, type] of [
-  ["email", "TEXT"],
-  ["phone", "TEXT"],
-  ["organization", "TEXT"],
-  ["committee", "TEXT"],
-  ["email_status", "TEXT"],
-  ["email_sent_at", "TEXT"],
-  ["email_error", "TEXT"],
-]) {
-  if (!registrationColumns.has(name)) database.exec(`ALTER TABLE registrations ADD COLUMN ${name} ${type}`);
-}
-
-const eventSettingsColumns = new Set(database.prepare("PRAGMA table_info(event_settings)").all().map((column) => column.name));
-for (const [name, type, defaultVal] of [
-  ["entry_fee", "REAL", `${entryFee}`],
-  ["upi_id", "TEXT", "'chauhan5408k@okaxis'"],
-  ["registration_open", "INTEGER", "1"],
-  ["registration_notice", "TEXT", "''"],
-]) {
-  if (!eventSettingsColumns.has(name)) database.exec(`ALTER TABLE event_settings ADD COLUMN ${name} ${type} DEFAULT ${defaultVal}`);
-}
-
-database.prepare("INSERT OR IGNORE INTO event_settings (id, event_name, event_date, event_time, venue, entry_fee, upi_id, registration_open) VALUES (1, ?, ?, ?, ?, ?, ?, 1)").run(
-  process.env.EVENT_NAME || "Arkham MUN",
-  process.env.EVENT_DATE || "24–25 October 2026",
-  process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
-  process.env.EVENT_VENUE || "Central Delhi, India",
-  entryFee,
-  "chauhan5408k@okaxis"
-);
-
-database.prepare(`
-  UPDATE event_settings
-  SET event_date = CASE WHEN event_date IS NULL OR TRIM(event_date) = '' THEN ? ELSE event_date END,
-      event_time = CASE WHEN event_time IS NULL OR TRIM(event_time) = '' THEN ? ELSE event_time END,
-      venue = CASE WHEN venue IS NULL OR TRIM(venue) = '' THEN ? ELSE venue END
-  WHERE id = 1
-`).run(
-  process.env.EVENT_DATE || "24–25 October 2026",
-  process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
-  process.env.EVENT_VENUE || "Central Delhi, India"
-);
-
-const statements = {
-  create: database.prepare(`
-    INSERT INTO registrations (id, name, contact, email, phone, organization, committee, amount, status, created_at)
-    VALUES (@id, @name, @email, @email, @phone, @organization, @committee, @amount, 'pending_payment', @created_at)
-  `),
-  byId: database.prepare("SELECT * FROM registrations WHERE id = ?"),
-  eventSettings: database.prepare("SELECT * FROM event_settings WHERE id = 1"),
-  updateEventSettings: database.prepare(`
-    UPDATE event_settings
-    SET event_name = @event_name, event_date = @event_date, event_time = @event_time, venue = @venue
-    WHERE id = 1
-  `),
-  updateEventControls: database.prepare(`
-    UPDATE event_settings
-    SET entry_fee = @entry_fee, upi_id = @upi_id, registration_open = @registration_open, registration_notice = @registration_notice
-    WHERE id = 1
-  `),
-  updatePaymentQr: database.prepare("UPDATE event_settings SET payment_qr_filename = ? WHERE id = 1"),
-  proof: database.prepare(`
-    UPDATE registrations SET utr = ?, screenshot_path = ?, reject_reason = NULL, status = 'payment_submitted'
-    WHERE id = ? AND status IN ('pending_payment', 'rejected')
-  `),
-  queue: database.prepare(`
-    SELECT id, name, contact, email, phone, organization, committee, amount, status, utr, screenshot_path, reject_reason, created_at,
-           email_status, email_sent_at, email_error, used_at
-    FROM registrations WHERE status = ? ORDER BY created_at ASC
-  `),
-  approve: database.prepare(`
-    UPDATE registrations SET status = 'approved', entry_payload = ?
-    WHERE id = ? AND status = 'payment_submitted'
-  `),
-  updateEmailStatus: database.prepare(`
-    UPDATE registrations
-    SET email_status = @status, email_sent_at = @sent_at, email_error = @error
-    WHERE id = @id
-  `),
-  reject: database.prepare(`
-    UPDATE registrations SET status = 'rejected', reject_reason = ?
-    WHERE id = ? AND status = 'payment_submitted'
-  `),
-  markUsed: database.prepare(`
-    UPDATE registrations SET used_at = ?
-    WHERE id = ? AND status = 'approved' AND entry_payload = ? AND used_at IS NULL
-  `),
-  createContactQuery: database.prepare(`
-    INSERT INTO contact_queries (id, name, email, phone, subject, message, status, created_at)
-    VALUES (@id, @name, @email, @phone, @subject, @message, 'pending', @created_at)
-  `),
-  contactQueryById: database.prepare("SELECT * FROM contact_queries WHERE id = ?"),
-  allContactQueries: database.prepare("SELECT * FROM contact_queries ORDER BY created_at DESC"),
-  contactQueriesByStatus: database.prepare("SELECT * FROM contact_queries WHERE status = ? ORDER BY created_at DESC"),
-  replyContactQuery: database.prepare(`
-    UPDATE contact_queries
-    SET status = 'replied', reply_message = @reply_message, replied_at = @replied_at
-    WHERE id = @id
-  `),
-};
+// -------------------------------------------------------------
+// CORS & Middleware
+// -------------------------------------------------------------
+const rawOrigins = (process.env.FRONTEND_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = new Set(rawOrigins);
 
 app.disable("x-powered-by");
-app.use((request, response, next) => {
-  const origin = request.get("origin");
-  const isAllowedOrigin = Boolean(
-    origin && (
-      frontendOrigins.has(origin) ||
-      process.env.NODE_ENV !== "production" ||
-      origin.includes("localhost") ||
-      origin.includes("127.0.0.1") ||
-      origin.startsWith("http://192.168.") ||
-      origin.startsWith("http://10.") ||
-      origin.startsWith("http://172.")
-    )
-  );
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      if (
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1") ||
+        origin.endsWith(".vercel.app") ||
+        process.env.NODE_ENV !== "production"
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Keep permissive for Vercel deployment preview links
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-admin-key"],
+  })
+);
 
-  if (isAllowedOrigin) {
-    response.set("Access-Control-Allow-Origin", origin);
-    response.set("Vary", "Origin");
-    response.set("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
-    response.set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
-  }
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
-  if (request.method === "OPTIONS") {
-    if (isAllowedOrigin) return response.sendStatus(204);
-    if (process.env.NODE_ENV !== "production") {
-      response.set("Access-Control-Allow-Origin", origin || "*");
-      response.set("Access-Control-Allow-Headers", "Content-Type, x-admin-key");
-      response.set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
-      return response.sendStatus(204);
-    }
-    return response.sendStatus(204);
+// Establish / reuse MongoDB Atlas connection for every request (cached in serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connectToDatabase();
+  } catch (err) {
+    // Non-fatal if URI not provided yet in local development
   }
   next();
 });
-app.use(express.json({ limit: "32kb" }));
 
-function requireAdminKey(request, response, next) {
-  const supplied = request.get("x-admin-key") || "";
-  const expected = process.env.ADMIN_KEY;
-  const suppliedBuffer = Buffer.from(supplied);
-  const expectedBuffer = Buffer.from(expected);
-  // Replace this shared key with real login and session authentication before launch.
-  if (suppliedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)) {
-    return response.status(401).json({ error: "Unauthorized" });
-  }
-  next();
+// -------------------------------------------------------------
+// Authentication Helpers & Middleware
+// -------------------------------------------------------------
+function signToken(user) {
+  return jwt.sign(
+    {
+      id: user._id ? user._id.toString() : user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role || "user",
+    },
+    jwtSecret,
+    { expiresIn: "14d" }
+  );
 }
 
+async function requireAuth(req, res, next) {
+  try {
+    const authHeader = req.get("authorization") || req.get("Authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required. Please log in." });
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, jwtSecret);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired session. Please log in again." });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  const supplied = req.get("x-admin-key") || "";
+  if (supplied && supplied === adminKey) {
+    return next();
+  }
+
+  const authHeader = req.get("authorization") || req.get("Authorization");
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    try {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, jwtSecret);
+      req.user = decoded;
+      if (decoded.role === "admin") {
+        return next();
+      }
+    } catch {
+      // Proceed to rejection
+    }
+  }
+
+  return res.status(403).json({ error: "Access denied. Administrator privileges required." });
+}
+
+// -------------------------------------------------------------
+// File Uploads (Screenshots)
+// -------------------------------------------------------------
 const allowedImageTypes = new Map([
   ["image/jpeg", ".jpg"],
   ["image/png", ".png"],
@@ -234,35 +139,61 @@ const allowedImageTypes = new Map([
 ]);
 
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadsDirectory,
-    filename: (request, file, callback) => callback(null, `${crypto.randomUUID()}${allowedImageTypes.get(file.mimetype) || ""}`),
-  }),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
-  fileFilter: (request, file, callback) => {
-    if (!allowedImageTypes.has(file.mimetype)) return callback(new Error("Image must be a JPEG, PNG, WebP, or GIF image"));
-    callback(null, true);
+  storage: multer.memoryStorage(), // In-memory to convert to base64 & persist in MongoDB on Vercel
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (!allowedImageTypes.has(file.mimetype)) {
+      return cb(new Error("Image must be a JPEG, PNG, WebP, or GIF image"));
+    }
+    cb(null, true);
   },
 });
 
-function getEventDetails() {
-  const settings = statements.eventSettings.get();
+// -------------------------------------------------------------
+// Entry Pass Cryptographic Helpers
+// -------------------------------------------------------------
+async function getDefaultEventDetails() {
+  try {
+    const ev = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
+    if (ev) {
+      return {
+        id: ev._id.toString(),
+        name: ev.title,
+        date: ev.date,
+        time: ev.time,
+        venue: ev.venue,
+        amount: ev.entryFee,
+        upiId: ev.upiId,
+        registrationOpen: ev.registrationOpen,
+        registrationNotice: ev.registrationNotice,
+      };
+    }
+  } catch {}
+
   return {
-    name: settings.event_name || process.env.EVENT_NAME || "Arkham MUN",
-    date: settings.event_date || process.env.EVENT_DATE || "24–25 October 2026",
-    time: settings.event_time || process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
-    venue: settings.venue || process.env.EVENT_VENUE || "Central Delhi, India",
+    id: "default-event",
+    name: process.env.EVENT_NAME || "Arkham MUN",
+    date: process.env.EVENT_DATE || "24–25 October 2026",
+    time: process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
+    venue: process.env.EVENT_VENUE || "Arkham Assembly Hall & International Dais, New Delhi",
+    amount: entryFee,
+    upiId: "chauhan5408k@okaxis",
+    registrationOpen: true,
+    registrationNotice: "",
   };
 }
 
-function issueEntryPayload(registration) {
-  const body = Buffer.from(JSON.stringify({
-    id: registration.id,
-    name: registration.name,
-    issuedAt: new Date().toISOString(),
-    event: getEventDetails(),
-  })).toString("base64url");
-  const signature = crypto.createHmac("sha256", process.env.ENTRY_SECRET).update(body).digest("base64url");
+function issueEntryPayload(registration, eventDetails) {
+  const regId = registration._id ? registration._id.toString() : registration.id;
+  const body = Buffer.from(
+    JSON.stringify({
+      id: regId,
+      name: registration.name,
+      issuedAt: new Date().toISOString(),
+      event: eventDetails,
+    })
+  ).toString("base64url");
+  const signature = crypto.createHmac("sha256", entrySecret).update(body).digest("base64url");
   return `${body}.${signature}`;
 }
 
@@ -271,725 +202,1173 @@ function verifyEntryPayload(payload) {
   const parts = payload.split(".");
   if (parts.length !== 2) return null;
   const [body, suppliedSignature] = parts;
-  const expectedSignature = crypto.createHmac("sha256", process.env.ENTRY_SECRET).update(body).digest();
+  const expectedSignature = crypto.createHmac("sha256", entrySecret).update(body).digest();
   let actualSignature;
   try {
     actualSignature = Buffer.from(suppliedSignature, "base64url");
   } catch {
     return null;
   }
-  if (actualSignature.length !== expectedSignature.length || !crypto.timingSafeEqual(actualSignature, expectedSignature)) return null;
+  if (actualSignature.length !== expectedSignature.length || !crypto.timingSafeEqual(actualSignature, expectedSignature)) {
+    return null;
+  }
   try {
     const decoded = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    if (typeof decoded.id !== "string" || typeof decoded.name !== "string" || typeof decoded.issuedAt !== "string") return null;
-    if (decoded.event !== undefined && (!decoded.event ||
-        ["name", "date", "time", "venue"].some((field) => typeof decoded.event[field] !== "string"))) return null;
+    if (typeof decoded.id !== "string" || typeof decoded.name !== "string" || typeof decoded.issuedAt !== "string") {
+      return null;
+    }
     return decoded;
   } catch {
     return null;
   }
 }
 
-app.get("/api/event", (request, response) => {
-  const settings = statements.eventSettings.get();
-  const eventDetails = getEventDetails();
-  // Registration remains open until the admin explicitly closes it (registration_open === 0)
-  const isOpen = (settings.registration_open === null || settings.registration_open === undefined)
-    ? true
-    : Number(settings.registration_open) === 1;
-  const currentFee = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
-    ? Number(settings.entry_fee)
-    : entryFee;
+// -------------------------------------------------------------
+// 1. AUTHENTICATION ROUTES
+// -------------------------------------------------------------
 
-  response.json({
-    event: eventDetails,
-    amount: currentFee,
-    upiId: settings.upi_id || "chauhan5408k@okaxis",
-    paymentQrUrl: "/api/payment-qr.png",
-    paymentQrConfigured: true,
-    registrationOpen: isOpen,
-    registrationNotice: settings.registration_notice || "",
-  });
-});
-
-app.get("/api/payment-qr.png", async (request, response, next) => {
+// POST /api/auth/signup
+app.post("/api/auth/signup", async (req, res) => {
   try {
-    const settings = statements.eventSettings.get();
-    const filename = settings.payment_qr_filename || (fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg")) ? "default-payment-qr.jpg" : null);
+    const { name, email, password } = req.body || {};
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ error: "Please enter your full name." });
+    }
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ error: "Please provide a valid email address." });
+    }
+    if (!password || typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long." });
+    }
 
-    if (filename && fs.existsSync(path.join(uploadsDirectory, filename))) {
-      response.set("X-Content-Type-Options", "nosniff").set("Cache-Control", "no-store");
-      return response.sendFile(path.join(uploadsDirectory, filename), (error) => {
-        if (error && !response.headersSent) next(error);
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if email already registered
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({
+        error: "An account with this email address already exists. Please log in instead.",
       });
     }
 
-    // Dynamic UPI payment QR fallback - generates valid QR for delegate payment
-    const upiId = settings.upi_id || "chauhan5408k@okaxis";
-    const fee = (settings.entry_fee && Number(settings.entry_fee) > 0) ? Number(settings.entry_fee) : entryFee;
-    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=Arkham%20MUN&am=${encodeURIComponent(fee)}&cu=INR`;
-    const buffer = await QRCode.toBuffer(upiUri, { errorCorrectionLevel: "M", margin: 2, width: 360 });
+    // Role cannot be chosen by client. Default is 'user', or 'admin' if email matches ADMIN_EMAIL.
+    let role = "user";
+    const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    if (adminEmail && cleanEmail === adminEmail) {
+      role = "admin";
+    }
 
-    response.set("Content-Type", "image/png").set("Cache-Control", "public, max-age=60");
-    response.send(buffer);
-  } catch (error) {
-    next(error);
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const user = await User.create({
+      name: name.trim(),
+      email: cleanEmail,
+      passwordHash,
+      role,
+    });
+
+    const token = signToken(user);
+    res.status(201).json({
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      message: "Account created successfully.",
+    });
+  } catch (err) {
+    console.error("Signup error:", err);
+    res.status(500).json({ error: "Failed to create account. Please try again." });
   }
 });
 
-app.post("/api/registrations", (request, response) => {
-  const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
-  const email = typeof request.body?.email === "string" ? request.body.email.trim().toLowerCase() : "";
-  const phone = typeof request.body?.phone === "string" ? request.body.phone.trim() : "";
-  const organization = typeof request.body?.organization === "string" ? request.body.organization.trim() : "";
-  const committee = typeof request.body?.committee === "string" ? request.body.committee.trim() : "";
-  const emailPattern = /^[^s@]+@[^s@]+.[^s@]+$/;
-  const settings = statements.eventSettings.get();
-
-  // Registration is ONLY closed if admin explicitly sets it to closed (0)
-  const isOpen = (settings.registration_open === null || settings.registration_open === undefined)
-    ? true
-    : Number(settings.registration_open) === 1;
-
-  if (!isOpen) {
-    const errorMsg = settings.registration_notice || "Registration has been temporarily closed by the Secretariat";
-    return response.status(503).json({ error: errorMsg });
-  }
-
-  if (!name || name.length > 120 || !emailPattern.test(email) || email.length > 200 ||
-      !phone || phone.length > 40 || !organization || organization.length > 160 ||
-      !committee || committee.length > 160) {
-    return response.status(400).json({ error: "Full name, a valid email, phone, school or organization, and committee are required within the listed limits" });
-  }
-
-  const effectiveAmount = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
-    ? Number(settings.entry_fee)
-    : entryFee;
-
-  const registration = {
-    id: crypto.randomUUID(),
-    name,
-    email,
-    phone,
-    organization,
-    committee,
-    amount: effectiveAmount,
-    created_at: new Date().toISOString(),
-  };
-  statements.create.run(registration);
-  response.status(201).json({ id: registration.id, amount: registration.amount });
-});
-
-app.get("/api/registrations/:id", (request, response) => {
-  const registration = statements.byId.get(request.params.id);
-  if (!registration) return response.status(404).json({ error: "Registration not found" });
-  response.json({
-    id: registration.id,
-    name: registration.name,
-    amount: registration.amount,
-    status: registration.status,
-    committee: registration.committee || "",
-    organization: registration.organization || "",
-    reject_reason: registration.reject_reason || null,
-    hasQr: Boolean(registration.status === "approved" && registration.entry_payload),
-    event: getEventDetails(),
-  });
-});
-
-app.post("/api/registrations/:id/payment-proof", (request, response, next) => {
-  upload.single("screenshot")(request, response, (uploadError) => {
-    if (uploadError) return next(uploadError);
-    const utr = typeof request.body?.utr === "string" ? request.body.utr.trim() : "";
-    if (!utr || utr.length > 120) {
-      if (request.file) fs.unlinkSync(request.file.path);
-      return response.status(400).json({ error: "A transaction reference (UTR) is required (maximum 120 characters)" });
-    }
-    const previous = statements.byId.get(request.params.id);
-    const result = statements.proof.run(utr, request.file?.filename || null, request.params.id);
-    if (!result.changes) {
-      if (request.file) fs.unlinkSync(request.file.path);
-      const registration = statements.byId.get(request.params.id);
-      return response.status(registration ? 409 : 404).json({ error: registration ? "Payment proof can only be submitted while payment is pending or rejected" : "Registration not found" });
-    }
-    if (previous?.screenshot_path && previous.screenshot_path !== request.file?.filename) {
-      fs.rmSync(path.join(uploadsDirectory, previous.screenshot_path), { force: true });
-    }
-    response.status(200).json({ id: request.params.id, status: "payment_submitted" });
-  });
-});
-
-app.get("/api/registrations/:id/entry-qr", async (request, response, next) => {
+// POST /api/auth/login
+app.post("/api/auth/login", async (req, res) => {
   try {
-    const registration = statements.byId.get(request.params.id);
-    if (!registration) return response.status(404).json({ error: "Registration not found" });
-    if (registration.status !== "approved" || !registration.entry_payload) {
-      return response.status(409).json({ error: "Entry QR is available after approval" });
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required." });
     }
-    const qr = await QRCode.toDataURL(registration.entry_payload, { errorCorrectionLevel: "M", margin: 2, width: 320 });
-    const decoded = verifyEntryPayload(registration.entry_payload);
-    response.json({ payload: registration.entry_payload, qr, registrationId: registration.id, event: decoded.event || getEventDetails() });
-  } catch (error) {
-    next(error);
-  }
-});
 
-app.post("/api/contact", (request, response) => {
-  const name = typeof request.body?.name === "string" ? request.body.name.trim() : "";
-  const email = typeof request.body?.email === "string" ? request.body.email.trim().toLowerCase() : "";
-  const phone = typeof request.body?.phone === "string" ? request.body.phone.trim() : "";
-  const subject = typeof request.body?.subject === "string" ? request.body.subject.trim() : "";
-  const message = typeof request.body?.message === "string" ? request.body.message.trim() : "";
-
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!name || name.length > 120) {
-    return response.status(400).json({ error: "Please provide your full name (maximum 120 characters)" });
-  }
-  if (!email || !emailPattern.test(email) || email.length > 200) {
-    return response.status(400).json({ error: "Please provide a valid email address" });
-  }
-  if (!subject || subject.length > 200) {
-    return response.status(400).json({ error: "Please provide a subject for your enquiry" });
-  }
-  if (!message || message.length > 2500) {
-    return response.status(400).json({ error: "Please provide a message (up to 2500 characters)" });
-  }
-
-  const queryRecord = {
-    id: `query-${crypto.randomUUID()}`,
-    name,
-    email,
-    phone: phone || null,
-    subject,
-    message,
-    created_at: new Date().toISOString(),
-  };
-
-  statements.createContactQuery.run(queryRecord);
-  response.status(201).json({
-    success: true,
-    id: queryRecord.id,
-    message: "Your enquiry has been received by the Secretariat.",
-  });
-});
-
-app.use("/api/admin", requireAdminKey);
-app.get("/api/admin/settings", (request, response) => {
-  const settings = statements.eventSettings.get();
-  const defaultQrExists = fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"));
-  const hasQr = Boolean(settings.payment_qr_filename || defaultQrExists);
-  const currentFee = (settings.entry_fee !== null && settings.entry_fee !== undefined && Number(settings.entry_fee) > 0)
-    ? Number(settings.entry_fee)
-    : entryFee;
-
-  response.json({
-    event: getEventDetails(),
-    amount: currentFee,
-    upiId: settings.upi_id || "chauhan5408k@okaxis",
-    registrationOpen: Boolean(settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1),
-    registrationNotice: settings.registration_notice || "",
-    paymentQrConfigured: Boolean(settings.payment_qr_filename || defaultQrExists),
-    paymentQrUrl: hasQr ? "/api/payment-qr.png" : null,
-  });
-});
-
-app.put("/api/admin/settings", (request, response) => {
-  const event = request.body?.event;
-  const fields = ["name", "date", "time", "venue"];
-  if (!event || fields.some((field) => typeof event[field] !== "string")) {
-    return response.status(400).json({ error: "Event name, date, time, and venue are required" });
-  }
-  const values = {
-    event_name: event.name.trim(),
-    event_date: event.date.trim(),
-    event_time: event.time.trim(),
-    venue: event.venue.trim(),
-    entry_fee: null,
-    upi_id: null,
-    registration_open: null,
-    registration_notice: null,
-  };
-  if (!values.event_name || values.event_name.length > 160 ||
-      !values.event_date || values.event_date.length > 120 ||
-      !values.event_time || values.event_time.length > 120 ||
-      !values.venue || values.venue.length > 300) {
-    return response.status(400).json({ error: "Complete all event details within the allowed lengths" });
-  }
-
-  if (request.body?.amount !== undefined && request.body?.amount !== null && request.body?.amount !== "") {
-    const parsedFee = Number(request.body.amount);
-    if (!Number.isFinite(parsedFee) || parsedFee < 0) {
-      return response.status(400).json({ error: "Amount must be a non-negative number" });
+    const cleanEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      return res.status(401).json({ error: "Invalid email or password. Please try again." });
     }
-    values.entry_fee = parsedFee;
-  }
 
-  if (typeof request.body?.upiId === "string") {
-    values.upi_id = request.body.upiId.trim().slice(0, 100);
-  }
-
-  if (request.body?.registrationOpen !== undefined) {
-    values.registration_open = request.body.registrationOpen ? 1 : 0;
-  }
-
-  if (typeof request.body?.registrationNotice === "string") {
-    values.registration_notice = request.body.registrationNotice.trim().slice(0, 300);
-  }
-
-  statements.updateEventSettings.run({
-    event_name: values.event_name,
-    event_date: values.event_date,
-    event_time: values.event_time,
-    venue: values.venue,
-  });
-
-  const current = statements.eventSettings.get();
-  statements.updateEventControls.run({
-    entry_fee: values.entry_fee !== null ? values.entry_fee : current.entry_fee,
-    upi_id: values.upi_id !== null ? values.upi_id : current.upi_id,
-    registration_open: values.registration_open !== null ? values.registration_open : current.registration_open,
-    registration_notice: values.registration_notice !== null ? values.registration_notice : current.registration_notice,
-  });
-  const updatedSettings = statements.eventSettings.get();
-  response.json({
-    event: getEventDetails(),
-    amount: updatedSettings.entry_fee !== null ? Number(updatedSettings.entry_fee) : entryFee,
-    upiId: updatedSettings.upi_id || "chauhan5408k@okaxis",
-    registrationOpen: Boolean(updatedSettings.registration_open === null || Number(updatedSettings.registration_open) === 1),
-    registrationNotice: updatedSettings.registration_notice || "",
-    paymentQrConfigured: Boolean(updatedSettings.payment_qr_filename || fs.existsSync(path.join(uploadsDirectory, "default-payment-qr.jpg"))),
-    paymentQrUrl: "/api/payment-qr.png",
-  });
-});
-
-app.post("/api/admin/payment-qr", (request, response, next) => {
-  upload.single("paymentQr")(request, response, (uploadError) => {
-    if (uploadError) return next(uploadError);
-    if (!request.file) return response.status(400).json({ error: "Select a payment QR image to upload" });
-    const previousFilename = statements.eventSettings.get().payment_qr_filename;
-    statements.updatePaymentQr.run(request.file.filename);
-    if (previousFilename && previousFilename !== request.file.filename) {
-      fs.rmSync(path.join(uploadsDirectory, previousFilename), { force: true });
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (!match) {
+      return res.status(401).json({ error: "Invalid email or password. Please try again." });
     }
-    response.json({ paymentQrConfigured: true, paymentQrUrl: "/api/payment-qr.png" });
-  });
+
+    // Check if email should be promoted to admin
+    const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
+    if (adminEmail && cleanEmail === adminEmail && user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+    }
+
+    const token = signToken(user);
+    res.json({
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Failed to log in. Please try again." });
+  }
 });
 
-app.get("/api/admin/registrations", (request, response) => {
-  const status = request.query.status || "payment_submitted";
-  const allowedStatuses = new Set(["pending_payment", "payment_submitted", "approved", "rejected"]);
-  if (typeof status !== "string" || !allowedStatuses.has(status)) return response.status(400).json({ error: "Invalid status filter" });
-  const registrations = statements.queue.all(status).map((registration) => ({
-    ...registration,
-    screenshot_url: registration.screenshot_path ? `/uploads/${encodeURIComponent(registration.screenshot_path)}` : null,
-  }));
-  response.json({ registrations });
+// GET /api/auth/me
+app.get("/api/auth/me", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-passwordHash");
+    if (!user) {
+      return res.status(404).json({ error: "User account not found." });
+    }
+    res.json({
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to authenticate session." });
+  }
 });
+
+// -------------------------------------------------------------
+// 2. EVENTS ROUTES (Public & Admin)
+// -------------------------------------------------------------
+
+// GET /api/events (Public list of all events)
+app.get("/api/events", async (req, res) => {
+  try {
+    let events = await Event.find().sort({ createdAt: -1 });
+    if (!events || events.length === 0) {
+      const defaultEvent = await Event.create({
+        title: "Arkham MUN 2026",
+        description:
+          "Arkham Model United Nations — diplomacy, debate and ideas that move nations. Join international delegates and future leaders.",
+        date: "October 24-25, 2026",
+        venue: "Arkham Assembly Hall & International Dais, New Delhi",
+        time: "09:00 AM - 05:00 PM",
+        entryFee: entryFee,
+        upiId: "chauhan5408k@okaxis",
+        registrationOpen: true,
+        registrationNotice: "Early bird delegate registration is currently live. Limited seats per committee.",
+      });
+      events = [defaultEvent];
+    }
+    res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load events." });
+  }
+});
+
+// GET /api/events/:id
+app.get("/api/events/:id", async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Event not found." });
+    res.json({ event });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch event." });
+  }
+});
+
+// Legacy /api/event compatibility
+app.get("/api/event", async (req, res) => {
+  try {
+    const details = await getDefaultEventDetails();
+    res.json({
+      event: {
+        name: details.name,
+        date: details.date,
+        time: details.time,
+        venue: details.venue,
+      },
+      amount: details.amount,
+      upiId: details.upiId || "chauhan5408k@okaxis",
+      paymentQrUrl: "/api/payment-qr.png",
+      paymentQrConfigured: true,
+      registrationOpen: details.registrationOpen,
+      registrationNotice: details.registrationNotice || "",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch event settings." });
+  }
+});
+
+// GET /api/payment-qr.png (Dynamic payment QR code)
+app.get("/api/payment-qr.png", async (req, res, next) => {
+  try {
+    const details = await getDefaultEventDetails();
+    const upiId = details.upiId || "chauhan5408k@okaxis";
+    const amount = details.amount || entryFee;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
+      details.name
+    )}&am=${encodeURIComponent(amount.toFixed(2))}&cu=INR&tn=${encodeURIComponent("Arkham MUN Delegate Fee")}`;
+
+    const pngBuffer = await QRCode.toBuffer(upiUri, {
+      type: "png",
+      width: 480,
+      margin: 2,
+      errorCorrectionLevel: "M",
+    });
+
+    res.set("Content-Type", "image/png");
+    res.set("Cache-Control", "no-cache");
+    res.send(pngBuffer);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// -------------------------------------------------------------
+// 3. USER BACKEND ROUTES (Protected by requireAuth)
+// -------------------------------------------------------------
+
+// POST /api/events/:id/register
+app.post("/api/events/:id/register", requireAuth, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ error: "Event not found." });
+    }
+    if (!event.registrationOpen) {
+      return res.status(400).json({ error: "Registration for this event is currently closed." });
+    }
+
+    // Check if user is already registered for this event
+    const existing = await Registration.findOne({ userId: req.user.id, eventId });
+    if (existing) {
+      return res.status(409).json({ error: "You are already registered for this event." });
+    }
+
+    const {
+      name,
+      phone = "",
+      organization = "",
+      committee = "",
+      utr = null,
+      screenshot_path = null,
+    } = req.body || {};
+
+    const delegateName = (name && name.trim()) || req.user.name;
+
+    const registration = await Registration.create({
+      userId: req.user.id,
+      eventId: event._id,
+      name: delegateName,
+      contact: req.user.email,
+      email: req.user.email,
+      phone,
+      organization,
+      committee,
+      amount: event.entryFee,
+      status: utr ? "payment_submitted" : "pending_payment",
+      utr,
+      screenshot_path,
+    });
+
+    // Create user notification
+    await Notification.create({
+      userId: req.user.id,
+      eventId: event._id,
+      message: `You are registered for ${event.title}`,
+      type: "registration",
+      read: false,
+    });
+
+    res.status(201).json({
+      registration,
+      message: `Successfully registered for ${event.title}`,
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: "You are already registered for this event." });
+    }
+    console.error("Event registration error:", err);
+    res.status(500).json({ error: "Failed to register for event." });
+  }
+});
+
+// GET /api/my-registrations
+app.get("/api/my-registrations", requireAuth, async (req, res) => {
+  try {
+    const registrations = await Registration.find({ userId: req.user.id })
+      .populate("eventId")
+      .sort({ registeredAt: -1 });
+
+    res.json({ registrations });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to retrieve your registrations." });
+  }
+});
+
+// GET /api/my-notifications
+app.get("/api/my-notifications", requireAuth, async (req, res) => {
+  try {
+    const notifications = await Notification.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    const unreadCount = await Notification.countDocuments({ userId: req.user.id, read: false });
+
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to retrieve your notifications." });
+  }
+});
+
+// PATCH /api/notifications/:id/read
+app.patch("/api/notifications/:id/read", requireAuth, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      { read: true },
+      { new: true }
+    );
+    if (!notification) {
+      return res.status(404).json({ error: "Notification not found." });
+    }
+    res.json({ notification });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to mark notification as read." });
+  }
+});
+
+// -------------------------------------------------------------
+// 4. ADMIN BACKEND ROUTES (Protected by requireAdmin)
+// -------------------------------------------------------------
+
+// POST /api/admin/events (Create Event)
+app.post("/api/admin/events", requireAdmin, async (req, res) => {
+  try {
+    const { title, description, date, venue, time, entryFee: fee, upiId, registrationOpen, registrationNotice } =
+      req.body || {};
+    if (!title || !date || !venue) {
+      return res.status(400).json({ error: "Event title, date, and venue are required." });
+    }
+
+    const event = await Event.create({
+      title: title.trim(),
+      description: description || "",
+      date: date.trim(),
+      venue: venue.trim(),
+      time: time || "09:00 AM - 05:00 PM",
+      entryFee: Number(fee) || entryFee,
+      upiId: upiId || "chauhan5408k@okaxis",
+      registrationOpen: registrationOpen !== false,
+      registrationNotice: registrationNotice || "",
+    });
+
+    res.status(201).json({ event });
+  } catch (err) {
+    console.error("Admin event creation error:", err);
+    res.status(500).json({ error: "Failed to create event." });
+  }
+});
+
+// PUT /api/admin/events/:id (Edit Event)
+app.put("/api/admin/events/:id", requireAdmin, async (req, res) => {
+  try {
+    const event = await Event.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    if (!event) return res.status(404).json({ error: "Event not found." });
+    res.json({ event });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update event." });
+  }
+});
+
+// DELETE /api/admin/events/:id (Delete Event & its registrations)
+app.delete("/api/admin/events/:id", requireAdmin, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const event = await Event.findByIdAndDelete(eventId);
+    if (!event) return res.status(404).json({ error: "Event not found." });
+
+    // Cascade delete all registrations and notifications linked to this event
+    await Registration.deleteMany({ eventId });
+    await Notification.deleteMany({ eventId });
+
+    res.json({ message: "Event and associated registrations successfully deleted." });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete event." });
+  }
+});
+
+// GET /api/admin/registrations (All registrations with user name, email, event filter)
+app.get("/api/admin/registrations", requireAdmin, async (req, res) => {
+  try {
+    const { eventId, status, search, query } = req.query;
+    const filter = {};
+
+    if (eventId && eventId !== "all") {
+      filter.eventId = eventId;
+    }
+    if (status && status !== "all") {
+      filter.status = status;
+    }
+
+    const searchTerm = search || query;
+    if (searchTerm) {
+      filter.$or = [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { email: { $regex: searchTerm, $options: "i" } },
+        { organization: { $regex: searchTerm, $options: "i" } },
+        { committee: { $regex: searchTerm, $options: "i" } },
+        { utr: { $regex: searchTerm, $options: "i" } },
+      ];
+    }
+
+    const registrations = await Registration.find(filter)
+      .populate("userId", "name email")
+      .populate("eventId", "title date venue time")
+      .sort({ registeredAt: -1 });
+
+    // Map format to match AdminRegistration interface
+    const mapped = registrations.map((r) => ({
+      id: r._id.toString(),
+      name: r.name,
+      contact: r.contact || r.email || "",
+      email: r.email,
+      phone: r.phone,
+      organization: r.organization,
+      committee: r.committee,
+      amount: r.amount,
+      status: r.status,
+      utr: r.utr,
+      screenshot_path: r.screenshot_path,
+      screenshot_url: r.screenshot_path,
+      reject_reason: r.reject_reason,
+      created_at: r.registeredAt ? r.registeredAt.toISOString() : new Date().toISOString(),
+      used_at: r.used_at ? r.used_at.toISOString() : null,
+      email_status: r.email_status,
+      email_sent_at: r.email_sent_at ? r.email_sent_at.toISOString() : null,
+      email_error: r.email_error,
+      event: r.eventId
+        ? {
+            id: r.eventId._id.toString(),
+            title: r.eventId.title,
+            date: r.eventId.date,
+            venue: r.eventId.venue,
+          }
+        : null,
+    }));
+
+    res.json({ registrations: mapped });
+  } catch (err) {
+    console.error("Admin fetch registrations error:", err);
+    res.status(500).json({ error: "Failed to load registrations." });
+  }
+});
+
+// POST /api/admin/notifications (Send announcement to delegates)
+app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
+  try {
+    const { eventId, message } = req.body || {};
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: "Announcement message cannot be empty." });
+    }
+
+    let targetUserIds = [];
+    if (eventId && eventId !== "all") {
+      const regs = await Registration.find({ eventId }).select("userId");
+      targetUserIds = [...new Set(regs.map((r) => r.userId.toString()))];
+    } else {
+      const users = await User.find({ role: "user" }).select("_id");
+      targetUserIds = users.map((u) => u._id.toString());
+    }
+
+    if (targetUserIds.length === 0) {
+      return res.json({ sentCount: 0, message: "No registered delegates found for this event." });
+    }
+
+    const docs = targetUserIds.map((userId) => ({
+      userId,
+      eventId: eventId && eventId !== "all" ? eventId : null,
+      message: message.trim(),
+      type: "announcement",
+      read: false,
+    }));
+
+    await Notification.insertMany(docs);
+
+    res.json({
+      sentCount: docs.length,
+      message: `Announcement successfully dispatched to ${docs.length} delegate(s).`,
+    });
+  } catch (err) {
+    console.error("Send announcement error:", err);
+    res.status(500).json({ error: "Failed to dispatch announcement." });
+  }
+});
+
+// -------------------------------------------------------------
+// 5. REGISTRATION PAYMENT & PROOF FLOW
+// -------------------------------------------------------------
+
+// POST /api/registrations (Start delegate registration)
+app.post("/api/registrations", async (req, res) => {
+  try {
+    const { name, email, phone = "", organization = "", committee = "", eventId } = req.body || {};
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ error: "Name is required." });
+    }
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ error: "Valid email is required." });
+    }
+
+    let targetEvent;
+    if (eventId) {
+      targetEvent = await Event.findById(eventId);
+    }
+    if (!targetEvent) {
+      targetEvent = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
+    }
+
+    if (targetEvent && !targetEvent.registrationOpen) {
+      return res.status(400).json({ error: "Registration is currently closed." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check or find/create User
+    let user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      const defaultPassword = `Arkham${crypto.randomBytes(4).toString("hex")}!`;
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(defaultPassword, salt);
+      user = await User.create({
+        name: name.trim(),
+        email: cleanEmail,
+        passwordHash,
+        role: "user",
+      });
+    }
+
+    // Check duplicate
+    const existing = await Registration.findOne({ userId: user._id, eventId: targetEvent._id });
+    if (existing) {
+      return res.json({ id: existing._id.toString(), amount: existing.amount, status: existing.status });
+    }
+
+    const registration = await Registration.create({
+      userId: user._id,
+      eventId: targetEvent._id,
+      name: name.trim(),
+      contact: cleanEmail,
+      email: cleanEmail,
+      phone: phone.trim(),
+      organization: organization.trim(),
+      committee: committee.trim(),
+      amount: targetEvent.entryFee,
+      status: "pending_payment",
+    });
+
+    res.status(201).json({
+      id: registration._id.toString(),
+      amount: registration.amount,
+      status: registration.status,
+    });
+  } catch (err) {
+    console.error("Start registration error:", err);
+    res.status(500).json({ error: "Failed to initiate registration." });
+  }
+});
+
+// GET /api/registrations/:id
+app.get("/api/registrations/:id", async (req, res) => {
+  try {
+    const reg = await Registration.findById(req.params.id).populate("eventId");
+    if (!reg) return res.status(404).json({ error: "Registration not found." });
+
+    const eventDetails = reg.eventId
+      ? {
+          name: reg.eventId.title,
+          date: reg.eventId.date,
+          time: reg.eventId.time,
+          venue: reg.eventId.venue,
+        }
+      : await getDefaultEventDetails();
+
+    res.json({
+      id: reg._id.toString(),
+      amount: reg.amount,
+      status: reg.status,
+      reject_reason: reg.reject_reason,
+      committee: reg.committee,
+      organization: reg.organization,
+      hasQr: Boolean(reg.entry_payload),
+      event: eventDetails,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch registration status." });
+  }
+});
+
+// POST /api/registrations/:id/payment-proof
+app.post("/api/registrations/:id/payment-proof", upload.single("screenshot"), async (req, res, next) => {
+  try {
+    const utr = (req.body?.utr || "").trim();
+    if (!utr || utr.length < 4 || utr.length > 50) {
+      return res.status(400).json({ error: "A valid UTR or Transaction Reference number is required." });
+    }
+
+    const reg = await Registration.findById(req.params.id);
+    if (!reg) return res.status(404).json({ error: "Registration not found." });
+
+    // Store base64 data url directly in MongoDB so screenshots persist on Vercel
+    let screenshotUrl = reg.screenshot_path;
+    if (req.file) {
+      const mime = req.file.mimetype;
+      const base64Data = req.file.buffer.toString("base64");
+      screenshotUrl = `data:${mime};base64,${base64Data}`;
+    }
+
+    reg.utr = utr;
+    reg.screenshot_path = screenshotUrl;
+    reg.reject_reason = null;
+    reg.status = "payment_submitted";
+    await reg.save();
+
+    res.json({
+      id: reg._id.toString(),
+      status: "payment_submitted",
+      message: "Payment proof uploaded successfully.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/registrations/:id/entry-qr
+app.get("/api/registrations/:id/entry-qr", async (req, res, next) => {
+  try {
+    const reg = await Registration.findById(req.params.id).populate("eventId");
+    if (!reg) return res.status(404).json({ error: "Registration not found." });
+    if (reg.status !== "approved" || !reg.entry_payload) {
+      return res.status(409).json({ error: "Pass is not yet approved." });
+    }
+
+    const qrDataUrl = await QRCode.toDataURL(reg.entry_payload, {
+      margin: 2,
+      width: 380,
+      errorCorrectionLevel: "M",
+    });
+
+    const eventDetails = reg.eventId
+      ? {
+          name: reg.eventId.title,
+          date: reg.eventId.date,
+          time: reg.eventId.time,
+          venue: reg.eventId.venue,
+        }
+      : await getDefaultEventDetails();
+
+    res.json({
+      payload: reg.entry_payload,
+      qr: qrDataUrl,
+      registrationId: reg._id.toString(),
+      event: eventDetails,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// -------------------------------------------------------------
+// 6. APPROVAL, REJECTION & EMAIL DISPATCH
+// -------------------------------------------------------------
 
 async function deliverApprovalEmail(registrationId) {
-  const registration = statements.byId.get(registrationId);
-  if (!registration) {
-    throw new Error("Registration not found");
-  }
-  if (registration.status !== "approved" || !registration.entry_payload) {
-    throw new Error("Only approved registrations with an entry pass can receive an email");
+  const reg = await Registration.findById(registrationId).populate("eventId");
+  if (!reg || !reg.email) {
+    return { status: "not_configured", error: "Delegate email address missing." };
   }
 
-  // Ensure event details on the pass/email are the details used when the pass was issued
-  const decoded = verifyEntryPayload(registration.entry_payload);
-  const event = decoded?.event || getEventDetails();
+  const eventDetails = reg.eventId
+    ? {
+        name: reg.eventId.title,
+        date: reg.eventId.date,
+        time: reg.eventId.time,
+        venue: reg.eventId.venue,
+      }
+    : await getDefaultEventDetails();
 
   if (!mailer.isSmtpConfigured()) {
-    const errorMsg = "SMTP is not configured on the server";
-    statements.updateEmailStatus.run({
-      id: registration.id,
-      status: "not_configured",
-      sent_at: null,
-      error: errorMsg,
-    });
-    return {
-      status: "not_configured",
-      error: errorMsg,
-      sentAt: null,
-    };
+    return { status: "not_configured", error: "SMTP is not configured on this server." };
   }
 
-  // Mark pending
-  statements.updateEmailStatus.run({
-    id: registration.id,
-    status: "pending",
-    sent_at: null,
-    error: null,
-  });
-
   try {
-    const qrBuffer = await QRCode.toBuffer(registration.entry_payload, {
+    const qrBuffer = await QRCode.toBuffer(reg.entry_payload, {
       errorCorrectionLevel: "M",
       margin: 2,
       width: 360,
     });
 
     await mailer.sendApprovalMail({
-      registration,
-      event,
+      registration: {
+        id: reg._id.toString(),
+        name: reg.name,
+        email: reg.email,
+        committee: reg.committee,
+        organization: reg.organization,
+        amount: reg.amount,
+      },
+      event: eventDetails,
       qrBuffer,
     });
 
-    const sentAt = new Date().toISOString();
-    statements.updateEmailStatus.run({
-      id: registration.id,
-      status: "sent",
-      sent_at: sentAt,
-      error: null,
-    });
+    const sentAt = new Date();
+    reg.email_status = "sent";
+    reg.email_sent_at = sentAt;
+    reg.email_error = null;
+    await reg.save();
 
-    return {
-      status: "sent",
-      sentAt,
-      error: null,
-    };
+    return { status: "sent", sentAt: sentAt.toISOString() };
   } catch (err) {
     const sanitized = mailer.sanitizeEmailError(err);
-    console.error(`Approval email delivery failed for registration ${registration.id}:`, sanitized);
-    statements.updateEmailStatus.run({
-      id: registration.id,
-      status: "failed",
-      sent_at: null,
-      error: sanitized,
-    });
-
-    return {
-      status: "failed",
-      sentAt: null,
-      error: sanitized,
-    };
+    reg.email_status = "failed";
+    reg.email_error = sanitized;
+    await reg.save();
+    return { status: "failed", error: sanitized };
   }
 }
 
-app.post("/api/admin/registrations/:id/approve", async (request, response, next) => {
+// POST /api/admin/registrations/:id/approve
+app.post("/api/admin/registrations/:id/approve", requireAdmin, async (req, res, next) => {
   try {
-    const registration = statements.byId.get(request.params.id);
-    if (!registration) return response.status(404).json({ error: "Registration not found" });
-    if (registration.status !== "payment_submitted") return response.status(409).json({ error: "Only submitted payments can be approved" });
-    const payload = issueEntryPayload(registration);
-    statements.approve.run(payload, registration.id);
+    const reg = await Registration.findById(req.params.id).populate("eventId");
+    if (!reg) return res.status(404).json({ error: "Registration not found." });
 
-    // Deliver email safely after approval is committed
-    const emailResult = await deliverApprovalEmail(registration.id);
+    const eventDetails = reg.eventId
+      ? {
+          name: reg.eventId.title,
+          date: reg.eventId.date,
+          time: reg.eventId.time,
+          venue: reg.eventId.venue,
+        }
+      : await getDefaultEventDetails();
 
-    response.json({
-      id: registration.id,
+    const payload = issueEntryPayload(reg, eventDetails);
+    reg.status = "approved";
+    reg.entry_payload = payload;
+    await reg.save();
+
+    // Create Notification in MongoDB for user
+    await Notification.create({
+      userId: reg.userId,
+      eventId: reg.eventId ? reg.eventId._id : null,
+      message: `Your registration for ${eventDetails.name} has been approved! Your official Entry Pass is ready on your dashboard.`,
+      type: "approval",
+      read: false,
+    });
+
+    // Deliver approval pass via email
+    const emailResult = await deliverApprovalEmail(reg._id);
+
+    res.json({
+      id: reg._id.toString(),
       status: "approved",
       email: emailResult,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
-app.post("/api/admin/registrations/:id/retry-email", async (request, response, next) => {
+// POST /api/admin/registrations/:id/reject
+app.post("/api/admin/registrations/:id/reject", requireAdmin, async (req, res) => {
   try {
-    const registration = statements.byId.get(request.params.id);
-    if (!registration) return response.status(404).json({ error: "Registration not found" });
-    if (registration.status !== "approved" || !registration.entry_payload) {
-      return response.status(409).json({ error: "Only approved registrations can be sent an entry pass email" });
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (!reason || reason.length > 500) {
+      return res.status(400).json({ error: "A rejection reason is required (maximum 500 characters)." });
     }
 
-    const force = Boolean(request.body?.force);
-    if (registration.email_status === "sent" && !force) {
-      return response.status(409).json({
-        error: "Email has already been confirmed sent to this delegate",
-        alreadySent: true,
-        email: {
-          status: registration.email_status,
-          sentAt: registration.email_sent_at,
-          error: registration.email_error,
-        },
-      });
+    const reg = await Registration.findById(req.params.id).populate("eventId");
+    if (!reg) return res.status(404).json({ error: "Registration not found." });
+
+    reg.status = "rejected";
+    reg.reject_reason = reason;
+    await reg.save();
+
+    const eventDetails = reg.eventId
+      ? {
+          name: reg.eventId.title,
+          date: reg.eventId.date,
+          time: reg.eventId.time,
+          venue: reg.eventId.venue,
+        }
+      : await getDefaultEventDetails();
+
+    // Notify user in MongoDB
+    await Notification.create({
+      userId: reg.userId,
+      eventId: reg.eventId ? reg.eventId._id : null,
+      message: `Registration payment rejected: ${reason}. Please update your UTR and resubmit.`,
+      type: "rejection",
+      read: false,
+    });
+
+    // Send email notification if SMTP configured
+    let emailResult = { status: "not_configured" };
+    if (mailer.isSmtpConfigured() && reg.email) {
+      try {
+        await mailer.sendRejectionMail({
+          registration: {
+            id: reg._id.toString(),
+            name: reg.name,
+            email: reg.email,
+          },
+          event: eventDetails,
+          reason,
+        });
+        emailResult = { status: "sent" };
+      } catch (err) {
+        emailResult = { status: "failed", error: mailer.sanitizeEmailError(err) };
+      }
     }
 
-    if (registration.email_status === "pending" && !force) {
-      return response.status(409).json({
-        error: "Email delivery is currently in progress",
-        email: {
-          status: "pending",
-        },
-      });
-    }
-
-    const emailResult = await deliverApprovalEmail(registration.id);
-
-    if (emailResult.status === "failed") {
-      return response.status(502).json({
-        error: `Email delivery failed: ${emailResult.error}`,
-        email: emailResult,
-      });
-    }
-
-    if (emailResult.status === "not_configured") {
-      return response.status(503).json({
-        error: "SMTP is not configured on the server",
-        email: emailResult,
-      });
-    }
-
-    response.json({
-      id: registration.id,
+    res.json({
+      id: reg._id.toString(),
+      status: "rejected",
+      reject_reason: reason,
       email: emailResult,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to reject registration." });
   }
 });
 
-app.post("/api/admin/registrations/:id/reject", async (request, response) => {
-  const reason = typeof request.body?.reason === "string" ? request.body.reason.trim() : "";
-  if (!reason || reason.length > 500) return response.status(400).json({ error: "A rejection reason is required (maximum 500 characters)" });
-  const result = statements.reject.run(reason, request.params.id);
-  if (!result.changes) {
-    const registration = statements.byId.get(request.params.id);
-    return response.status(registration ? 409 : 404).json({ error: registration ? "Only submitted payments can be rejected" : "Registration not found" });
-  }
-
-  const registration = statements.byId.get(request.params.id);
-  let emailResult = { status: "not_configured" };
-  if (mailer.isSmtpConfigured() && registration) {
-    try {
-      await mailer.sendRejectionMail({
-        registration,
-        event: getEventDetails(),
-        reason,
-      });
-      emailResult = { status: "sent" };
-    } catch (e) {
-      emailResult = { status: "failed", error: mailer.sanitizeEmailError(e) };
+// POST /api/admin/registrations/:id/retry-email
+app.post("/api/admin/registrations/:id/retry-email", requireAdmin, async (req, res, next) => {
+  try {
+    const reg = await Registration.findById(req.params.id);
+    if (!reg) return res.status(404).json({ error: "Registration not found." });
+    if (reg.status !== "approved" || !reg.entry_payload) {
+      return res.status(409).json({ error: "Only approved registrations can be sent an entry pass email." });
     }
-  }
 
-  response.json({ id: request.params.id, status: "rejected", email: emailResult });
+    const emailResult = await deliverApprovalEmail(reg._id);
+    res.json({ id: reg._id.toString(), email: emailResult });
+  } catch (err) {
+    next(err);
+  }
 });
 
+// -------------------------------------------------------------
+// 7. VENUE CHECK-IN SCANNER
+// -------------------------------------------------------------
 
-app.get("/api/notifications/lookup", async (request, response) => {
-  const rawQuery = typeof request.query.query === "string" ? request.query.query.trim() : "";
-  const query = rawQuery.toLowerCase();
-  const settings = statements.eventSettings.get();
-  const event = getEventDetails();
+// POST /api/entry/verify
+app.post("/api/entry/verify", requireAdmin, async (req, res) => {
+  try {
+    const { payload, admit } = req.body || {};
+    if (!payload || typeof payload !== "string") {
+      return res.status(400).json({ error: "QR payload is required." });
+    }
 
-  let registrations = [];
-  let queries = [];
+    const verified = verifyEntryPayload(payload);
+    if (!verified) {
+      return res.json({ valid: false, reason: "invalid" });
+    }
 
-  if (query) {
-    const rawRegs = database.prepare(`
-      SELECT id, name, email, phone, organization, committee, amount, status, utr, reject_reason, entry_payload, created_at
-      FROM registrations
-      WHERE LOWER(email) = ? OR LOWER(id) = ?
-      ORDER BY created_at DESC
-    `).all(query, query);
+    const reg = await Registration.findById(verified.id).populate("eventId");
+    if (!reg || reg.status !== "approved") {
+      return res.json({ valid: false, reason: "invalid" });
+    }
 
-    registrations = await Promise.all(rawRegs.map(async (reg) => {
-      let qr = null;
-      if (reg.status === "approved" && reg.entry_payload) {
-        try {
-          qr = await QRCode.toDataURL(reg.entry_payload, { errorCorrectionLevel: "M", margin: 2, width: 320 });
-        } catch {
-          // ignore qr error
+    const eventDetails = reg.eventId
+      ? {
+          name: reg.eventId.title,
+          date: reg.eventId.date,
+          time: reg.eventId.time,
+          venue: reg.eventId.venue,
         }
-      }
-      return {
-        id: reg.id,
+      : verified.event || (await getDefaultEventDetails());
+
+    // If admit button was pressed, mark as checked-in
+    if (admit && !reg.used_at) {
+      reg.used_at = new Date();
+      await reg.save();
+    }
+
+    const alreadyUsed = Boolean(reg.used_at);
+
+    res.json({
+      valid: true,
+      alreadyUsed,
+      registration: {
+        id: reg._id.toString(),
         name: reg.name,
         email: reg.email,
         phone: reg.phone,
         organization: reg.organization,
         committee: reg.committee,
         amount: reg.amount,
-        status: reg.status,
         utr: reg.utr,
-        reject_reason: reg.reject_reason || null,
-        hasQr: Boolean(reg.status === "approved" && reg.entry_payload),
-        qr,
-        created_at: reg.created_at,
-        event,
-      };
-    }));
-
-    queries = database.prepare(`
-      SELECT id, name, email, subject, message, status, reply_message, replied_at, created_at
-      FROM contact_queries
-      WHERE LOWER(email) = ?
-      ORDER BY created_at DESC
-    `).all(query);
+        paymentStatus: reg.status,
+        checkedInAt: reg.used_at ? reg.used_at.toISOString() : null,
+        event: eventDetails,
+      },
+    });
+  } catch (err) {
+    console.error("Venue verify error:", err);
+    res.status(500).json({ error: "Failed to verify entry QR code." });
   }
-
-  response.json({
-    query: rawQuery,
-    registrations,
-    queries,
-    event,
-    announcements: {
-      registrationOpen: Boolean(settings.registration_open === null || settings.registration_open === undefined || Number(settings.registration_open) === 1),
-      registrationNotice: settings.registration_notice || "",
-      conferenceDates: event.date || "24–25 October 2026",
-      conferenceVenue: event.venue || "Central Delhi, India",
-      conferenceTimings: event.time || "9:00 AM – 5:00 PM",
-      conferenceName: event.name || "Arkham MUN",
-      countdownTarget: "2026-10-24T09:00:00+05:30",
-    },
-  });
 });
 
-app.get("/api/admin/queries", (request, response) => {
-  const status = request.query.status;
-  let queries;
-  if (status && status !== "all") {
-    queries = statements.contactQueriesByStatus.all(status);
-  } else {
-    queries = statements.allContactQueries.all();
-  }
-  response.json({ queries });
-});
+// -------------------------------------------------------------
+// 8. NOTIFICATIONS LOOKUP & CONTACT HELP DESK
+// -------------------------------------------------------------
 
-app.post("/api/admin/queries/:id/reply", async (request, response, next) => {
+// GET /api/notifications/lookup
+app.get("/api/notifications/lookup", async (req, res) => {
   try {
-    const query = statements.contactQueryById.get(request.params.id);
-    if (!query) return response.status(404).json({ error: "Query not found" });
+    const query = (req.query.q || "").trim().toLowerCase();
+    const eventDetails = await getDefaultEventDetails();
 
-    const replyMessage = typeof request.body?.replyMessage === "string" ? request.body.replyMessage.trim() : "";
-    if (!replyMessage || replyMessage.length > 3000) {
-      return response.status(400).json({ error: "Please provide a reply message (maximum 3000 characters)" });
+    let registrations = [];
+    let queries = [];
+
+    if (query) {
+      const foundRegs = await Registration.find({
+        $or: [{ email: query }, { phone: query }, { _id: query.length === 24 ? query : null }],
+      })
+        .populate("eventId")
+        .sort({ registeredAt: -1 });
+
+      registrations = await Promise.all(
+        foundRegs.map(async (r) => {
+          let qrDataUrl = null;
+          if (r.status === "approved" && r.entry_payload) {
+            try {
+              qrDataUrl = await QRCode.toDataURL(r.entry_payload, { margin: 2, width: 300 });
+            } catch {}
+          }
+          return {
+            id: r._id.toString(),
+            name: r.name,
+            email: r.email,
+            phone: r.phone,
+            organization: r.organization,
+            committee: r.committee,
+            amount: r.amount,
+            status: r.status,
+            utr: r.utr,
+            reject_reason: r.reject_reason,
+            hasQr: Boolean(r.entry_payload),
+            qr: qrDataUrl,
+            created_at: r.registeredAt ? r.registeredAt.toISOString() : new Date().toISOString(),
+            event: r.eventId
+              ? {
+                  name: r.eventId.title,
+                  date: r.eventId.date,
+                  time: r.eventId.time,
+                  venue: r.eventId.venue,
+                }
+              : eventDetails,
+          };
+        })
+      );
+
+      queries = await ContactQuery.find({ email: query }).sort({ createdAt: -1 });
     }
 
-    const repliedAt = new Date().toISOString();
-    statements.replyContactQuery.run({
-      id: query.id,
-      reply_message: replyMessage,
-      replied_at: repliedAt,
+    res.json({
+      query,
+      registrations,
+      queries,
+      event: eventDetails,
+      announcements: {
+        registrationOpen: eventDetails.registrationOpen,
+        registrationNotice: eventDetails.registrationNotice || "",
+        conferenceDates: eventDetails.date,
+        conferenceVenue: eventDetails.venue,
+        conferenceTimings: eventDetails.time,
+        conferenceName: eventDetails.name,
+        countdownTarget: "2026-10-24T09:00:00",
+      },
+    });
+  } catch (err) {
+    console.error("Notifications lookup error:", err);
+    res.status(500).json({ error: "Failed to look up notifications." });
+  }
+});
+
+// POST /api/contact
+app.post("/api/contact", async (req, res) => {
+  try {
+    const { name, email, phone, subject, message } = req.body || {};
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ error: "Name, email, subject, and message are required." });
+    }
+
+    const query = await ContactQuery.create({
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : null,
+      subject: subject.trim(),
+      message: message.trim(),
+      status: "pending",
     });
 
-    let emailSent = false;
-    let emailError = null;
+    res.status(201).json({
+      id: query._id.toString(),
+      message: "Your message has been received by the secretariat.",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to submit contact query." });
+  }
+});
 
-    if (mailer.isSmtpConfigured()) {
+// GET /api/admin/queries
+app.get("/api/admin/queries", requireAdmin, async (req, res) => {
+  try {
+    const queries = await ContactQuery.find().sort({ createdAt: -1 });
+    res.json({ queries });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch queries." });
+  }
+});
+
+// POST /api/admin/queries/:id/reply
+app.post("/api/admin/queries/:id/reply", requireAdmin, async (req, res, next) => {
+  try {
+    const { reply } = req.body || {};
+    if (!reply || !reply.trim()) {
+      return res.status(400).json({ error: "Reply message cannot be empty." });
+    }
+
+    const query = await ContactQuery.findById(req.params.id);
+    if (!query) return res.status(404).json({ error: "Query not found." });
+
+    query.status = "replied";
+    query.reply_message = reply.trim();
+    query.replied_at = new Date();
+    await query.save();
+
+    // If there is a registered user with this email, send them a Notification in MongoDB
+    const user = await User.findOne({ email: query.email });
+    if (user) {
+      await Notification.create({
+        userId: user._id,
+        message: `Secretariat replied to your query "${query.subject}": ${reply.trim()}`,
+        type: "reply",
+        read: false,
+      });
+    }
+
+    // Attempt email reply if configured
+    let emailResult = { status: "not_configured" };
+    if (mailer.isSmtpConfigured() && query.email) {
       try {
-        await mailer.sendQueryReplyMail({ query, replyMessage });
-        emailSent = true;
+        await mailer.sendReplyMail({
+          query: {
+            id: query._id.toString(),
+            name: query.name,
+            email: query.email,
+            subject: query.subject,
+            message: query.message,
+          },
+          reply: reply.trim(),
+          event: await getDefaultEventDetails(),
+        });
+        emailResult = { status: "sent" };
       } catch (err) {
-        emailError = mailer.sanitizeEmailError(err);
-        console.error(`Reply email delivery failed for query ${query.id}:`, emailError);
+        emailResult = { status: "failed", error: mailer.sanitizeEmailError(err) };
       }
-    } else {
-      emailError = "SMTP not configured; reply saved in dashboard without outgoing email";
     }
 
-    response.json({
-      success: true,
-      query: {
-        ...query,
-        status: "replied",
-        reply_message: replyMessage,
-        replied_at: repliedAt,
-      },
-      emailSent,
-      emailError,
+    res.json({
+      id: query._id.toString(),
+      status: "replied",
+      email: emailResult,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
-app.post("/api/entry/verify", requireAdminKey, (request, response) => {
-  const decoded = verifyEntryPayload(request.body?.payload);
-  if (!decoded) return response.status(200).json({ valid: false, reason: "invalid" });
-  const registration = statements.byId.get(decoded.id);
-  if (!registration || registration.status !== "approved" || registration.entry_payload !== request.body.payload) {
-    return response.status(200).json({ valid: false, reason: "invalid" });
-  }
-
-  const admit = request.body?.admit !== false;
-
-  // Inspect mode: return complete delegate info without marking used
-  if (!admit) {
-    return response.json({
-      valid: true,
-      alreadyUsed: Boolean(registration.used_at),
-      registration: {
-        id: registration.id,
-        name: registration.name,
-        email: registration.email || registration.contact,
-        phone: registration.phone || "",
-        organization: registration.organization || "",
-        committee: registration.committee || "",
-        amount: registration.amount,
-        utr: registration.utr,
-        paymentStatus: registration.status,
-        checkedInAt: registration.used_at || null,
-        event: decoded.event || getEventDetails(),
+// GET /api/admin/settings
+app.get("/api/admin/settings", requireAdmin, async (req, res) => {
+  try {
+    const details = await getDefaultEventDetails();
+    res.json({
+      event: {
+        name: details.name,
+        date: details.date,
+        time: details.time,
+        venue: details.venue,
       },
+      amount: details.amount,
+      upiId: details.upiId || "chauhan5408k@okaxis",
+      registrationOpen: details.registrationOpen,
+      registrationNotice: details.registrationNotice || "",
+      paymentQrConfigured: true,
+      paymentQrUrl: "/api/payment-qr.png",
     });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load admin settings." });
   }
-
-  // Admit mode: mark pass as used and admit delegate
-  if (registration.used_at) {
-    return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
-  }
-
-  const checkinTime = new Date().toISOString();
-  const result = statements.markUsed.run(checkinTime, registration.id, request.body.payload);
-  if (!result.changes) {
-    return response.status(409).json({ valid: false, reason: "already_used", name: registration.name });
-  }
-
-  response.json({
-    valid: true,
-    alreadyUsed: false,
-    registration: {
-      id: registration.id,
-      name: registration.name,
-      email: registration.email || registration.contact,
-      phone: registration.phone || "",
-      organization: registration.organization || "",
-      committee: registration.committee || "",
-      amount: registration.amount,
-      utr: registration.utr,
-      paymentStatus: registration.status,
-      checkedInAt: checkinTime,
-      event: decoded.event || getEventDetails(),
-    },
-  });
 });
 
-app.get("/uploads/:filename", requireAdminKey, (request, response, next) => {
-  const filename = request.params.filename;
-  if (path.basename(filename) !== filename) return response.status(400).json({ error: "Invalid filename" });
-  response.set("X-Content-Type-Options", "nosniff");
-  response.sendFile(path.join(uploadsDirectory, filename), (error) => {
-    if (error && !response.headersSent) next(error);
-  });
-});
+// PUT /api/admin/settings
+app.put("/api/admin/settings", requireAdmin, async (req, res) => {
+  try {
+    const { event, amount, upiId, registrationOpen, registrationNotice } = req.body || {};
 
-app.use(express.static(publicDirectory));
+    let currentEvent = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
+    if (!currentEvent) {
+      currentEvent = new Event();
+    }
 
-app.use((error, request, response, next) => {
-  if (response.headersSent) return next(error);
-  if (error instanceof multer.MulterError) {
-    const status = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
-    return response.status(status).json({ error: error.code === "LIMIT_FILE_SIZE" ? "Screenshot exceeds the 5 MB limit" : error.message });
+    if (event?.name) currentEvent.title = event.name.trim();
+    if (event?.date) currentEvent.date = event.date.trim();
+    if (event?.time) currentEvent.time = event.time.trim();
+    if (event?.venue) currentEvent.venue = event.venue.trim();
+    if (amount) currentEvent.entryFee = Number(amount);
+    if (upiId) currentEvent.upiId = upiId.trim();
+    if (registrationOpen !== undefined) currentEvent.registrationOpen = Boolean(registrationOpen);
+    if (registrationNotice !== undefined) currentEvent.registrationNotice = registrationNotice.trim();
+
+    await currentEvent.save();
+
+    res.json({
+      event: {
+        name: currentEvent.title,
+        date: currentEvent.date,
+        time: currentEvent.time,
+        venue: currentEvent.venue,
+      },
+      amount: currentEvent.entryFee,
+      upiId: currentEvent.upiId,
+      registrationOpen: currentEvent.registrationOpen,
+      registrationNotice: currentEvent.registrationNotice,
+      paymentQrConfigured: true,
+      paymentQrUrl: "/api/payment-qr.png",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update admin settings." });
   }
-  if (error.message?.startsWith("Image must be")) return response.status(400).json({ error: error.message });
-  console.error(error);
-  response.status(500).json({ error: "Internal server error" });
 });
 
+// Start Server or Export for Vercel Serverless
 if (require.main === module) {
-  app.listen(port, () => console.log(`Entry pass backend listening on http://localhost:${port}`));
+  app.listen(port, () => {
+    console.log(`[Arkham MUN Backend] Running on http://localhost:${port}`);
+  });
 }
 
-module.exports = {
-  app,
-  database,
-  statements,
-  issueEntryPayload,
-  verifyEntryPayload,
-  deliverApprovalEmail,
-  getEventDetails,
-};
+module.exports = app;

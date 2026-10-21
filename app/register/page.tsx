@@ -3,9 +3,10 @@
 import { FormEvent, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, Check, CircleAlert, Clock3, Copy, LoaderCircle, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, CircleAlert, Clock3, Copy, LoaderCircle, ShieldCheck, User } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
+import { useAuth } from "@/lib/auth-context"
 
 const committees = [
   "UNCSW (Advancing women's protection, leadership and rights in conflict zone with special emphasis on women)",
@@ -17,12 +18,26 @@ const committees = [
   "IPL (Mega Auction)",
 ]
 
-function TextField({ label, name, type = "text", required = true, placeholder = "Short-answer text" }: { label: string; name: string; type?: string; required?: boolean; placeholder?: string }) {
+function TextField({
+  label,
+  name,
+  type = "text",
+  required = true,
+  placeholder = "Short-answer text",
+  defaultValue = "",
+}: {
+  label: string
+  name: string
+  type?: string
+  required?: boolean
+  placeholder?: string
+  defaultValue?: string
+}) {
   return (
     <label className="registration-field">
       {label}
       {required && <span aria-hidden="true"> *</span>}
-      <input name={name} type={type} required={required} placeholder={placeholder} />
+      <input name={name} type={type} required={required} placeholder={placeholder} defaultValue={defaultValue} />
     </label>
   )
 }
@@ -50,13 +65,14 @@ const DEFAULT_EVENT: PublicEvent = {
     time: "9:00 AM – 5:00 PM",
     venue: "Central Delhi, India",
   },
-  amount: 2300,
+  amount: 2200,
   upiId: "chauhan5408k@okaxis",
   paymentQrUrl: "/api/payment-qr.png",
   registrationOpen: true,
 }
 
 export default function RegisterPage() {
+  const { user } = useAuth()
   const [publicEvent, setPublicEvent] = useState<PublicEvent>(DEFAULT_EVENT)
   const [registration, setRegistration] = useState<RegistrationStart | null>(null)
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
@@ -67,15 +83,19 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
 
-
   useEffect(() => {
     let active = true
-    entryPassApi.getPublicEvent().then((details) => {
-      if (active) setPublicEvent(details)
-    }).catch(() => {
-      // Backend may be starting or offline; defaults remain active
-    })
-    return () => { active = false }
+    entryPassApi
+      .getPublicEvent()
+      .then((details) => {
+        if (active) setPublicEvent(details)
+      })
+      .catch(() => {
+        // Backend default remains active
+      })
+    return () => {
+      active = false
+    }
   }, [])
 
   useEffect(() => {
@@ -91,7 +111,7 @@ export default function RegisterPage() {
           if (active) setEntryQr(qr)
         }
       } catch {
-        // Polling failure can silently retry on next interval
+        // Silently retry
       }
     }
     const timer = window.setInterval(refresh, 6000)
@@ -149,9 +169,13 @@ export default function RegisterPage() {
       await entryPassApi.submitPaymentProof(created.id, utr, file)
 
       setStatus("payment_submitted")
-      setNotice("Registration and payment proof submitted! The secretariat will review your submission.")
+      setNotice("Registration and payment proof submitted! Stored persistently in cloud database.")
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to complete registration. Please check your details and try again.")
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to complete registration. Please check your details and try again."
+      )
     } finally {
       setBusy(false)
     }
@@ -179,23 +203,40 @@ export default function RegisterPage() {
     <ArkhamShell>
       <main>
         <PageIntro eyebrow="06 / Registration" title={<>Take your <em>seat.</em></>}>
-          Complete your delegate registration and submit payment details. Once verified by the secretariat, your signed entry QR pass will be issued and emailed to you.
+          Complete your delegate registration and submit payment details. Once verified by the secretariat, your signed
+          entry QR pass will be issued and emailed to you.
         </PageIntro>
 
         {publicEvent && !publicEvent.registrationOpen && (
-          <div style={{ maxWidth: 980, margin: "0 auto 30px", padding: 20, border: "1px solid rgba(230, 165, 74, .4)", background: "rgba(230, 165, 74, .08)", borderRadius: 8 }}>
+          <div
+            style={{
+              maxWidth: 980,
+              margin: "0 auto 30px",
+              padding: 20,
+              border: "1px solid rgba(230, 165, 74, .4)",
+              background: "rgba(230, 165, 74, .08)",
+              borderRadius: 8,
+            }}
+          >
             <h3 style={{ color: "#ffd19c", margin: "0 0 6px", fontSize: 16 }}>Registration Notice</h3>
             <p style={{ margin: 0, color: "#d6d0e0", fontSize: 13, lineHeight: 1.6 }}>
-              {publicEvent.registrationNotice || "The secretariat is finalizing conference dates, venue, or registration is temporarily closed. Please check back shortly."}
+              {publicEvent.registrationNotice ||
+                "The secretariat is finalizing conference dates, venue, or registration is temporarily closed. Please check back shortly."}
             </p>
-            <Link href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 12, color: "#ff8289", fontWeight: 700, fontSize: 12, textDecoration: "none" }}>
-              Open Admin Dashboard <ArrowRight size={14} />
-            </Link>
           </div>
         )}
 
         {status === "payment_submitted" || status === "approved" ? (
-          <section style={{ maxWidth: 980, margin: "0 auto 80px", padding: 32, border: "1px solid rgba(255,255,255,.16)", borderRadius: 12, background: "rgba(10,10,10,.86)" }}>
+          <section
+            style={{
+              maxWidth: 980,
+              margin: "0 auto 80px",
+              padding: 32,
+              border: "1px solid rgba(255,255,255,.16)",
+              borderRadius: 12,
+              background: "rgba(10,10,10,.86)",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <ShieldCheck size={28} color="#e3262e" />
               <div>
@@ -209,39 +250,113 @@ export default function RegisterPage() {
             </div>
 
             {notice && (
-              <p style={{ padding: 12, background: "rgba(84, 189, 128, .1)", borderLeft: "3px solid #54bd80", color: "#b5ecc8", fontSize: 13, margin: "0 0 20px" }}>
+              <p
+                style={{
+                  padding: 12,
+                  background: "rgba(84, 189, 128, .1)",
+                  borderLeft: "3px solid #54bd80",
+                  color: "#b5ecc8",
+                  fontSize: 13,
+                  margin: "0 0 20px",
+                }}
+              >
                 {notice}
               </p>
             )}
 
             {status === "payment_submitted" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#ffd19c", fontSize: 13, padding: 14, background: "rgba(230, 165, 74, .08)", borderRadius: 6, marginBottom: 20 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  color: "#ffd19c",
+                  fontSize: 13,
+                  padding: 14,
+                  background: "rgba(230, 165, 74, .08)",
+                  borderRadius: 6,
+                  marginBottom: 20,
+                }}
+              >
                 <Clock3 size={18} />
-                <span>Your payment reference is being verified by the secretariat. This page refreshes automatically.</span>
+                <span>
+                  Your payment reference is being verified by the secretariat. This registration is saved permanently in
+                  your dashboard.
+                </span>
               </div>
             )}
 
             {status === "approved" && entryQr && (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 24, padding: 20, border: "1px solid rgba(84, 189, 128, .35)", background: "rgba(84, 189, 128, .07)", borderRadius: 8, marginBottom: 20 }}>
-                <Image src={entryQr.qr} alt="Signed Event Entry QR Code" width={160} height={160} unoptimized style={{ background: "#fff", padding: 8, borderRadius: 6 }} />
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 24,
+                  padding: 20,
+                  border: "1px solid rgba(84, 189, 128, .35)",
+                  background: "rgba(84, 189, 128, .07)",
+                  borderRadius: 8,
+                  marginBottom: 20,
+                }}
+              >
+                <Image
+                  src={entryQr.qr}
+                  alt="Signed Event Entry QR Code"
+                  width={160}
+                  height={160}
+                  unoptimized
+                  style={{ background: "#fff", padding: 8, borderRadius: 6 }}
+                />
                 <div style={{ display: "grid", gap: 6 }}>
                   <strong style={{ fontSize: 18, color: "#fff" }}>{entryQr.event.name} Entry Pass</strong>
                   <span style={{ color: "#b5ecc8", fontSize: 13, fontWeight: 700 }}>VERIFIED · READY FOR CHECK-IN</span>
-                  <span style={{ color: "#aaa8ba", fontSize: 13 }}>{entryQr.event.date} · {entryQr.event.time}</span>
+                  <span style={{ color: "#aaa8ba", fontSize: 13 }}>
+                    {entryQr.event.date} · {entryQr.event.time}
+                  </span>
                   <span style={{ color: "#aaa8ba", fontSize: 13 }}>{entryQr.event.venue}</span>
-                  <span style={{ color: "#ffd19c", fontSize: 12, marginTop: 4 }}>A copy of this signed pass has also been sent to your registered email address.</span>
+                  <span style={{ color: "#ffd19c", fontSize: 12, marginTop: 4 }}>
+                    A copy of this signed pass has also been sent to your registered email address.
+                  </span>
                 </div>
               </div>
             )}
 
-            <button type="button" className="registration-submit" onClick={startOver}>
-              Register another delegate
-            </button>
+            <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+              <Link href="/dashboard" className="primary-button" style={{ display: "inline-flex", gap: 6 }}>
+                View in Delegate Dashboard <ArrowRight size={14} />
+              </Link>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={startOver}
+                style={{
+                  padding: "12px 18px",
+                  background: "transparent",
+                  color: "#aaa8ba",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Register Another Delegate
+              </button>
+            </div>
           </section>
         ) : (
           <form className="registration-form" onSubmit={handleSubmit}>
             {error && (
-              <p style={{ padding: 12, background: "rgba(227, 38, 46, .1)", borderLeft: "3px solid #e3262e", color: "#ffb5b8", fontSize: 13, margin: 0 }}>
+              <p
+                style={{
+                  padding: 12,
+                  background: "rgba(227, 38, 46, .1)",
+                  borderLeft: "3px solid #e3262e",
+                  color: "#ffb5b8",
+                  fontSize: 13,
+                  margin: 0,
+                }}
+              >
                 <CircleAlert size={16} style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
                 {error}
               </p>
@@ -253,11 +368,22 @@ export default function RegisterPage() {
                 <h2>Delegate details</h2>
               </div>
               <div className="registration-grid">
-                <TextField label="Full name" name="name" placeholder="Your full name" />
-                <TextField label="Email" name="email" type="email" placeholder="you@example.com" />
+                <TextField label="Full name" name="name" defaultValue={user?.name || ""} placeholder="Your full name" />
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  defaultValue={user?.email || ""}
+                  placeholder="you@example.com"
+                />
                 <TextField label="Phone no." name="phone" type="tel" placeholder="+91 98765 43210" />
                 <TextField label="School / College" name="school" placeholder="School or University name" />
-                <TextField label="Class / Year / Grade" name="grade" placeholder="e.g. 11th Grade / 2nd Year" required={false} />
+                <TextField
+                  label="Class / Year / Grade"
+                  name="grade"
+                  placeholder="e.g. 11th Grade / 2nd Year"
+                  required={false}
+                />
               </div>
             </section>
 
@@ -294,10 +420,25 @@ export default function RegisterPage() {
                 <h2>Portfolio preferences</h2>
               </div>
               <div className="registration-grid">
-                <TextField label="Portfolio Preference 1" name="portfolio-one" placeholder="Country / Portfolio 1" required={false} />
-                <TextField label="Portfolio Preference 2" name="portfolio-two" placeholder="Country / Portfolio 2" required={false} />
+                <TextField
+                  label="Portfolio Preference 1"
+                  name="portfolio-one"
+                  placeholder="Country / Portfolio 1"
+                  required={false}
+                />
+                <TextField
+                  label="Portfolio Preference 2"
+                  name="portfolio-two"
+                  placeholder="Country / Portfolio 2"
+                  required={false}
+                />
               </div>
-              <TextField label="Are you open to being assigned to any committee or portfolio if your top preferences are full?" name="flexible-assignment" placeholder="Yes / No" required={false} />
+              <TextField
+                label="Are you open to being assigned to any committee or portfolio if your top preferences are full?"
+                name="flexible-assignment"
+                placeholder="Yes / No"
+                required={false}
+              />
             </section>
 
             <section className="registration-section">
@@ -314,15 +455,44 @@ export default function RegisterPage() {
                 <h2>Payment & Verification</h2>
               </div>
               <p className="payment-note">
-                <strong>Entry Fee: INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong>
+                <strong>Entry Fee: INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2200.00"}</strong>
                 <br />
-                Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment confirmation box.
+                Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.).
+                Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment
+                confirmation box.
               </p>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 28, alignItems: "start", marginTop: 18 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                  gap: 28,
+                  alignItems: "start",
+                  marginTop: 18,
+                }}
+              >
                 {/* Left Column: Full View QR Poster Card */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, background: "rgba(5, 5, 12, .92)", border: "1px solid rgba(227, 38, 46, .4)", borderRadius: 10, boxShadow: "0 14px 40px rgba(0, 0, 0, .6), 0 0 24px rgba(227, 38, 46, .12)" }}>
-                  <span style={{ color: "#e3262e", fontSize: 11, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    padding: 16,
+                    background: "rgba(5, 5, 12, .92)",
+                    border: "1px solid rgba(227, 38, 46, .4)",
+                    borderRadius: 10,
+                    boxShadow: "0 14px 40px rgba(0, 0, 0, .6), 0 0 24px rgba(227, 38, 46, .12)",
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#e3262e",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: ".12em",
+                      textTransform: "uppercase",
+                    }}
+                  >
                     Official UPI Payment QR
                   </span>
                   <Image
@@ -332,11 +502,49 @@ export default function RegisterPage() {
                     height={480}
                     unoptimized
                     priority
-                    style={{ width: "100%", height: "auto", aspectRatio: "2 / 3", objectFit: "contain", borderRadius: 8, background: "#000", border: "1px solid rgba(255, 255, 255, .15)" }}
+                    style={{
+                      width: "100%",
+                      height: "auto",
+                      aspectRatio: "2 / 3",
+                      objectFit: "contain",
+                      borderRadius: 8,
+                      background: "#000",
+                      border: "1px solid rgba(255, 255, 255, .15)",
+                    }}
                   />
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", background: "rgba(255, 255, 255, .05)", borderRadius: 5, fontSize: 12 }}>
-                    <span>UPI ID: <code style={{ color: "#ffb5b8", fontFamily: "monospace", fontWeight: 700 }}>{upiId}</code></span>
-                    <button type="button" onClick={copyUpi} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", fontSize: 11, fontWeight: 700, background: "rgba(227, 38, 46, .2)", color: "#fff", border: "1px solid rgba(227, 38, 46, .5)", borderRadius: 3, cursor: "pointer" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                      padding: "10px 12px",
+                      background: "rgba(255, 255, 255, .05)",
+                      borderRadius: 5,
+                      fontSize: 12,
+                    }}
+                  >
+                    <span>
+                      UPI ID:{" "}
+                      <code style={{ color: "#ffb5b8", fontFamily: "monospace", fontWeight: 700 }}>{upiId}</code>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={copyUpi}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 10px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: "rgba(227, 38, 46, .2)",
+                        color: "#fff",
+                        border: "1px solid rgba(227, 38, 46, .5)",
+                        borderRadius: 3,
+                        cursor: "pointer",
+                      }}
+                    >
                       {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
                     </button>
                   </div>
@@ -344,31 +552,67 @@ export default function RegisterPage() {
 
                 {/* Right Column: UTR, Screenshot, and Confirmation Checkbox */}
                 <div style={{ display: "grid", gap: 18 }}>
-                  <div style={{ padding: "14px 16px", background: "rgba(255, 255, 255, .03)", border: "1px solid rgba(160, 150, 205, .16)", borderRadius: 8 }}>
-                    <h3 style={{ margin: "0 0 6px", fontSize: 15, color: "#fff" }}>Transaction Reference & Proof</h3>
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      background: "rgba(255, 255, 255, .03)",
+                      border: "1px solid rgba(160, 150, 205, .16)",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <h3 style={{ margin: "0 0 6px", fontSize: 15, color: "#fff" }}>Transaction Reference &amp; Proof</h3>
                     <p style={{ margin: 0, color: "#aaa8ba", fontSize: 12, lineHeight: 1.6 }}>
-                      Once your UPI transfer is complete, submit your 12-digit UTR reference. The secretariat will review and approve your submission to issue your signed entry pass.
+                      Once your UPI transfer is complete, submit your 12-digit UTR reference. The secretariat will review
+                      and approve your submission to issue your signed entry pass.
                     </p>
                   </div>
 
-                  <TextField label="Transaction ID / UTR" name="transaction-id" placeholder="12-digit UPI transaction reference" />
-                  
+                  <TextField
+                    label="Transaction ID / UTR"
+                    name="transaction-id"
+                    placeholder="12-digit UPI transaction reference"
+                  />
+
                   <label className="registration-field">
                     Screenshot of Payment <span>(optional, up to 5 MB)</span>
                     <input name="payment-proof" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf" />
                   </label>
 
-                  <label style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", background: "rgba(227, 38, 46, .08)", border: "1px solid rgba(227, 38, 46, .35)", borderRadius: 6, cursor: "pointer", fontSize: 13, lineHeight: 1.5, color: "#e8e5f2" }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "14px 16px",
+                      background: "rgba(227, 38, 46, .08)",
+                      border: "1px solid rgba(227, 38, 46, .35)",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color: "#e8e5f2",
+                    }}
+                  >
                     <input
                       type="checkbox"
                       name="paymentConfirmation"
                       required
                       checked={paymentConfirmed}
                       onChange={(event) => setPaymentConfirmed(event.target.checked)}
-                      style={{ width: 18, height: 18, minHeight: 18, margin: "2px 0 0", accentColor: "#e3262e", cursor: "pointer", flex: "0 0 auto" }}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        minHeight: 18,
+                        margin: "2px 0 0",
+                        accentColor: "#e3262e",
+                        cursor: "pointer",
+                        flex: "0 0 auto",
+                      }}
                     />
                     <span>
-                      I confirm that I have transferred <strong>INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2000.00"}</strong> via UPI to <code>{upiId}</code> and entered the genuine transaction reference (UTR) above.
+                      I confirm that I have transferred{" "}
+                      <strong>INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2200.00"}</strong> via UPI to{" "}
+                      <code>{upiId}</code> and entered the genuine transaction reference (UTR) above.
                     </span>
                   </label>
                 </div>
@@ -382,11 +626,19 @@ export default function RegisterPage() {
               </div>
               <label className="registration-field">
                 <span className="sr-only">Message</span>
-                <textarea name="message" placeholder="Any dietary restrictions, special accommodations, or notes for the secretariat" rows={4} />
+                <textarea
+                  name="message"
+                  placeholder="Any dietary restrictions, special accommodations, or notes for the secretariat"
+                  rows={4}
+                />
               </label>
             </section>
 
-            <button className="registration-submit" type="submit" disabled={busy || publicEvent?.registrationOpen === false}>
+            <button
+              className="registration-submit"
+              type="submit"
+              disabled={busy || publicEvent?.registrationOpen === false}
+            >
               {busy ? (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <LoaderCircle className="spinner" size={16} /> Submitting registration…
@@ -402,5 +654,4 @@ export default function RegisterPage() {
       </main>
     </ArkhamShell>
   )
-
 }
