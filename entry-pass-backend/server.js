@@ -784,7 +784,7 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
 // 5. REGISTRATION PAYMENT & PROOF FLOW
 // -------------------------------------------------------------
 
-// POST /api/registrations (Start delegate registration)
+// POST /api/registrations (Start delegate registration - requires authenticated user)
 app.post("/api/registrations", async (req, res) => {
   try {
     const { name, email, phone = "", organization = "", committee = "", eventId } = req.body || {};
@@ -809,38 +809,74 @@ app.post("/api/registrations", async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check or find/create User
-    let user = await User.findOne({ email: cleanEmail });
-    if (!user) {
-      const defaultPassword = `Arkham${crypto.randomBytes(4).toString("hex")}!`;
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(defaultPassword, salt);
-      user = await User.create({
-        name: name.trim(),
-        email: cleanEmail,
-        passwordHash,
-        role: "user",
+    // Verify authentication from Bearer token
+    let authUser = null;
+    const authHeader = req.get("authorization") || req.get("Authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, jwtSecret);
+        authUser = await User.findById(decoded.id);
+      } catch (err) {
+        // Token invalid or expired
+      }
+    }
+
+    // Require account: 1st time users must sign up, returning users must sign in
+    const existingAccount = await User.findOne({ email: cleanEmail });
+    if (!existingAccount && !authUser) {
+      // 1st time user: must sign up first
+      return res.status(401).json({
+        error: "Account required. 1st-time delegates must sign up before registering for an event.",
+        requiresSignup: true,
       });
     }
 
-    // Check duplicate
+    // If account exists, but request does not have valid authentication token
+    if (!authUser) {
+      return res.status(401).json({
+        error: "Authentication required. Please sign in to your Arkham MUN account before registering for this event.",
+        requiresLogin: true,
+      });
+    }
+
+    const user = authUser;
+
+    // Check duplicate registration for this user and event
     const existing = await Registration.findOne({ userId: user._id, eventId: targetEvent._id });
     if (existing) {
-      return res.json({ id: existing._id.toString(), amount: existing.amount, status: existing.status });
+      return res.status(409).json({
+        error: "You are already registered for this event.",
+        alreadyRegistered: true,
+        id: existing._id.toString(),
+        amount: existing.amount,
+        status: existing.status,
+      });
     }
 
     const registration = await Registration.create({
       userId: user._id,
       eventId: targetEvent._id,
       name: name.trim(),
-      contact: cleanEmail,
-      email: cleanEmail,
+      contact: user.email,
+      email: user.email,
       phone: phone.trim(),
       organization: organization.trim(),
       committee: committee.trim(),
       amount: targetEvent.entryFee,
       status: "pending_payment",
     });
+
+    // Create user notification
+    try {
+      await Notification.create({
+        userId: user._id,
+        eventId: targetEvent._id,
+        message: `Registration initiated for ${targetEvent.title}. Complete payment to receive your digital entry pass.`,
+        type: "registration",
+        read: false,
+      });
+    } catch {}
 
     res.status(201).json({
       id: registration._id.toString(),
@@ -849,7 +885,7 @@ app.post("/api/registrations", async (req, res) => {
     });
   } catch (err) {
     console.error("Start registration error:", err);
-    res.status(500).json({ error: "Failed to initiate registration." });
+    res.status(500).json({ error: err?.message || "Failed to initiate registration." });
   }
 });
 

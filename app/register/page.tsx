@@ -3,9 +3,30 @@
 import { FormEvent, useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, Check, CircleAlert, Clock3, Copy, LoaderCircle, ShieldCheck, User } from "lucide-react"
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  Copy,
+  LoaderCircle,
+  LogIn,
+  Shield,
+  ShieldCheck,
+  User,
+  UserCheck,
+  UserPlus,
+} from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
-import { EntryQrResponse, entryPassApi, PublicEvent, RegistrationStart, RegistrationStatus } from "@/lib/entry-pass-api"
+import {
+  EntryQrResponse,
+  entryPassApi,
+  PublicEvent,
+  RegistrationStart,
+  RegistrationStatus,
+  UserRegistration,
+} from "@/lib/entry-pass-api"
 import { useAuth } from "@/lib/auth-context"
 
 const committees = [
@@ -25,6 +46,8 @@ function TextField({
   required = true,
   placeholder = "Short-answer text",
   defaultValue = "",
+  readOnly = false,
+  helpText = "",
 }: {
   label: string
   name: string
@@ -32,12 +55,36 @@ function TextField({
   required?: boolean
   placeholder?: string
   defaultValue?: string
+  readOnly?: boolean
+  helpText?: string
 }) {
   return (
     <label className="registration-field">
-      {label}
-      {required && <span aria-hidden="true"> *</span>}
-      <input name={name} type={type} required={required} placeholder={placeholder} defaultValue={defaultValue} />
+      <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>
+          {label}
+          {required && <span aria-hidden="true"> *</span>}
+        </span>
+        {helpText && <span style={{ color: "#aaa8ba", fontSize: "11px", fontWeight: "normal" }}>{helpText}</span>}
+      </span>
+      <input
+        name={name}
+        type={type}
+        required={required}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+        readOnly={readOnly}
+        style={
+          readOnly
+            ? {
+                backgroundColor: "rgba(255, 255, 255, 0.04)",
+                color: "#e8e5f2",
+                borderColor: "rgba(255, 255, 255, 0.15)",
+                cursor: "not-allowed",
+              }
+            : undefined
+        }
+      />
     </label>
   )
 }
@@ -72,17 +119,20 @@ const DEFAULT_EVENT: PublicEvent = {
 }
 
 export default function RegisterPage() {
-  const { user } = useAuth()
+  const { user, token, isLoading: authLoading } = useAuth()
   const [publicEvent, setPublicEvent] = useState<PublicEvent>(DEFAULT_EVENT)
   const [registration, setRegistration] = useState<RegistrationStart | null>(null)
   const [status, setStatus] = useState<RegistrationStatus | null>(null)
   const [entryQr, setEntryQr] = useState<EntryQrResponse | null>(null)
+  const [existingRegistration, setExistingRegistration] = useState<UserRegistration | null>(null)
+  const [checkingExisting, setCheckingExisting] = useState(false)
   const [paymentConfirmed, setPaymentConfirmed] = useState(false)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [notice, setNotice] = useState("")
 
+  // 1. Fetch public event settings
   useEffect(() => {
     let active = true
     entryPassApi
@@ -98,6 +148,33 @@ export default function RegisterPage() {
     }
   }, [])
 
+  // 2. If user is authenticated, check if they already registered for an event
+  useEffect(() => {
+    if (!token || !user) return
+    let active = true
+    setCheckingExisting(true)
+
+    entryPassApi
+      .getMyRegistrations(token)
+      .then((res) => {
+        if (!active) return
+        const regs = res.registrations || []
+        if (regs.length > 0) {
+          // Found existing registration for this user
+          setExistingRegistration(regs[0])
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setCheckingExisting(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [token, user])
+
+  // 3. Polling for live status updates after payment submission
   useEffect(() => {
     if (!registration || !status || status === "approved" || status === "rejected") return
     let active = true
@@ -123,11 +200,16 @@ export default function RegisterPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!user || !token) {
+      setError("Please sign in or create an account first to complete your registration.")
+      return
+    }
+
     const form = event.currentTarget
     const data = new FormData(form)
 
-    const name = String(data.get("name") || "").trim()
-    const email = String(data.get("email") || "").trim()
+    const name = String(data.get("name") || user.name || "").trim()
+    const email = String(data.get("email") || user.email || "").trim()
     const phone = String(data.get("phone") || "").trim()
     const school = String(data.get("school") || "").trim()
     const committee = String(data.get("committee-one") || "").trim()
@@ -154,14 +236,17 @@ export default function RegisterPage() {
     setNotice("")
 
     try {
-      // 1. Create registration record
-      const created = await entryPassApi.createRegistration({
-        name,
-        email,
-        phone,
-        organization: school,
-        committee,
-      })
+      // 1. Create registration record (with authentication token)
+      const created = await entryPassApi.createRegistration(
+        {
+          name,
+          email,
+          phone,
+          organization: school,
+          committee,
+        },
+        token
+      )
       setRegistration(created)
 
       // 2. Submit payment proof
@@ -207,6 +292,7 @@ export default function RegisterPage() {
           entry QR pass will be issued and emailed to you.
         </PageIntro>
 
+        {/* Closed or Notice Banner */}
         {publicEvent && !publicEvent.registrationOpen && (
           <div
             style={{
@@ -226,7 +312,212 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {status === "payment_submitted" || status === "approved" ? (
+        {/* Loading Authentication State */}
+        {authLoading ? (
+          <div style={{ minHeight: "45vh", display: "grid", placeItems: "center" }}>
+            <LoaderCircle size={32} className="animate-spin" style={{ color: "#e3262e" }} />
+          </div>
+        ) : !user ? (
+          /* =========================================================================
+             AUTHENTICATION GATE:
+             1st-time delegates must Sign Up before registering.
+             Returning delegates must Sign In.
+             ========================================================================= */
+          <div
+            className="contact-card"
+            style={{
+              maxWidth: "580px",
+              margin: "30px auto 70px",
+              background: "rgba(12, 12, 12, 0.94)",
+              border: "1px solid rgba(255, 255, 255, 0.16)",
+              borderRadius: "10px",
+              padding: "44px 34px",
+              textAlign: "center",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(227, 38, 46, 0.12)",
+            }}
+          >
+            <div
+              style={{
+                width: 62,
+                height: 62,
+                borderRadius: "50%",
+                background: "rgba(227, 38, 46, 0.14)",
+                border: "1px solid rgba(227, 38, 46, 0.5)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "22px",
+              }}
+            >
+              <Shield size={30} style={{ color: "#e3262e" }} />
+            </div>
+
+            <span className="section-kicker">ENROLLMENT PROTOCOL</span>
+            <h2 style={{ fontSize: "28px", margin: "10px 0 12px", color: "#fff", fontWeight: 500 }}>
+              Account Required to Register
+            </h2>
+            <p style={{ color: "#aaa8ba", fontSize: "14px", margin: "0 auto 28px", maxWidth: "460px", lineHeight: 1.6 }}>
+              1st-time delegates must <strong>Sign Up</strong> to create an account before registering for an event. Once
+              enrolled, you will only need to <strong>Sign In</strong> for this and any subsequent event.
+            </p>
+
+            <div style={{ display: "grid", gap: "12px", maxWidth: "420px", margin: "0 auto" }}>
+              {/* 1st Time Users: Sign Up First */}
+              <Link
+                href="/signup?redirect=/register"
+                className="primary-button arkham-nav-cta"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  padding: "15px 22px",
+                  borderRadius: "4px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textDecoration: "none",
+                  background: "#e3262e",
+                  color: "#fff",
+                  boxShadow: "0 4px 20px rgba(227, 38, 46, 0.4)",
+                }}
+              >
+                <UserPlus size={16} /> 1ST TIME? SIGN UP TO REGISTER <ArrowRight size={14} />
+              </Link>
+
+              {/* Returning Users: Sign In */}
+              <Link
+                href="/login?redirect=/register"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  padding: "13px 20px",
+                  borderRadius: "4px",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  color: "#e8e4f3",
+                  transition: "all 0.2s",
+                }}
+              >
+                <LogIn size={15} style={{ color: "#e3262e" }} /> ALREADY HAVE AN ACCOUNT? SIGN IN
+              </Link>
+            </div>
+
+            <div
+              style={{
+                marginTop: "26px",
+                paddingTop: "18px",
+                borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+                color: "#8d8a9e",
+                fontSize: "12px",
+                lineHeight: 1.5,
+              }}
+            >
+              <strong>Conference Note:</strong> Creating your account securely binds your committee seat allocations,
+              payment reviews, notifications, and signed entry passes to your personal delegate profile.
+            </div>
+          </div>
+        ) : existingRegistration && !registration ? (
+          /* =========================================================================
+             ALREADY REGISTERED VIEW:
+             If returning user has already registered for this event.
+             ========================================================================= */
+          <div
+            className="contact-card"
+            style={{
+              maxWidth: "760px",
+              margin: "20px auto 60px",
+              background: "rgba(12, 12, 12, 0.94)",
+              border: "1px solid rgba(227, 38, 46, 0.4)",
+              borderRadius: "10px",
+              padding: "32px 30px",
+              boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(227, 38, 46, 0.15)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: "rgba(84, 189, 128, 0.15)",
+                  border: "1px solid rgba(84, 189, 128, 0.4)",
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <CheckCircle2 size={24} style={{ color: "#54bd80" }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <span className="section-kicker">ALLOCATION ACTIVE</span>
+                <h2 style={{ fontSize: "24px", margin: "4px 0 8px", color: "#fff", fontWeight: 500 }}>
+                  You Are Already Registered for This Event
+                </h2>
+                <p style={{ color: "#aaa8ba", fontSize: "14px", margin: "0 0 18px", lineHeight: 1.5 }}>
+                  Delegate: <strong>{user.name}</strong> (<code>{user.email}</code>)
+                  <br />
+                  Registration Status:{" "}
+                  <strong
+                    style={{
+                      color: existingRegistration.status === "approved" ? "#54bd80" : "#ffd19c",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {existingRegistration.status.replace("_", " ")}
+                  </strong>
+                  {existingRegistration.committee && (
+                    <>
+                      {" "}
+                      · Committee: <strong>{existingRegistration.committee}</strong>
+                    </>
+                  )}
+                </p>
+
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  <Link
+                    href="/dashboard"
+                    className="primary-button arkham-nav-cta"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "12px 20px",
+                      fontSize: "13px",
+                      textDecoration: "none",
+                    }}
+                  >
+                    View Entry Pass &amp; Updates in Dashboard <ArrowRight size={14} />
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => setExistingRegistration(null)}
+                    style={{
+                      padding: "11px 18px",
+                      background: "transparent",
+                      border: "1px solid rgba(255, 255, 255, 0.18)",
+                      borderRadius: "4px",
+                      color: "#aaa8ba",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                    }}
+                  >
+                    Register Additional Delegate
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : status === "payment_submitted" || status === "approved" ? (
+          /* =========================================================================
+             POST-SUBMISSION / APPROVAL PASS VIEW
+             ========================================================================= */
           <section
             style={{
               maxWidth: 980,
@@ -345,7 +636,37 @@ export default function RegisterPage() {
             </div>
           </section>
         ) : (
+          /* =========================================================================
+             AUTHENTICATED REGISTRATION FORM
+             User is signed in; pre-fills verified credentials and takes event details.
+             ========================================================================= */
           <form className="registration-form" onSubmit={handleSubmit}>
+            {/* Authenticated user banner */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                background: "rgba(227, 38, 46, 0.08)",
+                border: "1px solid rgba(227, 38, 46, 0.3)",
+                borderRadius: "6px",
+                marginBottom: "20px",
+                flexWrap: "wrap",
+                gap: "10px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <UserCheck size={16} style={{ color: "#e3262e" }} />
+                <span style={{ fontSize: "13px", color: "#e8e5f2" }}>
+                  Authenticated Delegate: <strong>{user?.name}</strong> (<code>{user?.email}</code>)
+                </span>
+              </div>
+              <Link href="/dashboard" style={{ fontSize: "12px", color: "#e3262e", textDecoration: "underline" }}>
+                My Dashboard →
+              </Link>
+            </div>
+
             {error && (
               <p
                 style={{
@@ -354,7 +675,7 @@ export default function RegisterPage() {
                   borderLeft: "3px solid #e3262e",
                   color: "#ffb5b8",
                   fontSize: 13,
-                  margin: 0,
+                  margin: "0 0 20px",
                 }}
               >
                 <CircleAlert size={16} style={{ display: "inline", marginRight: 6, verticalAlign: "middle" }} />
@@ -368,13 +689,22 @@ export default function RegisterPage() {
                 <h2>Delegate details</h2>
               </div>
               <div className="registration-grid">
-                <TextField label="Full name" name="name" defaultValue={user?.name || ""} placeholder="Your full name" />
+                <TextField
+                  label="Full name"
+                  name="name"
+                  defaultValue={user?.name || ""}
+                  placeholder="Your full name"
+                  readOnly={true}
+                  helpText="Bound to account"
+                />
                 <TextField
                   label="Email"
                   name="email"
                   type="email"
                   defaultValue={user?.email || ""}
                   placeholder="you@example.com"
+                  readOnly={true}
+                  helpText="Bound to account"
                 />
                 <TextField label="Phone no." name="phone" type="tel" placeholder="+91 98765 43210" />
                 <TextField label="School / College" name="school" placeholder="School or University name" />

@@ -447,12 +447,19 @@ export const entryPassApi = {
   },
 
   // -----------------------------------------------------------
-  // LEGACY REGISTRATION COMPATIBILITY
+  // REGISTRATION (Authenticated delegate registration)
   // -----------------------------------------------------------
-  createRegistration(details: { name: string; email: string; phone: string; organization: string; committee: string; eventId?: string }) {
+  createRegistration(
+    details: { name: string; email: string; phone: string; organization: string; committee: string; eventId?: string },
+    token?: string
+  ) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
     return request<RegistrationStart>("/api/registrations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(details),
     })
   },
