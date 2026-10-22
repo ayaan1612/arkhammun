@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
 import PulsingHexagonBackground from "@/components/pulsing-hexagon-background"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 
@@ -50,7 +50,7 @@ export default function Home() {
         <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><Link href="/admin" onClick={() => setMenuOpen(false)}>Admin</Link><Link className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></Link>
+          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><Link className="nav-cta home-action-button" href="/login" onClick={() => setMenuOpen(false)} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LogIn size={14} /> Login</Link><Link className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></Link>
         </div>
       </nav>
 
@@ -86,11 +86,10 @@ export default function Home() {
           </div>
           <div>
             <span>SECRETARIAT</span>
-            <Link href="/admin"><ShieldCheck size={15} /> Admin Desk</Link>
+            <Link href="/login"><LogIn size={15} /> Login Portal</Link>
             <Link href="/register"><ArrowRight size={15} /> Delegate Portal</Link>
           </div>
         </div>
-        <p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p>
       </footer>
     </main>
   )

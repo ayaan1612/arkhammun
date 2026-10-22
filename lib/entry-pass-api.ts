@@ -77,6 +77,12 @@ export type AdminRegistration = {
   email_status?: EmailStatus | null
   email_sent_at?: string | null
   email_error?: string | null
+  event?: {
+    id: string
+    title: string
+    date: string
+    venue: string
+  } | null
 }
 
 export type ContactQuery = {
@@ -127,7 +133,6 @@ export type NotificationsLookupResponse = {
   announcements: NotificationAnnouncement
 }
 
-
 export type EntryVerification =
   | { valid: true; alreadyUsed?: boolean; registration: ScannedRegistration }
   | { valid: false; reason: "invalid" }
@@ -144,6 +149,71 @@ export type ScannedRegistration = {
   paymentStatus: RegistrationStatus
   checkedInAt: string | null
   event: EventDetails
+}
+
+// -------------------------------------------------------------
+// USER & PERSISTENT DATABASE TYPES
+// -------------------------------------------------------------
+
+export type UserRole = "user" | "admin"
+
+export type UserProfile = {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  createdAt?: string
+}
+
+export type AuthResponse = {
+  token: string
+  user: UserProfile
+  message?: string
+}
+
+export type DbEvent = {
+  _id: string
+  title: string
+  description: string
+  date: string
+  venue: string
+  time: string
+  entryFee: number
+  upiId: string
+  registrationOpen: boolean
+  registrationNotice?: string
+  paymentQrUrl?: string
+  createdAt?: string
+}
+
+export type UserRegistration = {
+  _id: string
+  userId: string | UserProfile
+  eventId: DbEvent
+  name: string
+  email: string
+  phone?: string
+  organization?: string
+  committee?: string
+  amount: number
+  status: RegistrationStatus
+  utr?: string
+  screenshot_path?: string
+  reject_reason?: string
+  entry_payload?: string
+  used_at?: string
+  registeredAt: string
+  email_status?: string
+}
+
+export type UserNotification = {
+  _id: string
+  userId: string
+  message: string
+  read: boolean
+  eventId?: string
+  type?: "system" | "registration" | "approval" | "rejection" | "announcement" | "reply"
+  createdAt: string
 }
 
 export class EntryPassApiError extends Error {
@@ -163,6 +233,8 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
   }
   if (typeof window !== "undefined") {
+    // If running in browser and no external API URL specified, relative calls work
+    // or fallback to localhost port 3001
     return ""
   }
   return "http://localhost:3001"
@@ -186,9 +258,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     } else {
       const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
       if (isVercel) {
-        throw new Error("Could not connect to backend. Please ensure your backend is deployed and NEXT_PUBLIC_API_URL is configured.")
+        throw new Error("Could not connect to backend. Please ensure NEXT_PUBLIC_API_URL is configured in your Vercel project settings.")
       }
-      throw new Error("Could not reach the entry service. Check that the backend is running and the API URL is correct.")
+      throw new Error("Could not reach the backend service. Check network connection and API URL.")
     }
   }
 
@@ -197,13 +269,17 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     let errorMessage = typeof body.error === "string" ? body.error : ""
     if (!errorMessage) {
       if (response.status === 401) {
-        errorMessage = "Invalid admin authorization key. Please re-enter your password."
+        errorMessage = "Unauthorized access. Please log in again."
+      } else if (response.status === 403) {
+        errorMessage = "Access denied. Administrator privileges required."
+      } else if (response.status === 409) {
+        errorMessage = "Conflict: you may already be registered for this event."
       } else if (response.status === 404 || response.status === 502 || response.status === 503) {
         const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
         if (isVercel) {
-          errorMessage = "Backend service is not connected. Please ensure your backend is deployed and NEXT_PUBLIC_API_URL is configured in Vercel."
+          errorMessage = "Backend service not connected. Please verify NEXT_PUBLIC_API_URL in Vercel settings."
         } else {
-          errorMessage = `Backend service unavailable (${response.status}). Check backend status.`
+          errorMessage = `Backend service unavailable (${response.status}).`
         }
       } else {
         errorMessage = `The request could not be completed (${response.status}).`
@@ -214,22 +290,176 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   return body as T
 }
 
-function adminHeaders(adminKey: string, json = false): HeadersInit {
-  return {
-    ...(json ? { "Content-Type": "application/json" } : {}),
-    "x-admin-key": adminKey,
+function authHeaders(tokenOrKey?: string, json = false): HeadersInit {
+  const headers: Record<string, string> = {}
+  if (json) headers["Content-Type"] = "application/json"
+  if (tokenOrKey) {
+    if (tokenOrKey.startsWith("Bearer ")) {
+      headers["Authorization"] = tokenOrKey
+    } else if (tokenOrKey.length > 40) {
+      // Likely JWT token
+      headers["Authorization"] = `Bearer ${tokenOrKey}`
+    } else {
+      // Legacy admin key
+      headers["x-admin-key"] = tokenOrKey
+      headers["Authorization"] = `Bearer ${tokenOrKey}`
+    }
   }
+  return headers
 }
 
 export const entryPassApi = {
+  // -----------------------------------------------------------
+  // AUTHENTICATION
+  // -----------------------------------------------------------
+  signup(data: { name: string; email: string; password: string; adminKey?: string; role?: "user" | "admin" }) {
+    return request<AuthResponse>("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+  },
+
+  login(data: { email?: string; password?: string; adminKey?: string; role?: "user" | "admin" }) {
+    return request<AuthResponse>("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+  },
+
+  getMe(token: string) {
+    return request<{ user: UserProfile }>("/api/auth/me", {
+      headers: authHeaders(token),
+    })
+  },
+
+  // -----------------------------------------------------------
+  // EVENTS (MongoDB Atlas backed)
+  // -----------------------------------------------------------
+  getEvents() {
+    return request<{ events: DbEvent[] }>("/api/events")
+  },
+
+  getEvent(id: string) {
+    return request<{ event: DbEvent }>(`/api/events/${encodeURIComponent(id)}`)
+  },
+
   getPublicEvent() {
     return request<PublicEvent>("/api/event")
   },
 
-  createRegistration(details: { name: string; email: string; phone: string; organization: string; committee: string }) {
+  // -----------------------------------------------------------
+  // USER PROTECTED ENDPOINTS
+  // -----------------------------------------------------------
+  registerForEvent(
+    eventId: string,
+    details: {
+      name?: string
+      phone?: string
+      organization?: string
+      committee?: string
+      utr?: string
+      screenshot_path?: string
+    },
+    token: string
+  ) {
+    return request<{ registration: UserRegistration; message: string }>(
+      `/api/events/${encodeURIComponent(eventId)}/register`,
+      {
+        method: "POST",
+        headers: authHeaders(token, true),
+        body: JSON.stringify(details),
+      }
+    )
+  },
+
+  getMyRegistrations(token: string) {
+    return request<{ registrations: UserRegistration[] }>("/api/my-registrations", {
+      headers: authHeaders(token),
+    })
+  },
+
+  getMyNotifications(token: string) {
+    return request<{ notifications: UserNotification[]; unreadCount: number }>("/api/my-notifications", {
+      headers: authHeaders(token),
+    })
+  },
+
+  markNotificationAsRead(id: string, token: string) {
+    return request<{ notification: UserNotification }>(`/api/notifications/${encodeURIComponent(id)}/read`, {
+      method: "PATCH",
+      headers: authHeaders(token),
+    })
+  },
+
+  // -----------------------------------------------------------
+  // ADMIN PROTECTED ENDPOINTS
+  // -----------------------------------------------------------
+  createAdminEvent(data: Partial<DbEvent>, tokenOrKey: string) {
+    return request<{ event: DbEvent }>("/api/admin/events", {
+      method: "POST",
+      headers: authHeaders(tokenOrKey, true),
+      body: JSON.stringify(data),
+    })
+  },
+
+  updateAdminEvent(id: string, data: Partial<DbEvent>, tokenOrKey: string) {
+    return request<{ event: DbEvent }>(`/api/admin/events/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: authHeaders(tokenOrKey, true),
+      body: JSON.stringify(data),
+    })
+  },
+
+  deleteAdminEvent(id: string, tokenOrKey: string) {
+    return request<{ message: string }>(`/api/admin/events/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: authHeaders(tokenOrKey),
+    })
+  },
+
+  getAdminRegistrations(
+    adminKeyOrToken: string,
+    status: RegistrationStatus | "all" = "all",
+    eventId?: string,
+    search?: string
+  ) {
+    const params = new URLSearchParams()
+    if (status && status !== "all") params.set("status", status)
+    if (eventId && eventId !== "all") params.set("eventId", eventId)
+    if (search) params.set("search", search)
+    const qs = params.toString() ? `?${params.toString()}` : ""
+    return request<{ registrations: AdminRegistration[] }>(`/api/admin/registrations${qs}`, {
+      headers: authHeaders(adminKeyOrToken),
+    })
+  },
+
+  sendAdminAnnouncement(
+    data: { eventId?: string; message: string },
+    tokenOrKey: string
+  ) {
+    return request<{ sentCount: number; message: string }>("/api/admin/notifications", {
+      method: "POST",
+      headers: authHeaders(tokenOrKey, true),
+      body: JSON.stringify(data),
+    })
+  },
+
+  // -----------------------------------------------------------
+  // REGISTRATION (Authenticated delegate registration)
+  // -----------------------------------------------------------
+  createRegistration(
+    details: { name: string; email: string; phone: string; organization: string; committee: string; eventId?: string },
+    token?: string
+  ) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`
+    }
     return request<RegistrationStart>("/api/registrations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(details),
     })
   },
@@ -257,22 +487,16 @@ export const entryPassApi = {
     return request<EntryQrResponse>(`/api/registrations/${encodeURIComponent(id)}/entry-qr`)
   },
 
-  getAdminRegistrations(adminKey: string, status: RegistrationStatus = "payment_submitted") {
-    return request<{ registrations: AdminRegistration[] }>(`/api/admin/registrations?status=${encodeURIComponent(status)}`, {
-      headers: adminHeaders(adminKey),
-    })
-  },
-
   getAdminSettings(adminKey: string) {
     return request<AdminEventSettings>("/api/admin/settings", {
-      headers: adminHeaders(adminKey),
+      headers: authHeaders(adminKey),
     })
   },
 
   saveAdminEvent(event: EventDetails, adminKey: string) {
     return request<{ event: EventDetails }>("/api/admin/settings", {
       method: "PUT",
-      headers: adminHeaders(adminKey, true),
+      headers: authHeaders(adminKey, true),
       body: JSON.stringify({ event }),
     })
   },
@@ -289,7 +513,7 @@ export const entryPassApi = {
   ) {
     return request<AdminEventSettings>("/api/admin/settings", {
       method: "PUT",
-      headers: adminHeaders(adminKey, true),
+      headers: authHeaders(adminKey, true),
       body: JSON.stringify(payload),
     })
   },
@@ -304,17 +528,17 @@ export const entryPassApi = {
 
   getAdminQueries(adminKey: string, status = "all") {
     return request<{ queries: ContactQuery[] }>(`/api/admin/queries?status=${encodeURIComponent(status)}`, {
-      headers: adminHeaders(adminKey),
+      headers: authHeaders(adminKey),
     })
   },
 
-  replyAdminQuery(id: string, replyMessage: string, adminKey: string) {
-    return request<{ success: boolean; query: ContactQuery; emailSent: boolean; emailError?: string | null }>(
+  replyAdminQuery(id: string, reply: string, adminKey: string) {
+    return request<{ success: boolean; id: string; status: string }>(
       `/api/admin/queries/${encodeURIComponent(id)}/reply`,
       {
         method: "POST",
-        headers: adminHeaders(adminKey, true),
-        body: JSON.stringify({ replyMessage }),
+        headers: authHeaders(adminKey, true),
+        body: JSON.stringify({ reply }),
       }
     )
   },
@@ -324,7 +548,7 @@ export const entryPassApi = {
     body.set("paymentQr", file)
     return request<{ paymentQrConfigured: boolean; paymentQrUrl: string }>("/api/admin/payment-qr", {
       method: "POST",
-      headers: adminHeaders(adminKey),
+      headers: authHeaders(adminKey),
       body,
     })
   },
@@ -334,7 +558,7 @@ export const entryPassApi = {
       `/api/admin/registrations/${encodeURIComponent(id)}/approve`,
       {
         method: "POST",
-        headers: adminHeaders(adminKey),
+        headers: authHeaders(adminKey),
       }
     )
   },
@@ -344,7 +568,7 @@ export const entryPassApi = {
       `/api/admin/registrations/${encodeURIComponent(id)}/retry-email`,
       {
         method: "POST",
-        headers: adminHeaders(adminKey, true),
+        headers: authHeaders(adminKey, true),
         body: JSON.stringify({ force }),
       }
     )
@@ -353,7 +577,7 @@ export const entryPassApi = {
   rejectRegistration(id: string, reason: string, adminKey: string) {
     return request<{ id: string; status: "rejected" }>(`/api/admin/registrations/${encodeURIComponent(id)}/reject`, {
       method: "POST",
-      headers: adminHeaders(adminKey, true),
+      headers: authHeaders(adminKey, true),
       body: JSON.stringify({ reason }),
     })
   },
@@ -361,7 +585,7 @@ export const entryPassApi = {
   verifyEntry(payload: string, adminKey: string, admit = true) {
     return request<EntryVerification>("/api/entry/verify", {
       method: "POST",
-      headers: adminHeaders(adminKey, true),
+      headers: authHeaders(adminKey, true),
       body: JSON.stringify({ payload, admit }),
     })
   },
@@ -370,22 +594,21 @@ export const entryPassApi = {
     return request<NotificationsLookupResponse>(`/api/notifications/lookup?query=${encodeURIComponent(query)}`)
   },
 
-
   async getScreenshot(url: string, adminKey: string) {
     let response: Response
     const primaryUrl = `${getApiBaseUrl()}${url}`
     try {
-      response = await fetch(primaryUrl, { headers: adminHeaders(adminKey) })
+      response = await fetch(primaryUrl, { headers: authHeaders(adminKey) })
     } catch {
       const fallbackUrl = `http://localhost:3001${url}`
       try {
-        response = await fetch(fallbackUrl, { headers: adminHeaders(adminKey) })
+        response = await fetch(fallbackUrl, { headers: authHeaders(adminKey) })
       } catch {
         throw new Error("Could not reach the entry service while loading the payment screenshot.")
       }
     }
     if (!response.ok) {
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      const body = (await response.json().catch(() => ({}))) as { error?: string }
       throw new EntryPassApiError(body.error || "Unable to load payment screenshot.", response.status, body)
     }
     return response.blob()
