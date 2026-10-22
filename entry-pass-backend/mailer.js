@@ -4,7 +4,12 @@ let customTransporter = null;
 
 function isSmtpConfigured() {
   if (customTransporter) return true;
+  if ((process.env.RESEND_API_KEY || "").trim()) return true;
+  if ((process.env.BREVO_API_KEY || "").trim()) return true;
   const host = (process.env.SMTP_HOST || "").trim();
+  const user = (process.env.SMTP_USER || "").trim();
+  const pass = (process.env.SMTP_PASS || "").trim();
+  if (user && pass) return true;
   if (!host || host === "replace-with-smtp-host") return false;
   return true;
 }
@@ -238,15 +243,91 @@ function buildEmailPayload({ registration, event, qrBuffer }) {
   };
 }
 
-async function sendApprovalMail({ registration, event, qrBuffer, transporter }) {
-  const mailTransporter = transporter || getTransporter();
+
+async function sendViaResend({ from, to, subject, text, html, attachments }) {
+  const apiKey = (process.env.RESEND_API_KEY || "").trim();
+  const fromAddress = (process.env.SMTP_FROM || "").trim() || "Arkham MUN Secretariat <onboarding@resend.dev>";
+  const payload = {
+    from: fromAddress,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    text,
+    html,
+  };
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments.map((att) => ({
+      filename: att.filename,
+      content: Buffer.isBuffer(att.content) ? att.content.toString("base64") : Buffer.from(att.content).toString("base64"),
+    }));
+  }
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Resend email delivery failed (${response.status}): ${errText}`);
+  }
+  return await response.json();
+}
+
+async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
+  const apiKey = (process.env.BREVO_API_KEY || "").trim();
+  const senderEmail = (process.env.SMTP_USER || "").trim() || "arkhammun2026@gmail.com";
+  const payload = {
+    sender: { name: "Arkham MUN Secretariat", email: senderEmail },
+    to: [{ email: Array.isArray(to) ? to[0] : to }],
+    subject,
+    textContent: text,
+    htmlContent: html,
+  };
+  if (attachments && attachments.length > 0) {
+    payload.attachment = attachments.map((att) => ({
+      name: att.filename,
+      content: Buffer.isBuffer(att.content) ? att.content.toString("base64") : Buffer.from(att.content).toString("base64"),
+    }));
+  }
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Brevo email delivery failed (${response.status}): ${errText}`);
+  }
+  return await response.json();
+}
+
+async function sendEmailPayload(mailOptions, transporter) {
+  if (customTransporter || transporter) {
+    const t = transporter || customTransporter;
+    return await t.sendMail(mailOptions);
+  }
+  if ((process.env.RESEND_API_KEY || "").trim()) {
+    return await sendViaResend(mailOptions);
+  }
+  if ((process.env.BREVO_API_KEY || "").trim()) {
+    return await sendViaBrevo(mailOptions);
+  }
+  const mailTransporter = getTransporter();
   if (!mailTransporter) {
     throw new Error("SMTP server is not configured");
   }
+  return await mailTransporter.sendMail(mailOptions);
+}
 
+async function sendApprovalMail({ registration, event, qrBuffer, transporter }) {
   const mailOptions = buildEmailPayload({ registration, event, qrBuffer });
-  const info = await mailTransporter.sendMail(mailOptions);
-  return info;
+  return await sendEmailPayload(mailOptions, transporter);
 }
 
 function buildQueryReplyPayload({ query, replyMessage }) {
@@ -330,14 +411,8 @@ function buildQueryReplyPayload({ query, replyMessage }) {
 
 async function sendQueryReplyMail({ query, replyMessage, reply, event, transporter }) {
   const finalReply = (replyMessage || reply || "").trim();
-  const mailTransporter = transporter || getTransporter();
-  if (!mailTransporter) {
-    throw new Error("SMTP server is not configured");
-  }
-
   const mailOptions = buildQueryReplyPayload({ query, replyMessage: finalReply, event });
-  const info = await mailTransporter.sendMail(mailOptions);
-  return info;
+  return await sendEmailPayload(mailOptions, transporter);
 }
 
 
@@ -438,14 +513,8 @@ function buildRejectionEmailPayload({ registration, event, reason }) {
 }
 
 async function sendRejectionMail({ registration, event, reason, transporter }) {
-  const mailTransporter = transporter || getTransporter();
-  if (!mailTransporter) {
-    throw new Error("SMTP server is not configured");
-  }
-
   const mailOptions = buildRejectionEmailPayload({ registration, event, reason });
-  const info = await mailTransporter.sendMail(mailOptions);
-  return info;
+  return await sendEmailPayload(mailOptions, transporter);
 }
 
 module.exports = {

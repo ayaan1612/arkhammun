@@ -1776,7 +1776,23 @@ app.post("/api/contact", async (req, res) => {
 // GET /api/admin/queries
 app.get("/api/admin/queries", requireAdmin, async (req, res) => {
   try {
-    const queries = await ContactQuery.find().sort({ createdAt: -1 });
+    const rawQueries = await ContactQuery.find().sort({ createdAt: -1 });
+    const queries = rawQueries.map((q) => {
+      const idStr = q._id ? q._id.toString() : String(q.id);
+      return {
+        id: idStr,
+        _id: idStr,
+        name: q.name,
+        email: q.email,
+        phone: q.phone,
+        subject: q.subject,
+        message: q.message,
+        status: q.status,
+        reply_message: q.reply_message,
+        replied_at: q.replied_at ? (q.replied_at.toISOString ? q.replied_at.toISOString() : q.replied_at) : null,
+        created_at: q.createdAt ? (q.createdAt.toISOString ? q.createdAt.toISOString() : q.createdAt) : new Date().toISOString(),
+      };
+    });
     res.json({ queries });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch queries." });
@@ -1820,7 +1836,18 @@ app.post("/api/admin/queries/:id/reply", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "Reply message cannot be empty." });
     }
 
-    const query = await ContactQuery.findById(req.params.id);
+    const targetId = req.params.id;
+    if (!targetId || targetId === "undefined" || targetId === "null") {
+      return res.status(400).json({ error: "A valid enquiry ID is required." });
+    }
+
+    let query = null;
+    if (/^[0-9a-fA-F]{24}$/.test(targetId)) {
+      query = await ContactQuery.findById(targetId);
+    }
+    if (!query) {
+      query = await ContactQuery.findOne({ _id: targetId });
+    }
     if (!query) return res.status(404).json({ error: "Query not found." });
 
     query.status = "replied";

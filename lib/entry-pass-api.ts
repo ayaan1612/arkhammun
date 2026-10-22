@@ -135,6 +135,7 @@ export type AdminRegistration = {
 
 export type ContactQuery = {
   id: string
+  _id?: string
   name: string
   email: string
   phone: string | null

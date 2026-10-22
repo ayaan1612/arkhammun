@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LayoutDashboard, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
 import PulsingHexagonBackground from "@/components/pulsing-hexagon-background"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
+import { useAuth } from "@/lib/auth-context"
 
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
@@ -28,6 +29,7 @@ const schedule = [
 ]
 
 export default function Home() {
+  const { user } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
@@ -50,7 +52,11 @@ export default function Home() {
         <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>
         <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
         <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a><Link className="nav-cta home-action-button" href="/login" onClick={() => setMenuOpen(false)} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LogIn size={14} /> Login</Link><Link className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></Link>
+          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a>{user ? (
+            <Link className="nav-cta home-action-button" href="/dashboard" onClick={() => setMenuOpen(false)} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LayoutDashboard size={14} /> Dashboard</Link>
+          ) : (
+            <Link className="nav-cta home-action-button" href="/login" onClick={() => setMenuOpen(false)} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LogIn size={14} /> Login</Link>
+          )}<Link className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></Link>
         </div>
       </nav>
 
@@ -86,7 +92,11 @@ export default function Home() {
           </div>
           <div>
             <span>SECRETARIAT</span>
-            <Link href="/login"><LogIn size={15} /> Login Portal</Link>
+            {user ? (
+              <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LayoutDashboard size={15} /> Dashboard Portal</Link>
+            ) : (
+              <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LogIn size={15} /> Login Portal</Link>
+            )}
             <Link href="/register"><ArrowRight size={15} /> Delegate Portal</Link>
           </div>
         </div>

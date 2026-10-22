@@ -275,6 +275,20 @@ export default function AdminPage() {
     }
   }, [authenticated, adminKey])
 
+  // Auto-dismiss notice after 6 seconds
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(""), 6000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
+  // Auto-dismiss error after 8 seconds
+  useEffect(() => {
+    if (!error) return
+    const timer = window.setTimeout(() => setError(""), 8000)
+    return () => window.clearTimeout(timer)
+  }, [error])
+
   async function loadEvents() {
     setEventsLoading(true)
     try {
@@ -748,13 +762,18 @@ export default function AdminPage() {
   async function handleSendReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!replyModalQuery || !replyMessageText.trim()) return
+    const targetQueryId = replyModalQuery.id || (replyModalQuery as any)._id
+    if (!targetQueryId) {
+      setError("Enquiry ID is missing. Please refresh the page and try again.")
+      return
+    }
     setReplyBusy(true)
     setError("")
     try {
-      const res = await entryPassApi.replyAdminQuery(replyModalQuery.id, replyMessageText.trim(), adminKey)
+      const res = await entryPassApi.replyAdminQuery(targetQueryId, replyMessageText.trim(), adminKey)
       setReplyModalQuery(null)
       setReplyMessageText("")
-      setNotice("Reply sent successfully and recorded in notifications.")
+      setNotice("Reply sent successfully and recorded in delegate dashboard.")
       await loadData(adminKey)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to send reply.")
@@ -1147,16 +1166,70 @@ export default function AdminPage() {
       </nav>
 
       {notice && (
-        <p className={styles.notice}>
-          <Check size={14} />
-          {notice}
-        </p>
+        <div
+          className={styles.notice}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            <Check size={14} style={{ flexShrink: 0 }} />
+            <span>{notice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "inherit",
+              cursor: "pointer",
+              padding: "2px 4px",
+              display: "flex",
+              alignItems: "center",
+              opacity: 0.85,
+            }}
+            title="Dismiss notice"
+          >
+            <X size={15} />
+          </button>
+        </div>
       )}
       {error && (
-        <p className={styles.error}>
-          <CircleAlert size={14} />
-          {error}
-        </p>
+        <div
+          className={styles.error}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+          }}
+        >
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            <CircleAlert size={14} style={{ flexShrink: 0 }} />
+            <span>{error}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setError("")}
+            style={{
+              background: "transparent",
+              border: 0,
+              color: "inherit",
+              cursor: "pointer",
+              padding: "2px 4px",
+              display: "flex",
+              alignItems: "center",
+              opacity: 0.85,
+            }}
+            title="Dismiss error"
+          >
+            <X size={15} />
+          </button>
+        </div>
       )}
 
       {/* VIEW 1: OVERVIEW / DASHBOARD */}
@@ -1606,6 +1679,28 @@ export default function AdminPage() {
                       </dd>
                     </div>
                   </dl>
+
+                  {/* Payment Screenshot Thumbnail for Approved Delegates */}
+                  {(reg.screenshotBlobUrl || reg.screenshot_url) && (
+                    <div style={{ marginTop: 12, marginBottom: 14 }}>
+                      <span style={{ fontSize: 11, color: "#aaa8ba", display: "block", marginBottom: 6 }}>
+                        Verified Payment Proof (Click to enlarge):
+                      </span>
+                      <img
+                        src={reg.screenshotBlobUrl || reg.screenshot_url}
+                        alt="Verified payment screenshot"
+                        onClick={() => setScreenshotModalUrl(reg.screenshotBlobUrl || reg.screenshot_url || null)}
+                        style={{
+                          width: 80,
+                          height: 80,
+                          objectFit: "cover",
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,255,255,0.25)",
+                          cursor: "pointer",
+                        }}
+                      />
+                    </div>
+                  )}
                 </article>
               ))}
           </div>
@@ -2129,7 +2224,7 @@ export default function AdminPage() {
 
           <div className={styles.queueList}>
             {filteredQueries.map((q) => (
-              <article className={styles.registration} key={q.id}>
+              <article className={styles.registration} key={q.id || q._id || q.email + q.created_at}>
                 <div className={styles.registrationTitle}>
                   <div>
                     <h3>{q.subject}</h3>
