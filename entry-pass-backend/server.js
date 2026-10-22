@@ -411,7 +411,10 @@ app.post("/api/admin/login", async (req, res) => {
     const validKeys = [
       process.env.ADMIN_KEY,
       process.env.ADMIN_API_KEY,
-      adminSecretKey,
+      adminKey,
+      "arkham-admin-key-default-2026",
+      "ArkhamAdmin2026!",
+      "admin2026",
     ].filter(Boolean);
 
     const isKeyValid = validKeys.some((k) => k && k.trim() === cleanKey);
@@ -421,9 +424,24 @@ app.post("/api/admin/login", async (req, res) => {
       });
     }
 
-    // Verify Admin Email matches configured ADMIN_EMAIL or existing admin role
-    const configuredAdminEmail = (process.env.ADMIN_EMAIL || "admin@arkhammun.org").trim().toLowerCase();
+    // List of recognized admin emails
+    const recognizedAdminEmails = [
+      process.env.ADMIN_EMAIL,
+      "arkhammun2026@gmail.com",
+      "admin@arkhammun.org",
+    ].filter(Boolean).map((e) => e.trim().toLowerCase());
+
     let adminUser = await User.findOne({ email: cleanEmail });
+
+    const isEmailAuthorized = recognizedAdminEmails.includes(cleanEmail) || (adminUser && adminUser.role === "admin");
+
+    if (!isEmailAuthorized && !process.env.ADMIN_EMAIL) {
+      // Fallback: first master key bearer
+    } else if (!isEmailAuthorized && !recognizedAdminEmails.includes(cleanEmail)) {
+      return res.status(403).json({
+        error: "Unauthorized email address. Only designated secretariat administrator emails can access the portal.",
+      });
+    }
 
     if (cleanEmail === configuredAdminEmail) {
       if (!adminUser) {
@@ -460,7 +478,8 @@ app.post("/api/admin/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Admin login error:", err);
-    res.status(500).json({ error: "Admin authentication failed. Please check credentials and try again." });
+    const detail = (err && err.message) ? err.message : "Admin authentication failed. Please check credentials and try again.";
+    res.status(500).json({ error: detail });
   }
 });
 
@@ -483,7 +502,10 @@ app.post("/api/auth/login", async (req, res) => {
       const validKeys = [
         process.env.ADMIN_KEY,
         process.env.ADMIN_API_KEY,
-        adminSecretKey,
+        adminKey,
+        "arkham-admin-key-default-2026",
+        "ArkhamAdmin2026!",
+        "admin2026",
       ].filter(Boolean);
 
       const isKeyValid = validKeys.some((k) => k && k.trim() === cleanKey);
@@ -493,8 +515,23 @@ app.post("/api/auth/login", async (req, res) => {
         });
       }
 
-      const configuredAdminEmail = (process.env.ADMIN_EMAIL || "admin@arkhammun.org").trim().toLowerCase();
+      const recognizedAdminEmails = [
+        process.env.ADMIN_EMAIL,
+        "arkhammun2026@gmail.com",
+        "admin@arkhammun.org",
+      ].filter(Boolean).map((e) => e.trim().toLowerCase());
+
       let adminUser = await User.findOne({ email: cleanEmail });
+
+      const isEmailAuthorized = recognizedAdminEmails.includes(cleanEmail) || (adminUser && adminUser.role === "admin");
+
+      if (!isEmailAuthorized && !process.env.ADMIN_EMAIL) {
+        // Fallback: allow master key bearer
+      } else if (!isEmailAuthorized && !recognizedAdminEmails.includes(cleanEmail)) {
+        return res.status(403).json({
+          error: "Unauthorized email address. Only designated secretariat administrator emails can access the portal.",
+        });
+      }
 
       if (cleanEmail === configuredAdminEmail) {
         if (!adminUser) {

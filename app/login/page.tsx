@@ -471,21 +471,25 @@ function LoginForm() {
               color: "#aaa8ba",
             }}
           >
-            <div>
-              Don&apos;t have an account yet?{" "}
-              <Link
-                href={`/signup${userType === "admin" ? "?role=admin" : ""}${
-                  redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : ""
-                }`}
-                style={{
-                  color: "#e3262e",
-                  fontWeight: 700,
-                  textDecoration: "underline",
-                }}
-              >
-                Sign Up as {userType === "admin" ? "Admin" : "Delegate"}
-              </Link>
-            </div>
+            {userType === "delegate" ? (
+              <div>
+                Don&apos;t have an account yet?{" "}
+                <Link
+                  href={`/signup${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`}
+                  style={{
+                    color: "#e3262e",
+                    fontWeight: 700,
+                    textDecoration: "underline",
+                  }}
+                >
+                  Sign Up as Delegate
+                </Link>
+              </div>
+            ) : (
+              <div style={{ color: "#8d8a9e", fontSize: "12px" }}>
+                Secretariat access is restricted. Contact the Secretariat Director if you need key authorization.
+              </div>
+            )}
             <div>
               <Link href="/contact" style={{ color: "#8d8a9e", textDecoration: "none", fontSize: "12px" }}>
                 Need technical assistance or credentials support? Contact Secretariat
