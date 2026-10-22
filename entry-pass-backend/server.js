@@ -1219,7 +1219,21 @@ app.get("/api/registrations/:id/entry-qr", async (req, res, next) => {
 
 async function deliverApprovalEmail(registrationId) {
   const reg = await Registration.findById(registrationId).populate("eventId");
-  if (!reg || !reg.email) {
+  if (!reg) {
+    return { status: "not_configured", error: "Registration not found." };
+  }
+
+  let recipientEmail = reg.email || reg.contact;
+  if (!recipientEmail && reg.userId) {
+    try {
+      const userDoc = await User.findById(reg.userId);
+      if (userDoc && userDoc.email) {
+        recipientEmail = userDoc.email;
+      }
+    } catch {}
+  }
+
+  if (!recipientEmail) {
     return { status: "not_configured", error: "Delegate email address missing." };
   }
 
@@ -1247,10 +1261,11 @@ async function deliverApprovalEmail(registrationId) {
       registration: {
         id: reg._id.toString(),
         name: reg.name,
-        email: reg.email,
+        email: recipientEmail,
         committee: reg.committee,
         organization: reg.organization,
         amount: reg.amount,
+        utr: reg.utr,
       },
       event: eventDetails,
       qrBuffer,
@@ -1290,16 +1305,31 @@ app.post("/api/admin/registrations/:id/approve", requireAdmin, async (req, res, 
     const payload = issueEntryPayload(reg, eventDetails);
     reg.status = "approved";
     reg.entry_payload = payload;
+
+    // Resolve user ID for notification if reg.userId is missing
+    let targetUserId = reg.userId;
+    if (!targetUserId && (reg.email || reg.contact)) {
+      try {
+        const u = await User.findOne({ email: (reg.email || reg.contact).toLowerCase().trim() });
+        if (u) {
+          targetUserId = u._id;
+          reg.userId = u._id;
+        }
+      } catch {}
+    }
+
     await reg.save();
 
     // Create Notification in MongoDB for user
-    await Notification.create({
-      userId: reg.userId,
-      eventId: reg.eventId ? reg.eventId._id : null,
-      message: `Your registration for ${eventDetails.name} has been approved! Your official Entry Pass is ready on your dashboard.`,
-      type: "approval",
-      read: false,
-    });
+    if (targetUserId) {
+      await Notification.create({
+        userId: targetUserId,
+        eventId: reg.eventId ? reg.eventId._id : null,
+        message: `Your payment and registration for ${eventDetails.name} have been approved! Your official Entry QR Pass is now available on your dashboard.`,
+        type: "approval",
+        read: false,
+      });
+    }
 
     // Deliver approval pass via email
     const emailResult = await deliverApprovalEmail(reg._id);
@@ -1327,6 +1357,25 @@ app.post("/api/admin/registrations/:id/reject", requireAdmin, async (req, res) =
 
     reg.status = "rejected";
     reg.reject_reason = reason;
+
+    // Resolve user ID and recipient email
+    let targetUserId = reg.userId;
+    let recipientEmail = reg.email || reg.contact;
+    if (!targetUserId && recipientEmail) {
+      try {
+        const u = await User.findOne({ email: recipientEmail.toLowerCase().trim() });
+        if (u) {
+          targetUserId = u._id;
+          reg.userId = u._id;
+        }
+      } catch {}
+    } else if (targetUserId && !recipientEmail) {
+      try {
+        const u = await User.findById(targetUserId);
+        if (u && u.email) recipientEmail = u.email;
+      } catch {}
+    }
+
     await reg.save();
 
     const eventDetails = reg.eventId
@@ -1339,23 +1388,27 @@ app.post("/api/admin/registrations/:id/reject", requireAdmin, async (req, res) =
       : await getDefaultEventDetails();
 
     // Notify user in MongoDB
-    await Notification.create({
-      userId: reg.userId,
-      eventId: reg.eventId ? reg.eventId._id : null,
-      message: `Registration payment rejected: ${reason}. Please update your UTR and resubmit.`,
-      type: "rejection",
-      read: false,
-    });
+    if (targetUserId) {
+      await Notification.create({
+        userId: targetUserId,
+        eventId: reg.eventId ? reg.eventId._id : null,
+        message: `Payment review update: Your payment was rejected for reason: "${reason}". Please verify your UTR reference and re-upload payment proof.`,
+        type: "rejection",
+        read: false,
+      });
+    }
 
     // Send email notification if SMTP configured
     let emailResult = { status: "not_configured" };
-    if (mailer.isSmtpConfigured() && reg.email) {
+    if (mailer.isSmtpConfigured() && recipientEmail) {
       try {
         await mailer.sendRejectionMail({
           registration: {
             id: reg._id.toString(),
             name: reg.name,
-            email: reg.email,
+            email: recipientEmail,
+            committee: reg.committee,
+            organization: reg.organization,
           },
           event: eventDetails,
           reason,

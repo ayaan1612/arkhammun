@@ -1397,38 +1397,66 @@ export default function AdminPage() {
                         </button>
 
                         {rejectingId === reg.id ? (
-                          <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%", marginTop: 8 }}>
-                            <input
-                              type="text"
-                              placeholder="Reason for rejection (e.g. Invalid UTR, insufficient amount)…"
-                              value={rejectReason}
-                              onChange={(e) => setRejectReason(e.target.value)}
-                              style={{
-                                flex: 1,
-                                padding: "8px 12px",
-                                background: "#0c0b17",
-                                border: "1px solid #e3262e",
-                                color: "#fff",
-                                borderRadius: 4,
-                                fontSize: 12,
-                              }}
-                            />
-                            <button
-                              className={styles.rejectButton}
-                              onClick={() => reject(reg.id)}
-                              disabled={busyId === reg.id}
-                            >
-                              Confirm Rejection
-                            </button>
-                            <button
-                              className={styles.secondaryButton}
-                              onClick={() => {
-                                setRejectingId("")
-                                setRejectReason("")
-                              }}
-                            >
-                              Cancel
-                            </button>
+                          <div style={{ display: "grid", gap: 8, width: "100%", marginTop: 10, padding: "12px", background: "rgba(227, 38, 46, 0.08)", border: "1px solid rgba(227, 38, 46, 0.35)", borderRadius: 6 }}>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                              <span style={{ fontSize: 11, color: "#8d8a9e", fontWeight: 600 }}>Quick Presets:</span>
+                              {[
+                                "Invalid 12-digit UPI UTR reference",
+                                "Payment proof screenshot is blurry/unreadable",
+                                "Payment amount does not match delegate fee",
+                                "Duplicate transaction reference submitted",
+                              ].map((preset) => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => setRejectReason(preset)}
+                                  style={{
+                                    background: rejectReason === preset ? "rgba(227, 38, 46, 0.3)" : "rgba(255, 255, 255, 0.06)",
+                                    border: rejectReason === preset ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.15)",
+                                    borderRadius: 4,
+                                    padding: "3px 8px",
+                                    fontSize: 11,
+                                    color: "#fff",
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  {preset}
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <input
+                                type="text"
+                                placeholder="Enter or select rejection reason (delivered to delegate's email & notification bell)…"
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                style={{
+                                  flex: 1,
+                                  padding: "8px 12px",
+                                  background: "#0c0b17",
+                                  border: "1px solid #e3262e",
+                                  color: "#fff",
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                }}
+                              />
+                              <button
+                                className={styles.rejectButton}
+                                onClick={() => reject(reg.id)}
+                                disabled={busyId === reg.id}
+                              >
+                                {busyId === reg.id ? "Rejecting..." : "Confirm Rejection"}
+                              </button>
+                              <button
+                                className={styles.secondaryButton}
+                                onClick={() => {
+                                  setRejectingId("")
+                                  setRejectReason("")
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           <button
