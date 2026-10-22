@@ -122,6 +122,12 @@ export default function DashboardPage() {
       try {
         const passData = await entryPassApi.getEntryQr(reg._id)
         setModalPassData(passData)
+        if (passData.used_at && !reg.used_at) {
+          setStatusModalReg((prev) => (prev ? { ...prev, used_at: passData.used_at || prev.used_at } : null))
+          setRegistrations((prev) =>
+            prev.map((r) => (r._id === reg._id ? { ...r, used_at: passData.used_at || r.used_at } : r))
+          )
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Could not load pass QR code."
         setModalError(msg)
@@ -783,22 +789,41 @@ export default function DashboardPage() {
                           {existingReg && (
                             <>
                               {existingReg.status === "approved" && (
-                                <span
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    padding: "3px 8px",
-                                    borderRadius: "4px",
-                                    backgroundColor: "rgba(34, 197, 94, 0.15)",
-                                    border: "1px solid rgba(34, 197, 94, 0.4)",
-                                    color: "#4ade80",
-                                    fontSize: "11px",
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  <CheckCircle2 size={12} /> APPROVED &amp; PASS READY
-                                </span>
+                                existingReg.used_at ? (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      padding: "3px 8px",
+                                      borderRadius: "4px",
+                                      backgroundColor: "rgba(168, 85, 247, 0.15)",
+                                      border: "1px solid rgba(168, 85, 247, 0.4)",
+                                      color: "#c084fc",
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    <CheckCircle2 size={12} /> ADMITTED · QR EXPIRED
+                                  </span>
+                                ) : (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      padding: "3px 8px",
+                                      borderRadius: "4px",
+                                      backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                      border: "1px solid rgba(34, 197, 94, 0.4)",
+                                      color: "#4ade80",
+                                      fontSize: "11px",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    <CheckCircle2 size={12} /> APPROVED &amp; PASS READY
+                                  </span>
+                                )
                               )}
                               {existingReg.status === "rejected" && (
                                 <span
@@ -1017,22 +1042,41 @@ export default function DashboardPage() {
                         {/* Status Badge */}
                         <div>
                           {reg.status === "approved" && (
-                            <span
-                              style={{
-                                backgroundColor: "rgba(34, 197, 94, 0.15)",
-                                color: "#4ade80",
-                                border: "1px solid rgba(34, 197, 94, 0.35)",
-                                padding: "4px 10px",
-                                borderRadius: "4px",
-                                fontSize: "11px",
-                                fontWeight: 700,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                              }}
-                            >
-                              <CheckCircle2 size={13} /> APPROVED &amp; CLEARED
-                            </span>
+                            reg.used_at ? (
+                              <span
+                                style={{
+                                  backgroundColor: "rgba(168, 85, 247, 0.15)",
+                                  color: "#c084fc",
+                                  border: "1px solid rgba(168, 85, 247, 0.35)",
+                                  padding: "4px 10px",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "5px",
+                                }}
+                              >
+                                <CheckCircle2 size={13} /> ADMITTED · QR EXPIRED
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                  color: "#4ade80",
+                                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                                  padding: "4px 10px",
+                                  borderRadius: "4px",
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "5px",
+                                }}
+                              >
+                                <CheckCircle2 size={13} /> APPROVED &amp; PASS ACTIVE
+                              </span>
+                            )
                           )}
                           {reg.status === "payment_submitted" && (
                             <span
@@ -1115,6 +1159,29 @@ export default function DashboardPage() {
                           <strong style={{ color: "#fff" }}>{reg.utr || "Pending"}</strong>
                         </div>
                       </div>
+
+                      {/* Venue Check-in Status Notice */}
+                      {reg.status === "approved" && reg.used_at && (
+                        <div
+                          style={{
+                            padding: "10px 14px",
+                            backgroundColor: "rgba(168, 85, 247, 0.12)",
+                            borderLeft: "3px solid #a855f7",
+                            borderRadius: "4px",
+                            color: "#d8b4fe",
+                            fontSize: "12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <CheckCircle2 size={16} style={{ color: "#c084fc", flexShrink: 0 }} />
+                          <span>
+                            <strong>Venue Check-in Completed:</strong> Admitted at{" "}
+                            {new Date(reg.used_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. Entry QR pass is expired for re-entry.
+                          </span>
+                        </div>
+                      )}
 
                       {/* Rejection Notice if any */}
                       {reg.status === "rejected" && reg.reject_reason && (
@@ -1245,22 +1312,45 @@ export default function DashboardPage() {
             {/* STATUS BANNER */}
             <div>
               {statusModalReg.status === "approved" && (
-                <div
-                  style={{
-                    padding: "16px",
-                    borderRadius: "6px",
-                    backgroundColor: "rgba(34, 197, 94, 0.12)",
-                    border: "1px solid rgba(34, 197, 94, 0.45)",
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#4ade80", fontWeight: 700, fontSize: "14px" }}>
-                    <CheckCircle2 size={18} /> PAYMENT VERIFIED &amp; ENTRY PASS ISSUED
+                (statusModalReg.used_at || modalPassData?.isExpired) ? (
+                  <div
+                    style={{
+                      padding: "16px",
+                      borderRadius: "6px",
+                      backgroundColor: "rgba(168, 85, 247, 0.12)",
+                      border: "1px solid rgba(168, 85, 247, 0.45)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#c084fc", fontWeight: 700, fontSize: "14px" }}>
+                      <CheckCircle2 size={18} /> VENUE ADMISSION COMPLETED · PASS EXPIRED
+                    </div>
+                    <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#d8b4fe" }}>
+                      You have entered the venue at{" "}
+                      <strong>
+                        {new Date(statusModalReg.used_at || modalPassData?.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </strong>
+                      . Your single-use entry QR has expired and cannot be reused for entry.
+                    </p>
                   </div>
-                  <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#aaa8ba" }}>
-                    Your registration has been fully approved by the Secretariat Dais. Present your pass at venue entrance.
-                  </p>
-                </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: "16px",
+                      borderRadius: "6px",
+                      backgroundColor: "rgba(34, 197, 94, 0.12)",
+                      border: "1px solid rgba(34, 197, 94, 0.45)",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#4ade80", fontWeight: 700, fontSize: "14px" }}>
+                      <CheckCircle2 size={18} /> PAYMENT VERIFIED &amp; ENTRY PASS ISSUED
+                    </div>
+                    <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#aaa8ba" }}>
+                      Your registration has been fully approved by the Secretariat Dais. Present your pass at venue entrance camera scanner.
+                    </p>
+                  </div>
+                )
               )}
 
               {statusModalReg.status === "payment_submitted" && (
@@ -1346,10 +1436,13 @@ export default function DashboardPage() {
               <div
                 style={{
                   backgroundColor: "#07070d",
-                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                  border: (statusModalReg.used_at || modalPassData?.isExpired)
+                    ? "1px solid rgba(168, 85, 247, 0.45)"
+                    : "1px solid rgba(34, 197, 94, 0.35)",
                   borderRadius: "8px",
                   padding: "20px",
                   textAlign: "center",
+                  position: "relative",
                 }}
               >
                 {modalLoadingQr ? (
@@ -1367,6 +1460,9 @@ export default function DashboardPage() {
                         display: "inline-block",
                         marginBottom: "12px",
                         boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
+                        position: "relative",
+                        opacity: (statusModalReg.used_at || modalPassData.isExpired) ? 0.45 : 1,
+                        filter: (statusModalReg.used_at || modalPassData.isExpired) ? "grayscale(40%)" : "none",
                       }}
                     >
                       <img
@@ -1374,14 +1470,46 @@ export default function DashboardPage() {
                         alt="Signed Venue Entry QR Pass"
                         style={{ width: "220px", height: "220px", display: "block" }}
                       />
+                      {(statusModalReg.used_at || modalPassData.isExpired) && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "50%",
+                            left: "50%",
+                            transform: "translate(-50%, -50%) rotate(-12deg)",
+                            backgroundColor: "rgba(147, 51, 234, 0.95)",
+                            color: "#fff",
+                            fontWeight: 900,
+                            fontSize: "14px",
+                            letterSpacing: "0.1em",
+                            padding: "8px 14px",
+                            borderRadius: "4px",
+                            boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+                            whiteSpace: "nowrap",
+                            border: "2px solid #fff",
+                          }}
+                        >
+                          ADMITTED · EXPIRED
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: 700, marginBottom: "8px" }}>
-                      ✓ CRYPTOGRAPHICALLY SIGNED PASS
-                    </div>
+
+                    {(statusModalReg.used_at || modalPassData.isExpired) ? (
+                      <div style={{ fontSize: "12px", color: "#c084fc", fontWeight: 700, marginBottom: "8px" }}>
+                        🔒 PASS USED &amp; EXPIRED AT {new Date(statusModalReg.used_at || modalPassData.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: 700, marginBottom: "8px" }}>
+                        ✓ CRYPTOGRAPHICALLY SIGNED PASS · ACTIVE FOR ENTRY
+                      </div>
+                    )}
+
                     <p style={{ margin: "0 0 14px", color: "#8d8a9e", fontSize: "11px", lineHeight: 1.4 }}>
                       Registration ID: <code style={{ color: "#fff" }}>{statusModalReg._id}</code>
                       <br />
-                      Keep this pass saved on your mobile device for security check-in.
+                      {(statusModalReg.used_at || modalPassData.isExpired)
+                        ? "This pass was verified at venue entrance and has expired for single admission."
+                        : "Keep this pass saved on your mobile device for security check-in."}
                     </p>
                     <button
                       onClick={() =>
@@ -1396,10 +1524,10 @@ export default function DashboardPage() {
                         alignItems: "center",
                         justifyContent: "center",
                         gap: "6px",
-                        backgroundColor: "#22c55e",
+                        backgroundColor: (statusModalReg.used_at || modalPassData.isExpired) ? "#6b7280" : "#22c55e",
                       }}
                     >
-                      <Download size={14} /> Download Entry Pass (PNG)
+                      <Download size={14} /> Download {(statusModalReg.used_at || modalPassData.isExpired) ? "Archived Pass" : "Entry Pass"} (PNG)
                     </button>
                   </>
                 ) : (
@@ -1446,6 +1574,14 @@ export default function DashboardPage() {
               <div>
                 <span style={{ color: "#8d8a9e", display: "block" }}>Entry Fee Amount</span>
                 <strong style={{ color: "#fff", fontSize: "13px" }}>₹{statusModalReg.amount}</strong>
+              </div>
+              <div style={{ gridColumn: "1 / -1", paddingTop: "6px", borderTop: "1px dashed rgba(255, 255, 255, 0.08)" }}>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Venue Admission Status</span>
+                <strong style={{ color: (statusModalReg.used_at || modalPassData?.isExpired) ? "#c084fc" : "#4ade80", fontSize: "13px" }}>
+                  {(statusModalReg.used_at || modalPassData?.used_at)
+                    ? `✓ Admitted & Checked In (${new Date(statusModalReg.used_at || modalPassData?.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}) · QR Expired`
+                    : "⏳ Awaiting Arrival at Venue"}
+                </strong>
               </div>
             </div>
 

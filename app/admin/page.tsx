@@ -763,28 +763,39 @@ export default function AdminPage() {
     }
   }
 
-  // Scanner logic
+  // Scanner logic: immediately check in candidate & expire pass on camera scan
   async function verifyPass(payload: string) {
     if (scanBusyRef.current) return
     scanBusyRef.current = true
-    setScanState({ type: "idle", message: "Verifying cryptographic signature with Secretariat key…" })
+    setScanState({ type: "idle", message: "Scanning QR & verifying Secretariat cryptographic signature…" })
     try {
-      const result = await entryPassApi.verifyEntry(payload, adminKey, false)
+      // Auto-admit candidate upon scan (admit: true) so pass is immediately checked in and expired
+      const result = await entryPassApi.verifyEntry(payload, adminKey, true)
       if (result.valid) {
         setScannedPayload(payload)
         setScannedRegistration(result.registration)
-        if (result.alreadyUsed || result.registration.checkedInAt) {
+        const checkinTime = result.registration.checkedInAt || new Date().toISOString()
+
+        if (result.alreadyUsed && !result.newlyAdmitted) {
+          // Pass was already used on an earlier scan
           setScanState({
             type: "used",
-            message: `ALREADY ADMITTED · ${result.registration.name} was checked in earlier at ${new Date(
-              result.registration.checkedInAt!
-            ).toLocaleTimeString()}.`,
+            message: `⚠️ QR EXPIRED & ALREADY USED · ${result.registration.name} was admitted earlier at ${new Date(
+              checkinTime
+            ).toLocaleTimeString()}. Entry rejected for repeat scan.`,
           })
         } else {
+          // Pass was just admitted and expired now
           setScanState({
             type: "valid",
-            message: `PASS VALID · ${result.registration.name} · Review details below and click Confirm Venue Entry.`,
+            message: `✓ ENTRY CLEARED & QR EXPIRED · ${result.registration.name} admitted at ${new Date(
+              checkinTime
+            ).toLocaleTimeString()}! Checked in on website.`,
           })
+          setNotice(`Delegate ${result.registration.name} checked in successfully. Entry QR is now expired.`)
+          setAllApprovedRegistrations((prev) =>
+            prev.map((item) => (item.id === result.registration.id ? { ...item, used_at: checkinTime } : item))
+          )
         }
       } else {
         setScanState({ type: "invalid", message: "INVALID PASS · This is not a valid signed entry QR." })

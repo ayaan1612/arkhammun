@@ -93,6 +93,8 @@ export type EntryQrResponse = {
   qr: string
   registrationId: string
   event: EventDetails
+  used_at?: string | null
+  isExpired?: boolean
 }
 
 export type EmailStatus = "not_configured" | "pending" | "sent" | "failed"
@@ -180,7 +182,13 @@ export type NotificationsLookupResponse = {
 }
 
 export type EntryVerification =
-  | { valid: true; alreadyUsed?: boolean; registration: ScannedRegistration }
+  | {
+      valid: true
+      alreadyUsed?: boolean
+      newlyAdmitted?: boolean
+      isExpired?: boolean
+      registration: ScannedRegistration
+    }
   | { valid: false; reason: "invalid" }
 
 export type ScannedRegistration = {

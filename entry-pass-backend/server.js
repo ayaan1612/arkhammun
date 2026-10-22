@@ -11,6 +11,7 @@ const path = require("node:path");
 
 require("dotenv").config();
 
+const mongoose = require("mongoose");
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
@@ -1280,6 +1281,8 @@ app.get("/api/registrations/:id/entry-qr", async (req, res, next) => {
       qr: qrDataUrl,
       registrationId: reg._id.toString(),
       event: eventDetails,
+      used_at: reg.used_at ? reg.used_at.toISOString() : null,
+      isExpired: Boolean(reg.used_at),
     });
   } catch (err) {
     next(err);
@@ -1571,12 +1574,31 @@ app.post("/api/entry/verify", requireAdmin, async (req, res) => {
       return res.status(400).json({ error: "QR payload is required." });
     }
 
-    const verified = verifyEntryPayload(payload);
-    if (!verified) {
-      return res.json({ valid: false, reason: "invalid" });
+    let reg = null;
+    let verified = verifyEntryPayload(payload);
+    if (verified && verified.id) {
+      reg = await Registration.findById(verified.id).populate("eventId");
     }
 
-    const reg = await Registration.findById(verified.id).populate("eventId");
+    if (!reg) {
+      const isOid = /^[0-9a-fA-F]{24}$/.test(payload);
+      reg = await Registration.findOne({
+        $or: [
+          { entry_payload: payload },
+          ...(isOid ? [{ _id: payload }] : []),
+        ],
+      }).populate("eventId");
+
+      if (reg && !verified) {
+        try {
+          const parts = payload.split(".");
+          if (parts[0]) {
+            verified = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8"));
+          }
+        } catch {}
+      }
+    }
+
     if (!reg || reg.status !== "approved") {
       return res.json({ valid: false, reason: "invalid" });
     }
@@ -1590,7 +1612,10 @@ app.post("/api/entry/verify", requireAdmin, async (req, res) => {
         }
       : verified.event || (await getDefaultEventDetails());
 
-    // If admit button was pressed, mark as checked-in
+    const alreadyUsedBefore = Boolean(reg.used_at);
+    let newlyAdmitted = false;
+
+    // If admit is requested (or camera scanned) and pass not yet used, admit candidate and expire pass
     if (admit && !reg.used_at) {
       reg.used_at = new Date();
       await reg.save();
@@ -1604,13 +1629,26 @@ app.post("/api/entry/verify", requireAdmin, async (req, res) => {
           await RealRegistration.findByIdAndUpdate(verifyRegIdStr, { used_at: reg.used_at });
         } catch {}
       }
-    }
+      newlyAdmitted = true;
 
-    const alreadyUsed = Boolean(reg.used_at);
+      // Deliver admission notification to user
+      if (reg.userId) {
+        try {
+          await Notification.create({
+            userId: reg.userId,
+            message: `Venue Admission Cleared: You have successfully checked in to ${eventDetails.name} at ${reg.used_at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Your entry QR pass is now expired for re-entry.`,
+            type: "system",
+            read: false,
+          });
+        } catch {}
+      }
+    }
 
     res.json({
       valid: true,
-      alreadyUsed,
+      alreadyUsed: alreadyUsedBefore,
+      newlyAdmitted,
+      isExpired: Boolean(reg.used_at),
       registration: {
         id: reg._id.toString(),
         name: reg.name,
