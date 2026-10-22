@@ -9,6 +9,8 @@ type AuthContextType = {
   isLoading: boolean
   isAdmin: boolean
   login: (email?: string, password?: string, adminKey?: string, role?: "user" | "admin") => Promise<UserProfile>
+  loginWithGoogle: (credential: string) => Promise<UserProfile>
+  loginAdmin: (email: string, adminKey: string) => Promise<UserProfile>
   signup: (name: string, email: string, password: string, adminKey?: string, role?: "user" | "admin") => Promise<UserProfile>
   logout: () => void
   refreshUser: () => Promise<void>
@@ -57,6 +59,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.user
   }
 
+  async function loginWithGoogle(credential: string): Promise<UserProfile> {
+    const res = await entryPassApi.loginWithGoogle(credential)
+    localStorage.setItem(TOKEN_KEY, res.token)
+    setToken(res.token)
+    setUser(res.user)
+    return res.user
+  }
+
+  async function loginAdmin(email: string, adminKey: string): Promise<UserProfile> {
+    const res = await entryPassApi.adminLogin({ email, adminKey })
+    localStorage.setItem(TOKEN_KEY, res.token)
+    setToken(res.token)
+    setUser(res.user)
+    return res.user
+  }
+
   async function signup(name: string, email: string, password: string, adminKey?: string, role?: "user" | "admin"): Promise<UserProfile> {
     const res = await entryPassApi.signup({ name, email, password, adminKey, role })
     localStorage.setItem(TOKEN_KEY, res.token)
@@ -93,6 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAdmin,
         login,
+        loginWithGoogle,
+        loginAdmin,
         signup,
         logout,
         refreshUser,

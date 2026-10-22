@@ -343,6 +343,14 @@ const User = {
   },
   async create(data) {
     if (isMongoConnected()) return RealUser.create(data);
+    const existing = memoryStore.users.find(
+      (u) => u.email && u.email.toLowerCase() === (data.email || "").toLowerCase()
+    );
+    if (existing) {
+      const err = new Error("E11000 duplicate key error: An account with this email address already exists.");
+      err.code = 11000;
+      throw err;
+    }
     const doc = {
       _id: new mongoose.Types.ObjectId(),
       createdAt: new Date(),

@@ -10,6 +10,7 @@ import {
   KeyRound,
   LoaderCircle,
   Lock,
+  LogIn,
   Mail,
   Shield,
   ShieldAlert,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { useAuth } from "@/lib/auth-context"
+import { GoogleAuthButton } from "@/components/google-auth-button"
 
 type UserType = "delegate" | "admin"
 
@@ -27,7 +29,7 @@ function SignupForm() {
   const redirectTarget = searchParams.get("redirect") || ""
   const paramRole = (searchParams.get("role") as UserType) || "delegate"
 
-  const { signup, user, isLoading: authLoading } = useAuth()
+  const { signup, loginWithGoogle, user, isLoading: authLoading } = useAuth()
 
   const [userType, setUserType] = useState<UserType>(paramRole)
   const [name, setName] = useState("")
@@ -90,12 +92,25 @@ function SignupForm() {
       errors.confirmPassword = "Passwords do not match."
     }
 
-    if (userType === "admin" && !adminKey.trim()) {
-      errors.adminKey = "Secretariat Passkey is required to register an administrative account."
-    }
-
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
+  }
+
+  async function handleGoogleSuccess(credential: string) {
+    setError("")
+    setLoading(true)
+    try {
+      const loggedInUser = await loginWithGoogle(credential)
+      if (loggedInUser.role === "admin") {
+        router.push(redirectTarget || "/admin")
+      } else {
+        router.push(redirectTarget || "/dashboard")
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google registration failed. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -109,8 +124,8 @@ function SignupForm() {
         name.trim(),
         email.trim(),
         password,
-        userType === "admin" ? adminKey.trim() : undefined,
-        userType === "admin" ? "admin" : "user"
+        undefined,
+        "user"
       )
 
       if (createdUser.role === "admin") {
@@ -236,15 +251,15 @@ function SignupForm() {
           {/* Heading description */}
           <div style={{ marginBottom: "22px" }}>
             <span className="section-kicker">
-              {userType === "admin" ? "SECRETARIAT ONBOARDING" : "NEW DELEGATE REGISTRATION"}
+              {userType === "admin" ? "SECRETARIAT COMMAND DAIS" : "NEW DELEGATE REGISTRATION"}
             </span>
             <h2 style={{ fontSize: "26px", margin: "6px 0 4px", fontWeight: 500 }}>
-              {userType === "admin" ? "Register Secretariat" : "Delegate Sign Up"}
+              {userType === "admin" ? "Secretariat Portal" : "Delegate Sign Up"}
             </h2>
             <p style={{ color: "#aaa8ba", fontSize: "13px", margin: 0, lineHeight: 1.5 }}>
               {userType === "admin"
-                ? "Enroll as an authorized Secretariat administrator using your secret passkey."
-                : "Create your account to register for events, claim entry passes, and view notifications."}
+                ? "Secretariat portal login is restricted to authorized personnel via Admin Email and Secret Key."
+                : "Create your delegate account to register for events, claim entry passes, and view notifications."}
             </p>
           </div>
 
@@ -252,9 +267,8 @@ function SignupForm() {
           {error && (
             <div
               style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "10px",
+                display: "grid",
+                gap: "8px",
                 padding: "12px 14px",
                 backgroundColor: "rgba(227, 38, 46, 0.12)",
                 border: "1px solid rgba(227, 38, 46, 0.5)",
@@ -265,233 +279,283 @@ function SignupForm() {
                 lineHeight: 1.4,
               }}
             >
-              <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: "2px", color: "#e3262e" }} />
-              <div>{error}</div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: "2px", color: "#e3262e" }} />
+                <div>{error}</div>
+              </div>
+              {error.toLowerCase().includes("already exists") && (
+                <Link
+                  href={`/login?email=${encodeURIComponent(email)}`}
+                  style={{
+                    color: "#fff",
+                    textDecoration: "underline",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    marginLeft: "26px",
+                  }}
+                >
+                  Sign in with this email instead →
+                </Link>
+              )}
             </div>
           )}
 
-          {/* MAIN FORM */}
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
-            {/* Full Name */}
-            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <UserCheck size={13} style={{ color: "#e3262e" }} /> FULL NAME
-              </span>
-              <input
-                type="text"
-                placeholder="e.g. Bruce Wayne"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value)
-                  if (validationErrors.name) setValidationErrors({ ...validationErrors, name: undefined })
-                }}
-                disabled={loading}
-                autoComplete="name"
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "13px 14px",
-                  color: "#fff",
-                  backgroundColor: "#080808",
-                  border: validationErrors.name ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
-                  borderRadius: "4px",
-                  outline: "none",
-                  fontSize: "14px",
-                }}
-              />
-              {validationErrors.name && (
-                <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.name}</span>
-              )}
-            </label>
+          {userType === "admin" ? (
+            /* ADMIN ACCESS NOTICE */
+            <div
+              style={{
+                padding: "24px 20px",
+                background: "rgba(227, 38, 46, 0.08)",
+                border: "1px solid rgba(227, 38, 46, 0.35)",
+                borderRadius: "8px",
+                textAlign: "center",
+                display: "grid",
+                gap: "14px",
+              }}
+            >
+              <Shield size={36} style={{ color: "#e3262e", margin: "0 auto" }} />
+              <div>
+                <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "17px" }}>Secretariat Portal Authentication</h3>
+                <p style={{ margin: 0, color: "#aaa8ba", fontSize: "13px", lineHeight: 1.5 }}>
+                  Administrative accounts cannot self-register through this form. Secretariat administrators authenticate at the Secretariat Command Dais using their designated Admin Email and Secret Key.
+                </p>
+              </div>
+              <Link
+                href="/login?role=admin"
+                className="primary-button"
+                style={{ justifySelf: "center", textDecoration: "none", padding: "12px 24px" }}
+              >
+                Go to Secretariat Sign In <ArrowRight size={14} />
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* GOOGLE SIGN UP BUTTON */}
+              <div style={{ marginBottom: "20px" }}>
+                <GoogleAuthButton onSuccess={handleGoogleSuccess} disabled={loading} text="signup_with" />
 
-            {/* Email Address */}
-            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Mail size={13} style={{ color: "#e3262e" }} />
-                {userType === "admin" ? "ADMINISTRATIVE EMAIL" : "EMAIL ADDRESS"}
-              </span>
-              <input
-                type="email"
-                placeholder={userType === "admin" ? "admin@arkhammun.org" : "delegate@example.com"}
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  if (validationErrors.email) setValidationErrors({ ...validationErrors, email: undefined })
-                }}
-                disabled={loading}
-                autoComplete="email"
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "13px 14px",
-                  color: "#fff",
-                  backgroundColor: "#080808",
-                  border: validationErrors.email ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
-                  borderRadius: "4px",
-                  outline: "none",
-                  fontSize: "14px",
-                }}
-              />
-              {validationErrors.email && (
-                <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.email}</span>
-              )}
-            </label>
-
-            {/* Password Field */}
-            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Lock size={13} style={{ color: "#e3262e" }} /> CREATE PASSWORD
-              </span>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="At least 6 characters"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    margin: "20px 0 4px",
+                    color: "#6b667a",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
                   }}
+                >
+                  <div style={{ flex: 1, height: "1px", background: "rgba(255, 255, 255, 0.12)" }} />
+                  <span>Or sign up with email</span>
+                  <div style={{ flex: 1, height: "1px", background: "rgba(255, 255, 255, 0.12)" }} />
+                </div>
+              </div>
+
+              {/* Informational Policy Badge */}
+              <div
+                style={{
+                  padding: "9px 12px",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                  borderRadius: "5px",
+                  color: "#aaa8ba",
+                  fontSize: "12px",
+                  marginBottom: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <UserCheck size={14} style={{ color: "#e3262e" }} />
+                <span>Notice: Only one delegate account is permitted per email address.</span>
+              </div>
+
+              {/* MAIN FORM */}
+              <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+                {/* Full Name */}
+                <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <UserCheck size={13} style={{ color: "#e3262e" }} /> FULL NAME
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g. Bruce Wayne"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      if (validationErrors.name) setValidationErrors({ ...validationErrors, name: undefined })
+                    }}
+                    disabled={loading}
+                    autoComplete="name"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "13px 14px",
+                      color: "#fff",
+                      backgroundColor: "#080808",
+                      border: validationErrors.name ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                      borderRadius: "4px",
+                      outline: "none",
+                      fontSize: "14px",
+                    }}
+                  />
+                  {validationErrors.name && (
+                    <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.name}</span>
+                  )}
+                </label>
+
+                {/* Email Address */}
+                <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Mail size={13} style={{ color: "#e3262e" }} /> EMAIL ADDRESS
+                  </span>
+                  <input
+                    type="email"
+                    placeholder="delegate@example.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value)
+                      if (validationErrors.email) setValidationErrors({ ...validationErrors, email: undefined })
+                    }}
+                    disabled={loading}
+                    autoComplete="email"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "13px 14px",
+                      color: "#fff",
+                      backgroundColor: "#080808",
+                      border: validationErrors.email ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                      borderRadius: "4px",
+                      outline: "none",
+                      fontSize: "14px",
+                    }}
+                  />
+                  {validationErrors.email && (
+                    <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.email}</span>
+                  )}
+                </label>
+
+                {/* Password Field */}
+                <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Lock size={13} style={{ color: "#e3262e" }} /> CREATE PASSWORD
+                  </span>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="At least 6 characters"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value)
+                        if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
+                      }}
+                      disabled={loading}
+                      autoComplete="new-password"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        padding: "13px 44px 13px 14px",
+                        color: "#fff",
+                        backgroundColor: "#080808",
+                        border: validationErrors.password ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                        borderRadius: "4px",
+                        outline: "none",
+                        fontSize: "14px",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: 0,
+                        color: "#8d8a9e",
+                        cursor: "pointer",
+                        padding: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {validationErrors.password && (
+                    <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.password}</span>
+                  )}
+                </label>
+
+                {/* Confirm Password Field */}
+                <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Lock size={13} style={{ color: "#e3262e" }} /> CONFIRM PASSWORD
+                  </span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Re-enter your password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value)
+                      if (validationErrors.confirmPassword)
+                        setValidationErrors({ ...validationErrors, confirmPassword: undefined })
+                    }}
+                    disabled={loading}
+                    autoComplete="new-password"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "13px 14px",
+                      color: "#fff",
+                      backgroundColor: "#080808",
+                      border: validationErrors.confirmPassword ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                      borderRadius: "4px",
+                      outline: "none",
+                      fontSize: "14px",
+                    }}
+                  />
+                  {validationErrors.confirmPassword && (
+                    <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.confirmPassword}</span>
+                  )}
+                </label>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
                   disabled={loading}
-                  autoComplete="new-password"
+                  className="primary-button"
                   style={{
                     width: "100%",
-                    boxSizing: "border-box",
-                    padding: "13px 44px 13px 14px",
-                    color: "#fff",
-                    backgroundColor: "#080808",
-                    border: validationErrors.password ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
-                    borderRadius: "4px",
-                    outline: "none",
-                    fontSize: "14px",
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: 0,
-                    color: "#8d8a9e",
-                    cursor: "pointer",
-                    padding: "4px",
+                    marginTop: "10px",
+                    padding: "14px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    gap: "8px",
+                    opacity: loading ? 0.75 : 1,
+                    cursor: loading ? "not-allowed" : "pointer",
                   }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {loading ? (
+                    <>
+                      <LoaderCircle size={16} className="animate-spin" /> CREATING ACCOUNT...
+                    </>
+                  ) : (
+                    <>
+                      CREATE DELEGATE ACCOUNT <ArrowRight size={14} />
+                    </>
+                  )}
                 </button>
-              </div>
-              {validationErrors.password && (
-                <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.password}</span>
-              )}
-            </label>
-
-            {/* Confirm Password Field */}
-            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Lock size={13} style={{ color: "#e3262e" }} /> CONFIRM PASSWORD
-              </span>
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Re-enter your password"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value)
-                  if (validationErrors.confirmPassword)
-                    setValidationErrors({ ...validationErrors, confirmPassword: undefined })
-                }}
-                disabled={loading}
-                autoComplete="new-password"
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: "13px 14px",
-                  color: "#fff",
-                  backgroundColor: "#080808",
-                  border: validationErrors.confirmPassword ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
-                  borderRadius: "4px",
-                  outline: "none",
-                  fontSize: "14px",
-                }}
-              />
-              {validationErrors.confirmPassword && (
-                <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.confirmPassword}</span>
-              )}
-            </label>
-
-            {/* Secretariat Passkey (Admin only) */}
-            {userType === "admin" && (
-              <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <KeyRound size={13} style={{ color: "#e3262e" }} />
-                  SECRETARIAT PASSKEY (REQUIRED FOR ADMIN VERIFICATION)
-                </span>
-                <input
-                  type="password"
-                  placeholder="Enter Secretariat Admin Passkey"
-                  value={adminKey}
-                  onChange={(e) => {
-                    setAdminKey(e.target.value)
-                    if (validationErrors.adminKey)
-                      setValidationErrors({ ...validationErrors, adminKey: undefined })
-                  }}
-                  disabled={loading}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "13px 14px",
-                    color: "#fff",
-                    backgroundColor: "#080808",
-                    border: validationErrors.adminKey ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
-                    borderRadius: "4px",
-                    outline: "none",
-                    fontSize: "14px",
-                  }}
-                />
-                {validationErrors.adminKey && (
-                  <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.adminKey}</span>
-                )}
-              </label>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="primary-button"
-              style={{
-                width: "100%",
-                marginTop: "10px",
-                padding: "14px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                opacity: loading ? 0.75 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              {loading ? (
-                <>
-                  <LoaderCircle size={16} className="animate-spin" /> CREATING ACCOUNT...
-                </>
-              ) : userType === "admin" ? (
-                <>
-                  REGISTER SECRETARIAT ACCOUNT <ArrowRight size={14} />
-                </>
-              ) : (
-                <>
-                  CREATE DELEGATE ACCOUNT <ArrowRight size={14} />
-                </>
-              )}
-            </button>
-          </form>
+              </form>
+            </>
+          )}
 
           {/* Bottom Link to Sign In */}
           <div

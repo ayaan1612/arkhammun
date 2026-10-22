@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { useAuth } from "@/lib/auth-context"
+import { GoogleAuthButton } from "@/components/google-auth-button"
 
 type UserType = "delegate" | "admin"
 
@@ -26,7 +27,7 @@ function LoginForm() {
   const redirectTarget = searchParams.get("redirect") || ""
   const paramRole = (searchParams.get("role") as UserType) || "delegate"
 
-  const { login, user, isLoading: authLoading } = useAuth()
+  const { login, loginWithGoogle, loginAdmin, user, isLoading: authLoading } = useAuth()
 
   const [userType, setUserType] = useState<UserType>(paramRole)
   const [email, setEmail] = useState("")
@@ -40,6 +41,7 @@ function LoginForm() {
   const [validationErrors, setValidationErrors] = useState<{
     email?: string
     password?: string
+    adminKey?: string
   }>({})
 
   // If already authenticated, redirect
@@ -54,11 +56,19 @@ function LoginForm() {
   }, [user, authLoading, router, redirectTarget])
 
   function validate() {
-    const errors: { email?: string; password?: string } = {}
+    const errors: { email?: string; password?: string; adminKey?: string } = {}
 
-    // Allow Secretariat to sign in using Admin Key directly
-    if (userType === "admin" && adminKey.trim() && !email.trim()) {
-      return true
+    if (userType === "admin") {
+      if (!email.trim()) {
+        errors.email = "Administrative email is required."
+      } else if (!email.includes("@")) {
+        errors.email = "Please enter a valid administrative email."
+      }
+      if (!adminKey.trim()) {
+        errors.adminKey = "Secretariat Admin Key is required."
+      }
+      setValidationErrors(errors)
+      return Object.keys(errors).length === 0
     }
 
     if (!email.trim()) {
@@ -75,6 +85,23 @@ function LoginForm() {
     return Object.keys(errors).length === 0
   }
 
+  async function handleGoogleSuccess(credential: string) {
+    setError("")
+    setLoading(true)
+    try {
+      const loggedInUser = await loginWithGoogle(credential)
+      if (loggedInUser.role === "admin") {
+        router.push(redirectTarget || "/admin")
+      } else {
+        router.push(redirectTarget || "/dashboard")
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google authentication failed. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError("")
@@ -82,12 +109,12 @@ function LoginForm() {
 
     setLoading(true)
     try {
-      const loggedInUser = await login(
-        email.trim() || undefined,
-        password || undefined,
-        adminKey.trim() || undefined,
-        userType === "admin" ? "admin" : "user"
-      )
+      let loggedInUser
+      if (userType === "admin") {
+        loggedInUser = await loginAdmin(email.trim(), adminKey.trim())
+      } else {
+        loggedInUser = await login(email.trim(), password)
+      }
 
       if (loggedInUser.role === "admin") {
         router.push(redirectTarget || "/admin")
@@ -219,8 +246,8 @@ function LoginForm() {
             </h2>
             <p style={{ color: "#aaa8ba", fontSize: "13px", margin: 0, lineHeight: 1.5 }}>
               {userType === "admin"
-                ? "Authenticate with your administrator credentials or shared secretariat passkey."
-                : "Enter your registered email and password to access your dashboard and passes."}
+                ? "Secretariat portal access is restricted. Authenticate with your designated Admin Email and Admin Secret Key."
+                : "Sign in with your Google account or registered email and password to access your passes."}
             </p>
           </div>
 
@@ -243,6 +270,31 @@ function LoginForm() {
             >
               <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: "2px", color: "#e3262e" }} />
               <div>{error}</div>
+            </div>
+          )}
+
+          {/* DELEGATE GOOGLE SIGN-IN OPTION */}
+          {userType === "delegate" && (
+            <div style={{ marginBottom: "20px" }}>
+              <GoogleAuthButton onSuccess={handleGoogleSuccess} disabled={loading} text="signin_with" />
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  margin: "20px 0 4px",
+                  color: "#6b667a",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                <div style={{ flex: 1, height: "1px", background: "rgba(255, 255, 255, 0.12)" }} />
+                <span>Or sign in with email</span>
+                <div style={{ flex: 1, height: "1px", background: "rgba(255, 255, 255, 0.12)" }} />
+              </div>
             </div>
           )}
 
@@ -281,73 +333,78 @@ function LoginForm() {
               )}
             </label>
 
-            {/* Password Field */}
-            <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Lock size={13} style={{ color: "#e3262e" }} /> PASSWORD
-              </span>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value)
-                    if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
-                  }}
-                  disabled={loading}
-                  autoComplete="current-password"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: "13px 44px 13px 14px",
-                    color: "#fff",
-                    backgroundColor: "#080808",
-                    border: validationErrors.password ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
-                    borderRadius: "4px",
-                    outline: "none",
-                    fontSize: "14px",
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  style={{
-                    position: "absolute",
-                    right: "12px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: 0,
-                    color: "#8d8a9e",
-                    cursor: "pointer",
-                    padding: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.password}</span>
-              )}
-            </label>
+            {/* Delegate Password Field */}
+            {userType === "delegate" && (
+              <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Lock size={13} style={{ color: "#e3262e" }} /> PASSWORD
+                </span>
+                <div style={{ position: "relative" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
+                    }}
+                    disabled={loading}
+                    autoComplete="current-password"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      padding: "13px 44px 13px 14px",
+                      color: "#fff",
+                      backgroundColor: "#080808",
+                      border: validationErrors.password ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
+                      borderRadius: "4px",
+                      outline: "none",
+                      fontSize: "14px",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: 0,
+                      color: "#8d8a9e",
+                      cursor: "pointer",
+                      padding: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {validationErrors.password && (
+                  <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.password}</span>
+                )}
+              </label>
+            )}
 
-            {/* Secretariat Verification Key (Admin only) */}
+            {/* Secretariat Verification Key (Admin only - Required) */}
             {userType === "admin" && (
               <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <KeyRound size={13} style={{ color: "#e3262e" }} />
-                  SECRETARIAT KEY (OPTIONAL FOR DIRECT ACCESS)
+                  SECRETARIAT ADMIN KEY
                 </span>
                 <input
                   type="password"
-                  placeholder="Enter Secretariat Admin Passkey"
+                  placeholder="Enter Secretariat Admin Secret Key"
                   value={adminKey}
-                  onChange={(e) => setAdminKey(e.target.value)}
+                  onChange={(e) => {
+                    setAdminKey(e.target.value)
+                    if (validationErrors.adminKey) setValidationErrors({ ...validationErrors, adminKey: undefined })
+                  }}
                   disabled={loading}
                   style={{
                     width: "100%",
@@ -355,12 +412,15 @@ function LoginForm() {
                     padding: "13px 14px",
                     color: "#fff",
                     backgroundColor: "#080808",
-                    border: "1px solid rgba(255, 255, 255, 0.25)",
+                    border: validationErrors.adminKey ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.25)",
                     borderRadius: "4px",
                     outline: "none",
                     fontSize: "14px",
                   }}
                 />
+                {validationErrors.adminKey && (
+                  <span style={{ color: "#ff424b", fontSize: "11px" }}>{validationErrors.adminKey}</span>
+                )}
               </label>
             )}
 

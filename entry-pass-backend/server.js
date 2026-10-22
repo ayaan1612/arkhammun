@@ -264,8 +264,8 @@ app.post("/api/auth/signup", async (req, res) => {
     // Check if email already registered
     const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
-      return res.status(400).json({
-        error: "An account with this email address already exists. Please log in instead.",
+      return res.status(409).json({
+        error: "An account with this email address already exists. Only one registration is permitted per email. Please sign in instead.",
       });
     }
 
@@ -313,8 +313,154 @@ app.post("/api/auth/signup", async (req, res) => {
     });
   } catch (err) {
     console.error("Signup error:", err);
+    if (err.code === 11000 || (err.message && err.message.includes("duplicate key"))) {
+      return res.status(409).json({
+        error: "An account with this email address already exists. Only one registration is permitted per email. Please sign in instead.",
+      });
+    }
     const detail = (err && err.message) ? err.message : "Failed to create account. Please try again.";
     res.status(500).json({ error: detail });
+  }
+});
+
+// POST /api/auth/google (Google One-Tap / OAuth Credential verification for users)
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { credential } = req.body || {};
+    if (!credential || typeof credential !== "string" || !credential.trim()) {
+      return res.status(400).json({ error: "Google credential token is required." });
+    }
+
+    // Verify token with Google's tokeninfo API
+    const googleUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential.trim())}`;
+    const googleRes = await fetch(googleUrl);
+    if (!googleRes.ok) {
+      return res.status(401).json({ error: "Invalid or expired Google authentication token. Please try again." });
+    }
+
+    const payload = await googleRes.json();
+    const { email, email_verified, name } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: "Google account does not provide a valid email address." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Find or create user
+    let user = await User.findOne({ email: cleanEmail });
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const randomPassword = crypto.randomBytes(24).toString("hex");
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+      user = await User.create({
+        name: (name && typeof name === "string" && name.trim()) ? name.trim() : cleanEmail.split("@")[0],
+        email: cleanEmail,
+        passwordHash,
+        role: "user",
+      });
+
+      try {
+        await Notification.create({
+          userId: user._id,
+          message: `Welcome to Arkham MUN, ${user.name}! Your delegate account has been verified via Google.`,
+          type: "system",
+        });
+      } catch (notifyErr) {
+        console.warn("Failed to create welcome notification for Google user:", notifyErr);
+      }
+    }
+
+    const token = signToken(user);
+    res.json({
+      token,
+      user: {
+        id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      message: isNewUser ? "Google account registered successfully." : "Signed in successfully with Google.",
+    });
+  } catch (err) {
+    console.error("Google Auth error:", err);
+    res.status(500).json({ error: "Google authentication failed. Please try again or use email sign in." });
+  }
+});
+
+// POST /api/admin/login (Admin Portal Login via Admin Email & Admin Key ONLY)
+app.post("/api/admin/login", async (req, res) => {
+  try {
+    const { email, adminKey: suppliedKey } = req.body || {};
+
+    if (!email || typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({ error: "Administrative email is required." });
+    }
+    if (!suppliedKey || typeof suppliedKey !== "string" || !suppliedKey.trim()) {
+      return res.status(400).json({ error: "Secretariat Admin Key is required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanKey = suppliedKey.trim();
+
+    // Verify Admin Key against configured system keys
+    const validKeys = [
+      process.env.ADMIN_KEY,
+      process.env.ADMIN_API_KEY,
+      adminSecretKey,
+    ].filter(Boolean);
+
+    const isKeyValid = validKeys.some((k) => k && k.trim() === cleanKey);
+    if (!isKeyValid) {
+      return res.status(401).json({
+        error: "Invalid Secretariat Admin Key. Access to Secretariat Control Center is strictly restricted.",
+      });
+    }
+
+    // Verify Admin Email matches configured ADMIN_EMAIL or existing admin role
+    const configuredAdminEmail = (process.env.ADMIN_EMAIL || "admin@arkhammun.org").trim().toLowerCase();
+    let adminUser = await User.findOne({ email: cleanEmail });
+
+    if (cleanEmail === configuredAdminEmail) {
+      if (!adminUser) {
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), salt);
+        adminUser = await User.create({
+          name: "Secretariat Administrator",
+          email: cleanEmail,
+          passwordHash,
+          role: "admin",
+        });
+      } else if (adminUser.role !== "admin") {
+        adminUser.role = "admin";
+        await adminUser.save();
+      }
+    } else {
+      if (!adminUser || adminUser.role !== "admin") {
+        return res.status(403).json({
+          error: "Unauthorized email address. Only designated secretariat administrator emails can access the portal.",
+        });
+      }
+    }
+
+    const token = signToken(adminUser);
+    res.json({
+      token,
+      user: {
+        id: adminUser._id.toString(),
+        name: adminUser.name,
+        email: adminUser.email,
+        role: "admin",
+      },
+      message: "Secretariat Administrator authenticated successfully.",
+    });
+  } catch (err) {
+    console.error("Admin login error:", err);
+    res.status(500).json({ error: "Admin authentication failed. Please check credentials and try again." });
   }
 });
 
@@ -323,24 +469,55 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password, adminKey: suppliedKey, role: requestedRole } = req.body || {};
 
-    // Allow Secretariat to sign in using Admin Key directly
-    const systemAdminKey = process.env.ADMIN_KEY;
-    if (suppliedKey && systemAdminKey && suppliedKey.trim() === systemAdminKey.trim()) {
-      const adminEmail = (process.env.ADMIN_EMAIL || "admin@arkhammun.org").trim().toLowerCase();
-      let adminUser = await User.findOne({ email: adminEmail });
-      if (!adminUser) {
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password || "AdminArkham2026!", salt);
-        adminUser = await User.create({
-          name: "Secretariat Administrator",
-          email: adminEmail,
-          passwordHash,
-          role: "admin",
+    // If logging in as admin or supplying adminKey, require Admin Email + Admin Key ONLY
+    if (requestedRole === "admin" || suppliedKey) {
+      if (!email || !suppliedKey) {
+        return res.status(400).json({
+          error: "Admin portal authentication requires both Administrative Email and Secretariat Admin Key.",
         });
-      } else if (adminUser.role !== "admin") {
-        adminUser.role = "admin";
-        await adminUser.save();
       }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanKey = suppliedKey.trim();
+
+      const validKeys = [
+        process.env.ADMIN_KEY,
+        process.env.ADMIN_API_KEY,
+        adminSecretKey,
+      ].filter(Boolean);
+
+      const isKeyValid = validKeys.some((k) => k && k.trim() === cleanKey);
+      if (!isKeyValid) {
+        return res.status(401).json({
+          error: "Invalid Secretariat Admin Key. Access to Secretariat Control Center is strictly restricted.",
+        });
+      }
+
+      const configuredAdminEmail = (process.env.ADMIN_EMAIL || "admin@arkhammun.org").trim().toLowerCase();
+      let adminUser = await User.findOne({ email: cleanEmail });
+
+      if (cleanEmail === configuredAdminEmail) {
+        if (!adminUser) {
+          const salt = await bcrypt.genSalt(10);
+          const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), salt);
+          adminUser = await User.create({
+            name: "Secretariat Administrator",
+            email: cleanEmail,
+            passwordHash,
+            role: "admin",
+          });
+        } else if (adminUser.role !== "admin") {
+          adminUser.role = "admin";
+          await adminUser.save();
+        }
+      } else {
+        if (!adminUser || adminUser.role !== "admin") {
+          return res.status(403).json({
+            error: "Unauthorized email address. Only designated secretariat administrator emails can access the portal.",
+          });
+        }
+      }
+
       const token = signToken(adminUser);
       return res.json({
         token,
@@ -348,8 +525,9 @@ app.post("/api/auth/login", async (req, res) => {
           id: adminUser._id.toString(),
           name: adminUser.name,
           email: adminUser.email,
-          role: adminUser.role,
+          role: "admin",
         },
+        message: "Secretariat Administrator authenticated successfully.",
       });
     }
 
@@ -373,12 +551,6 @@ app.post("/api/auth/login", async (req, res) => {
     if (adminEmail && cleanEmail === adminEmail && user.role !== "admin") {
       user.role = "admin";
       await user.save();
-    }
-
-    if (requestedRole === "admin" && user.role !== "admin") {
-      return res.status(403).json({
-        error: "This account does not have Secretariat Administrator privileges. Please sign in as a Delegate.",
-      });
     }
 
     const token = signToken(user);

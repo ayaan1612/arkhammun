@@ -114,9 +114,10 @@ const defaultFormSections: FormSectionsConfig = {
 
 export default function AdminPage() {
   const router = useRouter()
-  const { user, token, isAdmin, isLoading: authLoading, logout: authLogout } = useAuth()
+  const { user, token, isAdmin, isLoading: authLoading, logout: authLogout, loginAdmin } = useAuth()
 
   const [adminKey, setAdminKey] = useState("")
+  const [adminEmailInput, setAdminEmailInput] = useState("")
   const [keyInput, setKeyInput] = useState("")
   const [authenticated, setAuthenticated] = useState(false)
   const [activeView, setActiveView] = useState<AdminView>("overview")
@@ -417,7 +418,26 @@ export default function AdminPage() {
 
   async function handleKeySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    await loadData(keyInput)
+    if (!adminEmailInput.trim() || !keyInput.trim()) {
+      setError("Both Administrative Email and Secretariat Admin Key are required to access this portal.")
+      return
+    }
+
+    setLoading(true)
+    setError("")
+    try {
+      const adminUser = await loginAdmin(adminEmailInput.trim(), keyInput.trim())
+      const activeToken = localStorage.getItem("arkham_auth_token") || keyInput.trim()
+      setAdminKey(activeToken)
+      setAuthenticated(true)
+      await loadData(activeToken)
+      await loadEvents()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Invalid Admin Email or Secretariat Admin Key.")
+      setAuthenticated(false)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function approve(id: string) {
@@ -957,38 +977,39 @@ export default function AdminPage() {
           <ShieldCheck size={36} />
           <h2>Secretariat Control Center</h2>
           <p>
-            Authenticate with your administrator credentials or shared admin key to manage conference operations,
-            payment approvals, venue check-in, and cloud data.
+            Admin portal login is strictly restricted. Authenticate with your designated Administrative Email and Secretariat Admin Key only.
           </p>
-          <form onSubmit={handleKeySubmit}>
-            <label>
-              Administrator Password / Key
+          <form onSubmit={handleKeySubmit} style={{ display: "grid", gap: "14px" }}>
+            <label style={{ display: "grid", gap: "6px" }}>
+              Administrative Email
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={adminEmailInput}
+                onChange={(event) => setAdminEmailInput(event.target.value)}
+                placeholder="admin@arkhammun.org"
+              />
+            </label>
+            <label style={{ display: "grid", gap: "6px" }}>
+              Secretariat Admin Key
               <input
                 type="password"
                 required
                 autoComplete="current-password"
                 value={keyInput}
                 onChange={(event) => setKeyInput(event.target.value)}
-                placeholder="Enter admin password or key"
+                placeholder="Enter secret admin key"
               />
             </label>
-            <button className={styles.primaryButton} type="submit" disabled={loading}>
+            <button className={styles.primaryButton} type="submit" disabled={loading} style={{ marginTop: "6px" }}>
               {loading ? <LoaderCircle className={styles.spinner} size={16} /> : null}
-              {loading ? "Verifying key…" : "Access Admin Center"}
+              {loading ? "Authenticating Secretariat…" : "Authenticate with Admin Key"}
             </button>
           </form>
 
-          <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.12)", textAlign: "center" }}>
-            <Link
-              href="/login?redirect=/admin"
-              style={{ color: "#e3262e", fontSize: "13px", textDecoration: "none", fontWeight: 600 }}
-            >
-              Sign In with Admin Account <LogIn size={13} style={{ display: "inline", verticalAlign: "middle" }} />
-            </Link>
-          </div>
-
           {error && (
-            <p className={styles.error}>
+            <p className={styles.error} style={{ marginTop: "14px" }}>
               <CircleAlert size={14} />
               {error}
             </p>

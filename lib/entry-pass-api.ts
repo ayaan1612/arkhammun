@@ -374,6 +374,22 @@ export const entryPassApi = {
     })
   },
 
+  loginWithGoogle(credential: string) {
+    return request<AuthResponse>("/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credential }),
+    })
+  },
+
+  adminLogin(data: { email: string; adminKey: string }) {
+    return request<AuthResponse>("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+  },
+
   getMe(token: string) {
     return request<{ user: UserProfile }>("/api/auth/me", {
       headers: authHeaders(token),
