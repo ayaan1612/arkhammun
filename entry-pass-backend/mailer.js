@@ -339,11 +339,19 @@ async function sendEmailPayload(mailOptions, transporter) {
     const t = transporter || customTransporter;
     return await t.sendMail(mailOptions);
   }
+  // Try Brevo first if configured (Brevo can send to any email with no test-mode sandbox)
+  if ((process.env.BREVO_API_KEY || "").trim()) {
+    try {
+      return await sendViaBrevo(mailOptions);
+    } catch (brevoErr) {
+      if ((process.env.RESEND_API_KEY || "").trim()) {
+        return await sendViaResend(mailOptions);
+      }
+      throw brevoErr;
+    }
+  }
   if ((process.env.RESEND_API_KEY || "").trim()) {
     return await sendViaResend(mailOptions);
-  }
-  if ((process.env.BREVO_API_KEY || "").trim()) {
-    return await sendViaBrevo(mailOptions);
   }
   const mailTransporter = getTransporter();
   if (!mailTransporter) {

@@ -22,6 +22,9 @@ import {
   Megaphone,
   MessageSquare,
   Plus,
+  QrCode,
+  Download,
+  Share2,
   RefreshCw,
   Search,
   Send,
@@ -213,6 +216,10 @@ export default function AdminPage() {
   const [rejectingId, setRejectingId] = useState("")
   const [rejectReason, setRejectReason] = useState("")
   const [screenshotModalUrl, setScreenshotModalUrl] = useState<string | null>(null)
+  const [adminPassModalReg, setAdminPassModalReg] = useState<AdminRegistration | null>(null)
+  const [adminPassModalData, setAdminPassModalData] = useState<EntryQrResponse | null>(null)
+  const [adminPassLoading, setAdminPassLoading] = useState(false)
+  const [emailErrorModalText, setEmailErrorModalText] = useState<string | null>(null)
 
   // Auto-login with JWT auth if user is admin
   useEffect(() => {
@@ -473,6 +480,29 @@ export default function AdminPage() {
     } finally {
       setBusyId("")
     }
+  }
+
+  async function handleOpenAdminPass(reg: AdminRegistration) {
+    setAdminPassModalReg(reg)
+    setAdminPassModalData(null)
+    setAdminPassLoading(true)
+    try {
+      const data = await entryPassApi.getEntryQr(reg.id)
+      setAdminPassModalData(data)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load entry pass.")
+    } finally {
+      setAdminPassLoading(false)
+    }
+  }
+
+  function handleDownloadAdminPass(dataUrl: string, name: string, id: string) {
+    const link = document.createElement("a")
+    link.href = dataUrl
+    link.download = `arkham-mun-pass-${name.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${id.slice(-6)}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   async function handleRetryEmail(id: string, force = false) {
@@ -1731,34 +1761,71 @@ export default function AdminPage() {
                           <Check size={13} /> Sent to {reg.email || reg.contact}
                         </strong>
                       ) : reg.email_status === "failed" ? (
-                        <span style={{ color: "#f87171", display: "inline-flex", alignItems: "center", gap: 4 }} title={reg.email_error || "Delivery failed"}>
-                          <CircleAlert size={13} /> Delivery Failed ({reg.email_error ? reg.email_error.slice(0, 50) + "..." : "Error"})
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEmailErrorModalText(reg.email_error || "Email delivery failed")}
+                          style={{
+                            background: "transparent",
+                            border: 0,
+                            color: "#f87171",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: 0,
+                            textDecoration: "underline",
+                          }}
+                          title="Click to view detailed error & fix"
+                        >
+                          <CircleAlert size={13} /> Delivery Issue (Click details)
+                        </button>
                       ) : (
                         <span style={{ color: "#facc15" }}>⏳ Not sent yet</span>
                       )}
                     </div>
 
-                    <button
-                      type="button"
-                      className={styles.secondaryButton}
-                      disabled={retryingId === reg.id}
-                      onClick={() => handleRetryEmail(reg.id, true)}
-                      style={{
-                        padding: "6px 14px",
-                        fontSize: 11,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 6,
-                        backgroundColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.06)" : "#e3262e",
-                        color: "#fff",
-                        borderColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.2)" : "#e3262e",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {retryingId === reg.id ? <LoaderCircle size={13} className={styles.spinner} /> : <Mail size={13} />}
-                      {reg.email_status === "sent" ? "Resend Pass to Email" : "Send Entry Pass to Email"}
-                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={() => handleOpenAdminPass(reg)}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 11,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          background: "rgba(255, 255, 255, 0.08)",
+                          color: "#fff",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <QrCode size={13} /> View Pass QR
+                      </button>
+
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        disabled={retryingId === reg.id}
+                        onClick={() => handleRetryEmail(reg.id, true)}
+                        style={{
+                          padding: "6px 14px",
+                          fontSize: 11,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          backgroundColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.06)" : "#e3262e",
+                          color: "#fff",
+                          borderColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.2)" : "#e3262e",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {retryingId === reg.id ? <LoaderCircle size={13} className={styles.spinner} /> : <Mail size={13} />}
+                        {reg.email_status === "sent" ? "Resend Pass to Email" : "Send Entry Pass to Email"}
+                      </button>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -3225,6 +3292,239 @@ export default function AdminPage() {
             >
               <X size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: ADMIN PASS INSPECTOR & DIRECT DOWNLOAD/SHARE */}
+      {adminPassModalReg && (
+        <div className={styles.modalOverlay} onClick={() => setAdminPassModalReg(null)}>
+          <div
+            style={{
+              maxWidth: 480,
+              width: "90%",
+              backgroundColor: "#0c0b16",
+              border: "1px solid rgba(227, 38, 46, 0.5)",
+              borderRadius: 10,
+              padding: 24,
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.95)",
+              display: "grid",
+              gap: 16,
+              textAlign: "center",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ textAlign: "left" }}>
+                <span style={{ fontSize: 11, color: "#e3262e", fontWeight: 700, letterSpacing: "0.1em" }}>
+                  DELEGATE ENTRY PASS
+                </span>
+                <h3 style={{ margin: "2px 0 0", color: "#fff", fontSize: 18 }}>{adminPassModalReg.name}</h3>
+              </div>
+              <button
+                onClick={() => setAdminPassModalReg(null)}
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: 0,
+                  color: "#aaa8ba",
+                  cursor: "pointer",
+                  padding: 6,
+                  borderRadius: "50%",
+                  display: "flex",
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {adminPassLoading ? (
+              <div style={{ padding: 40, color: "#aaa8ba" }}>
+                <LoaderCircle size={28} className="animate-spin" style={{ margin: "0 auto 8px", color: "#e3262e" }} />
+                <span>Generating Cryptographic Pass...</span>
+              </div>
+            ) : adminPassModalData ? (
+              <>
+                <div
+                  style={{
+                    backgroundColor: "#fff",
+                    padding: 14,
+                    borderRadius: 8,
+                    display: "inline-block",
+                    margin: "0 auto",
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+                  }}
+                >
+                  <img
+                    src={adminPassModalData.qr}
+                    alt="Entry Pass QR"
+                    style={{ width: 220, height: 220, display: "block" }}
+                  />
+                </div>
+
+                <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 700 }}>
+                  ✓ CRYPTOGRAPHICALLY SIGNED ENTRY PASS
+                </div>
+
+                <p style={{ margin: 0, color: "#8d8a9e", fontSize: 12, lineHeight: 1.5 }}>
+                  Registration ID: <code style={{ color: "#fff" }}>{adminPassModalReg.id}</code>
+                  <br />
+                  Committee: <strong style={{ color: "#fff" }}>{adminPassModalReg.committee || "General Delegate"}</strong>
+                  <br />
+                  Email: <span style={{ color: "#fff" }}>{adminPassModalReg.email || adminPassModalReg.contact}</span>
+                </p>
+
+                <div style={{ display: "grid", gap: 10, marginTop: 6 }}>
+                  <button
+                    onClick={() =>
+                      handleDownloadAdminPass(adminPassModalData.qr, adminPassModalReg.name, adminPassModalReg.id)
+                    }
+                    className={styles.primaryButton}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      fontSize: 12,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      backgroundColor: "#22c55e",
+                      borderColor: "#22c55e",
+                    }}
+                  >
+                    <Download size={15} /> Download Pass Image (PNG)
+                  </button>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <a
+                      href={`https://api.whatsapp.com/send?phone=${(adminPassModalReg.phone || "").replace(/[^0-9]/g, "")}&text=${encodeURIComponent(
+                        `Dear ${adminPassModalReg.name}, your registration for Arkham MUN 2026 is APPROVED! Your Registration ID is ${adminPassModalReg.id}. View and download your official entry pass on your dashboard: https://arkhammun.vercel.app/dashboard`
+                      )}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className={styles.secondaryButton}
+                      style={{
+                        flex: 1,
+                        padding: 8,
+                        fontSize: 11,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        color: "#25D366",
+                        borderColor: "rgba(37, 211, 102, 0.4)",
+                        textDecoration: "none",
+                      }}
+                    >
+                      <Share2 size={13} /> Share on WhatsApp
+                    </a>
+
+                    <button
+                      type="button"
+                      disabled={retryingId === adminPassModalReg.id}
+                      onClick={() => handleRetryEmail(adminPassModalReg.id, true)}
+                      className={styles.secondaryButton}
+                      style={{
+                        flex: 1,
+                        padding: 8,
+                        fontSize: 11,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      {retryingId === adminPassModalReg.id ? <LoaderCircle size={13} className={styles.spinner} /> : <Mail size={13} />}
+                      Email Pass
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: "#f87171", fontSize: 13, padding: 20 }}>
+                Could not load pass. Please ensure the backend is running.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: EMAIL DELIVERY ISSUE DIAGNOSTICS & FIX GUIDE */}
+      {emailErrorModalText && (
+        <div className={styles.modalOverlay} onClick={() => setEmailErrorModalText(null)}>
+          <div
+            style={{
+              maxWidth: 520,
+              width: "90%",
+              backgroundColor: "#0c0b16",
+              border: "1px solid rgba(239, 68, 68, 0.5)",
+              borderRadius: 10,
+              padding: 24,
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.95)",
+              display: "grid",
+              gap: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#f87171" }}>
+                <CircleAlert size={20} />
+                <h3 style={{ margin: 0, fontSize: 18, color: "#fff" }}>Email Delivery Status</h3>
+              </div>
+              <button
+                onClick={() => setEmailErrorModalText(null)}
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: 0,
+                  color: "#aaa8ba",
+                  cursor: "pointer",
+                  padding: 6,
+                  borderRadius: "50%",
+                  display: "flex",
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: 12,
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                borderLeft: "3px solid #ef4444",
+                borderRadius: 4,
+                color: "#ffc8c8",
+                fontSize: 12,
+                fontFamily: "monospace",
+                lineHeight: 1.5,
+                wordBreak: "break-word",
+              }}
+            >
+              {emailErrorModalText}
+            </div>
+
+            <div style={{ fontSize: 12, color: "#aaa8ba", lineHeight: 1.6 }}>
+              <strong style={{ color: "#fff", display: "block", marginBottom: 6 }}>
+                💡 Solution for 100% Free Email Delivery to Any Delegate:
+              </strong>
+              Resend Free Tier only sends to the email you signed up with. To send to <strong>ANY delegate email</strong> with no domain verification:
+              <ol style={{ paddingLeft: 18, margin: "8px 0" }}>
+                <li>Go to <strong>brevo.com</strong> (100% free, 300 emails/day to any email).</li>
+                <li>Go to <strong>SMTP &amp; API</strong> -&gt; <strong>Generate API Key</strong>.</li>
+                <li>In your <strong>Render Dashboard</strong> -&gt; <strong>Environment</strong>, add <code>BREVO_API_KEY</code>.</li>
+              </ol>
+              Alternatively, you can click <strong>View Pass QR</strong> to download the pass image or share it directly on WhatsApp with the delegate!
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => setEmailErrorModalText(null)}
+                style={{ padding: "8px 16px", fontSize: 12 }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
