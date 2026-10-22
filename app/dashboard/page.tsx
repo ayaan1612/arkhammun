@@ -10,6 +10,7 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Download,
   Eye,
   FileText,
   LoaderCircle,
@@ -29,7 +30,6 @@ import { useAuth } from "@/lib/auth-context"
 import {
   DbEvent,
   EntryQrResponse,
-  RegistrationStatus,
   UserNotification,
   UserRegistration,
   entryPassApi,
@@ -48,10 +48,11 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState("")
 
-  // Pass modal
-  const [selectedPass, setSelectedPass] = useState<EntryQrResponse | null>(null)
-  const [passLoading, setPassLoading] = useState(false)
-  const [passError, setPassError] = useState("")
+  // Comprehensive Status & Pass Modal state
+  const [statusModalReg, setStatusModalReg] = useState<UserRegistration | null>(null)
+  const [modalPassData, setModalPassData] = useState<EntryQrResponse | null>(null)
+  const [modalLoadingQr, setModalLoadingQr] = useState(false)
+  const [modalError, setModalError] = useState("")
 
   // Route protection
   useEffect(() => {
@@ -103,18 +104,33 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleViewPass(registrationId: string) {
-    setPassLoading(true)
-    setPassError("")
-    try {
-      const passData = await entryPassApi.getEntryQr(registrationId)
-      setSelectedPass(passData)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Could not load pass QR code."
-      setPassError(msg)
-    } finally {
-      setPassLoading(false)
+  // Open the comprehensive Status & Entry Pass Inspector Modal
+  async function handleOpenStatus(reg: UserRegistration) {
+    setStatusModalReg(reg)
+    setModalPassData(null)
+    setModalError("")
+
+    if (reg.status === "approved") {
+      setModalLoadingQr(true)
+      try {
+        const passData = await entryPassApi.getEntryQr(reg._id)
+        setModalPassData(passData)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Could not load pass QR code."
+        setModalError(msg)
+      } finally {
+        setModalLoadingQr(false)
+      }
     }
+  }
+
+  function downloadPassQr(qrDataUrl: string, name: string, regId: string) {
+    const link = document.createElement("a")
+    link.href = qrDataUrl
+    link.download = `ArkhamMUN_EntryPass_${name.replace(/\s+/g, "_")}_${regId.slice(-6)}.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   // Check if user is registered for an event
@@ -162,440 +178,293 @@ export default function DashboardPage() {
             flexWrap: "wrap",
             gap: "16px",
             padding: "20px 24px",
-            background: "rgba(16, 14, 24, 0.75)",
-            border: "1px solid rgba(255, 255, 255, 0.16)",
+            backgroundColor: "#0d0c14",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
             borderRadius: "8px",
-            marginBottom: "36px",
+            marginBottom: "32px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
               style={{
                 width: "48px",
                 height: "48px",
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #e3262e, #1a080c)",
+                backgroundColor: "rgba(227, 38, 46, 0.15)",
+                border: "1px solid #e3262e",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                border: "1px solid rgba(227, 38, 46, 0.6)",
                 color: "#fff",
                 fontWeight: 700,
                 fontSize: "18px",
               }}
             >
-              {user?.name ? user.name.charAt(0).toUpperCase() : "D"}
+              {user?.name ? user.name.slice(0, 2).toUpperCase() : "DG"}
             </div>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <strong style={{ color: "#fff", fontSize: "16px" }}>{user?.name}</strong>
+                <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 600 }}>{user?.name}</h3>
                 <span
                   style={{
-                    backgroundColor: isAdmin ? "#e3262e" : "rgba(255, 255, 255, 0.12)",
-                    color: "#fff",
+                    backgroundColor: isAdmin ? "rgba(227, 38, 46, 0.2)" : "rgba(255, 255, 255, 0.08)",
+                    border: isAdmin ? "1px solid #e3262e" : "1px solid rgba(255, 255, 255, 0.15)",
+                    color: isAdmin ? "#ff424b" : "#aaa8ba",
                     fontSize: "10px",
                     fontWeight: 700,
-                    letterSpacing: "0.1em",
                     padding: "2px 8px",
                     borderRadius: "4px",
+                    letterSpacing: "0.08em",
                     textTransform: "uppercase",
                   }}
                 >
                   {isAdmin ? "Secretariat Administrator" : "Verified Delegate"}
                 </span>
               </div>
-              <small style={{ color: "#8d8a9e", fontSize: "12px" }}>{user?.email}</small>
+              <p style={{ margin: "4px 0 0", color: "#8d8a9e", fontSize: "13px" }}>{user?.email}</p>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
               onClick={() => {
                 setRefreshing(true)
                 loadDashboardData()
               }}
               disabled={refreshing}
-              title="Refresh dashboard data"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-                borderRadius: "4px",
-                color: "#fff",
-                padding: "8px 14px",
-                fontSize: "12px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
+              className="secondary-button"
+              style={{ padding: "8px 14px", fontSize: "12px" }}
+              title="Refresh Dashboard"
             >
               <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-              {refreshing ? "Syncing..." : "Sync Cloud"}
+              {refreshing ? "Updating..." : "Refresh"}
             </button>
 
             {isAdmin && (
               <Link
                 href="/admin"
-                className="primary-button"
+                className="secondary-button"
                 style={{
                   padding: "8px 14px",
                   fontSize: "12px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
+                  color: "#ff424b",
+                  borderColor: "rgba(227, 38, 46, 0.4)",
                 }}
               >
-                <Shield size={13} /> Admin Portal
+                <Shield size={13} /> Secretariat Command Dais
               </Link>
             )}
 
             <button
               onClick={logout}
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(227, 38, 46, 0.4)",
-                borderRadius: "4px",
-                color: "#ff424b",
-                padding: "8px 14px",
-                fontSize: "12px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-              }}
+              className="secondary-button"
+              style={{ padding: "8px 14px", fontSize: "12px" }}
+              title="Sign Out"
             >
-              <LogOut size={13} /> Logout
+              <LogOut size={13} /> Sign Out
             </button>
           </div>
         </div>
 
+        {/* Global Error Banner if any */}
         {error && (
           <div
             style={{
-              padding: "16px 20px",
+              padding: "12px 16px",
               backgroundColor: "rgba(227, 38, 46, 0.12)",
-              border: "1px solid rgba(227, 38, 46, 0.5)",
+              border: "1px solid rgba(227, 38, 46, 0.4)",
               borderRadius: "6px",
               color: "#ff8288",
-              fontSize: "14px",
-              marginBottom: "30px",
+              fontSize: "13px",
+              marginBottom: "24px",
               display: "flex",
               alignItems: "center",
               gap: "10px",
             }}
           >
-            <ShieldAlert size={18} style={{ color: "#e3262e" }} />
-            <div>{error}</div>
+            <ShieldAlert size={16} />
+            <span>{error}</span>
           </div>
         )}
 
-        {/* 2-Column Grid: Left: Registrations & Events | Right: Notifications */}
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "30px" }} className="contact-grid">
-          {/* LEFT COLUMN: Registered Events & Browse */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "30px" }}>
-            {/* My Registrations Section */}
+        {/* Quick Stats Overview */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "16px",
+            marginBottom: "36px",
+          }}
+        >
+          {/* Card 1: Registrations */}
+          <div
+            style={{
+              backgroundColor: "#0d0c14",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "6px",
+              padding: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
             <div
               style={{
-                background: "rgba(12, 12, 12, 0.94)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
+                width: "44px",
+                height: "44px",
                 borderRadius: "8px",
-                padding: "26px",
+                backgroundColor: "rgba(227, 38, 46, 0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#e3262e",
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "20px",
-                  paddingBottom: "14px",
-                  borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
-                }}
-              >
-                <div>
-                  <span className="section-kicker">PERSISTENT ADMISSION</span>
-                  <h2 style={{ fontSize: "22px", margin: "4px 0 0", fontWeight: 500 }}>
-                    My Registered <em>Conferences</em>
-                  </h2>
-                </div>
-                <span
-                  style={{
-                    backgroundColor: "rgba(227, 38, 46, 0.16)",
-                    color: "#ff424b",
-                    padding: "4px 10px",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {registrations.length} Conference{registrations.length === 1 ? "" : "s"}
-                </span>
+              <Ticket size={22} />
+            </div>
+            <div>
+              <span style={{ fontSize: "11px", color: "#8d8a9e", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                My Registrations
+              </span>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#fff", marginTop: "2px" }}>
+                {registrations.length}
               </div>
+            </div>
+          </div>
 
-              {registrations.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 20px", color: "#8d8a9e" }}>
-                  <Ticket size={36} style={{ color: "#3d3758", margin: "0 auto 12px" }} />
-                  <p style={{ color: "#fff", fontSize: "15px", marginBottom: "6px" }}>No Active Registrations Found</p>
-                  <p style={{ fontSize: "13px", maxWidth: "360px", margin: "0 auto 20px" }}>
-                    You have not registered for any conferences yet. Explore the available dockets below and secure your
-                    seat at the dais.
-                  </p>
-                  <Link href="/register" className="primary-button" style={{ display: "inline-flex", gap: "8px" }}>
-                    Register for Arkham MUN <ArrowRight size={14} />
-                  </Link>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: "16px" }}>
-                  {registrations.map((reg) => {
-                    const eventTitle =
-                      typeof reg.eventId === "object" && reg.eventId?.title
-                        ? reg.eventId.title
-                        : "Arkham Model United Nations"
-                    const eventDate =
-                      typeof reg.eventId === "object" && reg.eventId?.date ? reg.eventId.date : "24–25 October 2026"
-                    const eventVenue =
-                      typeof reg.eventId === "object" && reg.eventId?.venue
-                        ? reg.eventId.venue
-                        : "Arkham Assembly Hall & International Dais, New Delhi"
+          {/* Card 2: Approved Passes */}
+          <div
+            style={{
+              backgroundColor: "#0d0c14",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "6px",
+              padding: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(34, 197, 94, 0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#4ade80",
+              }}
+            >
+              <QrCode size={22} />
+            </div>
+            <div>
+              <span style={{ fontSize: "11px", color: "#8d8a9e", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Approved Passes
+              </span>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#fff", marginTop: "2px" }}>
+                {registrations.filter((r) => r.status === "approved").length}
+              </div>
+            </div>
+          </div>
 
-                    return (
-                      <div
-                        key={reg._id}
-                        style={{
-                          padding: "20px",
-                          backgroundColor: "#07070b",
-                          border: "1px solid rgba(255, 255, 255, 0.12)",
-                          borderRadius: "6px",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "14px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
-                            flexWrap: "wrap",
-                            gap: "10px",
-                          }}
-                        >
-                          <div>
-                            <h3 style={{ margin: "0 0 6px", fontSize: "18px", color: "#fff", fontWeight: 600 }}>
-                              {eventTitle}
-                            </h3>
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "14px",
-                                flexWrap: "wrap",
-                                color: "#aaa8ba",
-                                fontSize: "12px",
-                              }}
-                            >
-                              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                <Calendar size={13} style={{ color: "#e3262e" }} /> {eventDate}
-                              </span>
-                              <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                <MapPin size={13} style={{ color: "#e3262e" }} /> {eventVenue}
-                              </span>
-                            </div>
-                          </div>
+          {/* Card 3: In Review */}
+          <div
+            style={{
+              backgroundColor: "#0d0c14",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "6px",
+              padding: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(234, 179, 8, 0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#facc15",
+              }}
+            >
+              <Clock size={22} />
+            </div>
+            <div>
+              <span style={{ fontSize: "11px", color: "#8d8a9e", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Under Secretariat Review
+              </span>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#fff", marginTop: "2px" }}>
+                {registrations.filter((r) => r.status === "payment_submitted").length}
+              </div>
+            </div>
+          </div>
 
-                          {/* Status Badge */}
-                          <div>
-                            {reg.status === "approved" && (
-                              <span
-                                style={{
-                                  backgroundColor: "rgba(34, 197, 94, 0.15)",
-                                  color: "#4ade80",
-                                  border: "1px solid rgba(34, 197, 94, 0.35)",
-                                  padding: "4px 10px",
-                                  borderRadius: "4px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                  letterSpacing: "0.08em",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "5px",
-                                }}
-                              >
-                                <CheckCircle2 size={13} /> APPROVED &amp; CLEARED
-                              </span>
-                            )}
-                            {reg.status === "payment_submitted" && (
-                              <span
-                                style={{
-                                  backgroundColor: "rgba(234, 179, 8, 0.15)",
-                                  color: "#facc15",
-                                  border: "1px solid rgba(234, 179, 8, 0.35)",
-                                  padding: "4px 10px",
-                                  borderRadius: "4px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                  letterSpacing: "0.08em",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "5px",
-                                }}
-                              >
-                                <Clock size={13} /> UNDER SECRETARIAT REVIEW
-                              </span>
-                            )}
-                            {reg.status === "pending_payment" && (
-                              <span
-                                style={{
-                                  backgroundColor: "rgba(249, 115, 22, 0.15)",
-                                  color: "#fb923c",
-                                  border: "1px solid rgba(249, 115, 22, 0.35)",
-                                  padding: "4px 10px",
-                                  borderRadius: "4px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                  letterSpacing: "0.08em",
-                                }}
-                              >
-                                PAYMENT PENDING
-                              </span>
-                            )}
-                            {reg.status === "rejected" && (
-                              <span
-                                style={{
-                                  backgroundColor: "rgba(239, 68, 68, 0.15)",
-                                  color: "#f87171",
-                                  border: "1px solid rgba(239, 68, 68, 0.35)",
-                                  padding: "4px 10px",
-                                  borderRadius: "4px",
-                                  fontSize: "11px",
-                                  fontWeight: 700,
-                                  letterSpacing: "0.08em",
-                                }}
-                              >
-                                PAYMENT REJECTED
-                              </span>
-                            )}
-                          </div>
-                        </div>
+          {/* Card 4: Official Notices */}
+          <div
+            style={{
+              backgroundColor: "#0d0c14",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "6px",
+              padding: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(59, 130, 246, 0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#60a5fa",
+              }}
+            >
+              <Bell size={22} />
+            </div>
+            <div>
+              <span style={{ fontSize: "11px", color: "#8d8a9e", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Secretariat Notices
+              </span>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#fff", marginTop: "2px" }}>
+                {notifications.length}
+              </div>
+            </div>
+          </div>
+        </div>
 
-                        {/* Delegate details row */}
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-                            gap: "8px",
-                            padding: "10px 12px",
-                            backgroundColor: "#0d0c14",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            color: "#8d8a9e",
-                          }}
-                        >
-                          <div>
-                            <span style={{ color: "#aaa8ba", display: "block" }}>Committee:</span>
-                            <strong style={{ color: "#fff" }}>{reg.committee || "General Delegate"}</strong>
-                          </div>
-                          <div>
-                            <span style={{ color: "#aaa8ba", display: "block" }}>Institution:</span>
-                            <strong style={{ color: "#fff" }}>{reg.organization || "Independent"}</strong>
-                          </div>
-                          <div>
-                            <span style={{ color: "#aaa8ba", display: "block" }}>Amount:</span>
-                            <strong style={{ color: "#fff" }}>₹{reg.amount}</strong>
-                          </div>
-                          <div>
-                            <span style={{ color: "#aaa8ba", display: "block" }}>UTR Reference:</span>
-                            <strong style={{ color: "#fff" }}>{reg.utr || "Pending"}</strong>
-                          </div>
-                        </div>
-
-                        {/* Rejection Notice if any */}
-                        {reg.status === "rejected" && reg.reject_reason && (
-                          <div
-                            style={{
-                              padding: "10px 12px",
-                              backgroundColor: "rgba(227, 38, 46, 0.12)",
-                              borderLeft: "3px solid #e3262e",
-                              color: "#ff8288",
-                              fontSize: "12px",
-                            }}
-                          >
-                            <strong>Rejection Reason:</strong> {reg.reject_reason}
-                            <div style={{ marginTop: "6px" }}>
-                              <Link
-                                href="/register"
-                                style={{ color: "#fff", textDecoration: "underline", fontWeight: 600 }}
-                              >
-                                Update payment proof and resubmit
-                              </Link>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
-                          {reg.status === "approved" && (
-                            <button
-                              onClick={() => handleViewPass(reg._id)}
-                              disabled={passLoading}
-                              className="primary-button"
-                              style={{
-                                padding: "9px 16px",
-                                fontSize: "11px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}
-                            >
-                              <QrCode size={13} />
-                              {passLoading ? "Loading QR Pass..." : "Access Official Entry Pass"}
-                            </button>
-                          )}
-
-                          {reg.status === "pending_payment" && (
-                            <Link
-                              href="/register"
-                              className="primary-button"
-                              style={{
-                                padding: "9px 16px",
-                                fontSize: "11px",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}
-                            >
-                              Complete Payment &amp; Upload Proof <ArrowRight size={12} />
-                            </Link>
-                          )}
-
-                          <span style={{ fontSize: "11px", color: "#6e6c7d" }}>
-                            Registered on {new Date(reg.registeredAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+        {/* 2-Column Grid: Left: Registrations & Events | Right: Notifications */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "36px" }}>
+          {/* Active Conferences Dais with Dynamic Status */}
+          <div
+            style={{
+              backgroundColor: "#0c0b15",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              borderRadius: "8px",
+              padding: "28px",
+            }}
+          >
+            <div style={{ marginBottom: "20px" }}>
+              <span className="section-kicker">CONFERENCE CALENDAR</span>
+              <h3 style={{ margin: "4px 0 0", fontSize: "22px", fontWeight: 600 }}>
+                Active <em>Conference Dais</em>
+              </h3>
             </div>
 
-            {/* Available Conferences Section */}
-            <div
-              style={{
-                background: "rgba(12, 12, 12, 0.94)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
-                borderRadius: "8px",
-                padding: "26px",
-              }}
-            >
-              <div style={{ marginBottom: "20px" }}>
-                <span className="section-kicker">CONFERENCE CALENDAR</span>
-                <h2 style={{ fontSize: "22px", margin: "4px 0 0", fontWeight: 500 }}>
-                  Active <em>Conference Dais</em>
-                </h2>
+            {events.length === 0 ? (
+              <div style={{ padding: "30px", textAlign: "center", color: "#8d8a9e" }}>
+                No active conferences announced yet. Check back soon.
               </div>
-
-              <div style={{ display: "grid", gap: "14px" }}>
+            ) : (
+              <div style={{ display: "grid", gap: "16px" }}>
                 {events.map((ev) => {
                   const existingReg = getRegistrationForEvent(ev._id)
                   const isRegistered = Boolean(existingReg)
@@ -604,40 +473,101 @@ export default function DashboardPage() {
                     <div
                       key={ev._id}
                       style={{
-                        padding: "18px 20px",
-                        backgroundColor: "#07070b",
-                        border: isRegistered ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
+                        padding: "20px",
+                        backgroundColor: "#08080f",
+                        border: isRegistered ? "1px solid rgba(227, 38, 46, 0.45)" : "1px solid rgba(255, 255, 255, 0.08)",
                         borderRadius: "6px",
                         display: "flex",
-                        alignItems: "center",
                         justifyContent: "space-between",
+                        alignItems: "center",
                         flexWrap: "wrap",
-                        gap: "14px",
+                        gap: "16px",
                       }}
                     >
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <h4 style={{ margin: 0, color: "#fff", fontSize: "16px", fontWeight: 600 }}>{ev.title}</h4>
-                          {isRegistered && (
-                            <span
-                              style={{
-                                backgroundColor: "rgba(34, 197, 94, 0.18)",
-                                color: "#4ade80",
-                                padding: "2px 8px",
-                                borderRadius: "4px",
-                                fontSize: "10px",
-                                fontWeight: 700,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                              }}
-                            >
-                              <Check size={11} /> REGISTERED
-                            </span>
+                      <div style={{ flex: 1, minWidth: "260px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <h4 style={{ margin: 0, fontSize: "17px", color: "#fff" }}>{ev.title}</h4>
+                          {existingReg && (
+                            <>
+                              {existingReg.status === "approved" && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                    border: "1px solid rgba(34, 197, 94, 0.4)",
+                                    color: "#4ade80",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  <CheckCircle2 size={12} /> APPROVED &amp; PASS READY
+                                </span>
+                              )}
+                              {existingReg.status === "rejected" && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    backgroundColor: "rgba(239, 68, 68, 0.15)",
+                                    border: "1px solid rgba(239, 68, 68, 0.4)",
+                                    color: "#f87171",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  <ShieldAlert size={12} /> PAYMENT REJECTED
+                                </span>
+                              )}
+                              {existingReg.status === "payment_submitted" && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    backgroundColor: "rgba(234, 179, 8, 0.15)",
+                                    border: "1px solid rgba(234, 179, 8, 0.4)",
+                                    color: "#facc15",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  <Clock size={12} /> UNDER SECRETARIAT REVIEW
+                                </span>
+                              )}
+                              {existingReg.status === "pending_payment" && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    padding: "3px 8px",
+                                    borderRadius: "4px",
+                                    backgroundColor: "rgba(249, 115, 22, 0.15)",
+                                    border: "1px solid rgba(249, 115, 22, 0.4)",
+                                    color: "#fb923c",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  PAYMENT PENDING
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
-                        <p style={{ margin: "4px 0 6px", color: "#aaa8ba", fontSize: "13px" }}>{ev.description}</p>
-                        <div style={{ display: "flex", gap: "14px", color: "#8d8a9e", fontSize: "12px" }}>
+                        <p style={{ margin: "6px 0 8px", color: "#aaa8ba", fontSize: "13px", lineHeight: 1.5 }}>
+                          {ev.description}
+                        </p>
+                        <div style={{ display: "flex", gap: "16px", color: "#8d8a9e", fontSize: "12px", flexWrap: "wrap" }}>
                           <span>📅 {ev.date}</span>
                           <span>📍 {ev.venue}</span>
                           <span>💰 ₹{ev.entryFee}</span>
@@ -645,32 +575,55 @@ export default function DashboardPage() {
                       </div>
 
                       <div>
-                        {isRegistered ? (
+                        {existingReg ? (
                           <button
-                            onClick={() => existingReg && handleViewPass(existingReg._id)}
+                            onClick={() => handleOpenStatus(existingReg)}
                             style={{
-                              padding: "8px 14px",
-                              background: "rgba(34, 197, 94, 0.12)",
-                              border: "1px solid rgba(34, 197, 94, 0.3)",
+                              padding: "10px 18px",
+                              backgroundColor:
+                                existingReg.status === "approved"
+                                  ? "rgba(34, 197, 94, 0.2)"
+                                  : existingReg.status === "rejected"
+                                  ? "rgba(239, 68, 68, 0.2)"
+                                  : "rgba(227, 38, 46, 0.9)",
+                              border:
+                                existingReg.status === "approved"
+                                  ? "1px solid #4ade80"
+                                  : existingReg.status === "rejected"
+                                  ? "1px solid #f87171"
+                                  : "1px solid #e3262e",
                               borderRadius: "4px",
-                              color: "#4ade80",
+                              color: "#fff",
                               fontSize: "12px",
-                              fontWeight: 600,
+                              fontWeight: 700,
                               cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              boxShadow: "0 4px 14px rgba(0,0,0,0.4)",
                             }}
                           >
-                            View Status
+                            <Eye size={14} /> View Status
                           </button>
                         ) : ev.registrationOpen ? (
                           <Link
                             href="/register"
                             className="primary-button"
-                            style={{ padding: "8px 16px", fontSize: "12px" }}
+                            style={{ padding: "10px 18px", fontSize: "12px" }}
                           >
-                            Register Now
+                            Register as Delegate
                           </Link>
                         ) : (
-                          <span style={{ color: "#77748a", fontSize: "12px", fontStyle: "italic" }}>
+                          <span
+                            style={{
+                              padding: "6px 12px",
+                              backgroundColor: "rgba(255, 255, 255, 0.05)",
+                              borderRadius: "4px",
+                              color: "#8d8a9e",
+                              fontSize: "12px",
+                              fontStyle: "italic",
+                            }}
+                          >
                             Registration Closed
                           </span>
                         )}
@@ -679,217 +632,570 @@ export default function DashboardPage() {
                   )
                 })}
               </div>
-            </div>
+            )}
           </div>
 
-          {/* RIGHT COLUMN: Real-Time Notifications Feed */}
-          <div>
-            <div
-              style={{
-                background: "rgba(12, 12, 12, 0.94)",
-                border: "1px solid rgba(255, 255, 255, 0.16)",
-                borderRadius: "8px",
-                padding: "26px",
-                position: "sticky",
-                top: "20px",
-              }}
-            >
+          {/* My Registrations Queue */}
+          <div
+            style={{
+              backgroundColor: "#0c0b15",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              borderRadius: "8px",
+              padding: "28px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div>
+                <span className="section-kicker">MY CREDENTIALS</span>
+                <h3 style={{ margin: "4px 0 0", fontSize: "22px", fontWeight: 600 }}>
+                  Event <em>Registrations</em>
+                </h3>
+              </div>
+              <Link href="/register" className="primary-button" style={{ padding: "8px 14px", fontSize: "12px" }}>
+                + New Registration
+              </Link>
+            </div>
+
+            {registrations.length === 0 ? (
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "20px",
-                  paddingBottom: "14px",
-                  borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+                  padding: "40px 20px",
+                  textAlign: "center",
+                  backgroundColor: "#08080f",
+                  borderRadius: "6px",
+                  border: "1px dashed rgba(255, 255, 255, 0.15)",
                 }}
               >
-                <div>
-                  <span className="section-kicker">COMMUNIQUÉS &amp; UPDATES</span>
-                  <h2 style={{ fontSize: "20px", margin: "4px 0 0", fontWeight: 500 }}>
-                    Official <em>Notifications</em>
-                  </h2>
-                </div>
-                {unreadCount > 0 && (
-                  <span
-                    style={{
-                      backgroundColor: "#e3262e",
-                      color: "#fff",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      padding: "3px 8px",
-                      borderRadius: "999px",
-                    }}
-                  >
-                    {unreadCount} unread
-                  </span>
-                )}
+                <Ticket size={36} style={{ color: "#3d3758", margin: "0 auto 12px" }} />
+                <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "16px" }}>No Registrations Found</h4>
+                <p style={{ margin: "0 0 18px", color: "#8d8a9e", fontSize: "13px" }}>
+                  You have not registered for any upcoming conferences yet.
+                </p>
+                <Link href="/register" className="primary-button" style={{ padding: "10px 20px", fontSize: "12px" }}>
+                  Register for Arkham MUN 2026
+                </Link>
               </div>
+            ) : (
+              <div style={{ display: "grid", gap: "16px" }}>
+                {registrations.map((reg) => {
+                  const eventTitle =
+                    typeof reg.eventId === "object" && reg.eventId?.title
+                      ? reg.eventId.title
+                      : "Arkham MUN 2026"
+                  const eventDate =
+                    typeof reg.eventId === "object" && reg.eventId?.date
+                      ? reg.eventId.date
+                      : "October 24-25, 2026"
+                  const eventVenue =
+                    typeof reg.eventId === "object" && reg.eventId?.venue
+                      ? reg.eventId.venue
+                      : "Arkham Assembly Hall, New Delhi"
 
-              {notifications.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "30px 10px", color: "#8d8a9e" }}>
-                  <Bell size={32} style={{ color: "#3d3758", margin: "0 auto 10px" }} />
-                  <p style={{ color: "#fff", fontSize: "14px", margin: 0 }}>All Caught Up!</p>
-                  <p style={{ fontSize: "12px", margin: "6px 0 0" }}>
-                    Official approval notices, inquiry replies, and conference announcements will appear here.
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: "10px", maxHeight: "550px", overflowY: "auto" }}>
-                  {notifications.map((n) => (
+                  return (
                     <div
-                      key={n._id}
+                      key={reg._id}
                       style={{
-                        padding: "14px 16px",
-                        backgroundColor: n.read ? "#09090f" : "rgba(227, 38, 46, 0.08)",
-                        border: n.read ? "1px solid rgba(255, 255, 255, 0.08)" : "1px solid rgba(227, 38, 46, 0.35)",
+                        padding: "20px",
+                        backgroundColor: "#08080f",
+                        border: "1px solid rgba(255, 255, 255, 0.12)",
                         borderRadius: "6px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "6px",
-                        position: "relative",
+                        display: "grid",
+                        gap: "14px",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            letterSpacing: "0.1em",
-                            textTransform: "uppercase",
-                            fontWeight: 700,
-                            color:
-                              n.type === "approval"
-                                ? "#4ade80"
-                                : n.type === "rejection"
-                                ? "#f87171"
-                                : n.type === "announcement"
-                                ? "#60a5fa"
-                                : "#e3262e",
-                          }}
-                        >
-                          {n.type || "Update"}
-                        </span>
-                        <span style={{ fontSize: "11px", color: "#6e6c7d" }}>
-                          {new Date(n.createdAt).toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "11px", color: "#e3262e", fontWeight: 700, letterSpacing: "0.08em" }}>
+                              REG ID: {reg._id.slice(-8).toUpperCase()}
+                            </span>
+                            <span style={{ color: "#6b667a" }}>•</span>
+                            <span style={{ fontSize: "12px", color: "#8d8a9e" }}>
+                              {new Date(reg.registeredAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <h4 style={{ margin: "4px 0 2px", fontSize: "18px", color: "#fff" }}>{eventTitle}</h4>
+                          <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", color: "#aaa8ba", fontSize: "12px" }}>
+                            <span>📅 {eventDate}</span>
+                            <span>📍 {eventVenue}</span>
+                          </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div>
+                          {reg.status === "approved" && (
+                            <span
+                              style={{
+                                backgroundColor: "rgba(34, 197, 94, 0.15)",
+                                color: "#4ade80",
+                                border: "1px solid rgba(34, 197, 94, 0.35)",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                              }}
+                            >
+                              <CheckCircle2 size={13} /> APPROVED &amp; CLEARED
+                            </span>
+                          )}
+                          {reg.status === "payment_submitted" && (
+                            <span
+                              style={{
+                                backgroundColor: "rgba(234, 179, 8, 0.15)",
+                                color: "#facc15",
+                                border: "1px solid rgba(234, 179, 8, 0.35)",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                              }}
+                            >
+                              <Clock size={13} /> UNDER SECRETARIAT REVIEW
+                            </span>
+                          )}
+                          {reg.status === "pending_payment" && (
+                            <span
+                              style={{
+                                backgroundColor: "rgba(249, 115, 22, 0.15)",
+                                color: "#fb923c",
+                                border: "1px solid rgba(249, 115, 22, 0.35)",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              PAYMENT PENDING
+                            </span>
+                          )}
+                          {reg.status === "rejected" && (
+                            <span
+                              style={{
+                                backgroundColor: "rgba(239, 68, 68, 0.15)",
+                                color: "#f87171",
+                                border: "1px solid rgba(239, 68, 68, 0.35)",
+                                padding: "4px 10px",
+                                borderRadius: "4px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                              }}
+                            >
+                              PAYMENT REJECTED
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      <p style={{ margin: 0, color: "#f4f1ff", fontSize: "13px", lineHeight: 1.5 }}>{n.message}</p>
+                      {/* Delegate details row */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                          gap: "8px",
+                          padding: "10px 12px",
+                          backgroundColor: "#0d0c14",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "#8d8a9e",
+                        }}
+                      >
+                        <div>
+                          <span style={{ color: "#aaa8ba", display: "block" }}>Committee:</span>
+                          <strong style={{ color: "#fff" }}>{reg.committee || "General Delegate"}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: "#aaa8ba", display: "block" }}>Institution:</span>
+                          <strong style={{ color: "#fff" }}>{reg.organization || "Independent"}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: "#aaa8ba", display: "block" }}>Amount:</span>
+                          <strong style={{ color: "#fff" }}>₹{reg.amount}</strong>
+                        </div>
+                        <div>
+                          <span style={{ color: "#aaa8ba", display: "block" }}>UTR Reference:</span>
+                          <strong style={{ color: "#fff" }}>{reg.utr || "Pending"}</strong>
+                        </div>
+                      </div>
 
-                      {!n.read && (
-                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
-                          <button
-                            onClick={() => handleMarkAsRead(n._id)}
-                            style={{
-                              background: "none",
-                              border: 0,
-                              color: "#e3262e",
-                              fontSize: "11px",
-                              cursor: "pointer",
-                              padding: "2px 0",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Mark as Read
-                          </button>
+                      {/* Rejection Notice if any */}
+                      {reg.status === "rejected" && reg.reject_reason && (
+                        <div
+                          style={{
+                            padding: "10px 14px",
+                            backgroundColor: "rgba(227, 38, 46, 0.12)",
+                            borderLeft: "3px solid #e3262e",
+                            borderRadius: "4px",
+                            color: "#ff8288",
+                            fontSize: "12px",
+                          }}
+                        >
+                          <strong>Secretariat Rejection Reason:</strong> {reg.reject_reason}
+                          <div style={{ marginTop: "6px" }}>
+                            <Link href="/register" style={{ color: "#fff", textDecoration: "underline", fontWeight: 600 }}>
+                              Click here to update payment proof and resubmit →
+                            </Link>
+                          </div>
                         </div>
                       )}
+
+                      {/* Action Buttons */}
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
+                        <button
+                          onClick={() => handleOpenStatus(reg)}
+                          className="primary-button"
+                          style={{
+                            padding: "9px 16px",
+                            fontSize: "11px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            backgroundColor: reg.status === "approved" ? "#22c55e" : "#e3262e",
+                          }}
+                        >
+                          <Eye size={13} /> View Status &amp; Details
+                        </button>
+
+                        {reg.status === "pending_payment" && (
+                          <Link
+                            href="/register"
+                            className="secondary-button"
+                            style={{
+                              padding: "9px 16px",
+                              fontSize: "11px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            Complete Payment <ArrowRight size={12} />
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Official Venue Entry Pass Modal */}
-      {selectedPass && (
+      {/* COMPREHENSIVE STATUS & PASS MODAL */}
+      {statusModalReg && (
         <div
           style={{
             position: "fixed",
             inset: 0,
             zIndex: 9999,
-            backgroundColor: "rgba(0, 0, 0, 0.85)",
-            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(0, 0, 0, 0.88)",
+            backdropFilter: "blur(10px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             padding: "20px",
+            overflowY: "auto",
           }}
-          onClick={() => setSelectedPass(null)}
+          onClick={() => setStatusModalReg(null)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%",
-              maxWidth: "460px",
-              backgroundColor: "#07070d",
+              maxWidth: "520px",
+              backgroundColor: "#0c0b16",
               border: "1px solid rgba(227, 38, 46, 0.5)",
               borderRadius: "10px",
               padding: "28px",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.9), 0 0 32px rgba(227, 38, 46, 0.2)",
-              textAlign: "center",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.95), 0 0 32px rgba(227, 38, 46, 0.2)",
+              display: "grid",
+              gap: "20px",
+              maxHeight: "90vh",
+              overflowY: "auto",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-              <span className="section-kicker" style={{ color: "#e3262e" }}>
-                OFFICIAL ENTRY PASS
-              </span>
+            {/* Modal Top Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span className="section-kicker" style={{ color: "#e3262e" }}>
+                  REGISTRATION STATUS &amp; CREDENTIALS
+                </span>
+                <h3 style={{ margin: "4px 0 0", color: "#fff", fontSize: "20px", fontWeight: 600 }}>
+                  {typeof statusModalReg.eventId === "object" && statusModalReg.eventId?.title
+                    ? statusModalReg.eventId.title
+                    : "Arkham MUN 2026"}
+                </h3>
+              </div>
               <button
-                onClick={() => setSelectedPass(null)}
+                onClick={() => setStatusModalReg(null)}
                 style={{
-                  background: "none",
+                  background: "rgba(255, 255, 255, 0.08)",
                   border: 0,
                   color: "#aaa8ba",
                   cursor: "pointer",
-                  padding: "4px",
+                  padding: "6px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <h3 style={{ margin: "0 0 6px", color: "#fff", fontSize: "22px", fontWeight: 600 }}>
-              {selectedPass.event?.name || "Arkham MUN 2026"}
-            </h3>
-            <p style={{ margin: "0 0 16px", color: "#8d8a9e", fontSize: "12px" }}>
-              {selectedPass.event?.venue} | {selectedPass.event?.date}
-            </p>
+            {/* STATUS BANNER */}
+            <div>
+              {statusModalReg.status === "approved" && (
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(34, 197, 94, 0.12)",
+                    border: "1px solid rgba(34, 197, 94, 0.45)",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#4ade80", fontWeight: 700, fontSize: "14px" }}>
+                    <CheckCircle2 size={18} /> PAYMENT VERIFIED &amp; ENTRY PASS ISSUED
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#aaa8ba" }}>
+                    Your registration has been fully approved by the Secretariat Dais. Present your pass at venue entrance.
+                  </p>
+                </div>
+              )}
 
-            <div
-              style={{
-                backgroundColor: "#fff",
-                padding: "16px",
-                borderRadius: "8px",
-                display: "inline-block",
-                marginBottom: "16px",
-                boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
-              }}
-            >
-              <img
-                src={selectedPass.qr}
-                alt="Venue Entry Pass QR Code"
-                style={{ width: "240px", height: "240px", display: "block" }}
-              />
+              {statusModalReg.status === "payment_submitted" && (
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(234, 179, 8, 0.12)",
+                    border: "1px solid rgba(234, 179, 8, 0.45)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#facc15", fontWeight: 700, fontSize: "14px" }}>
+                    <Clock size={18} /> PAYMENT UNDER SECRETARIAT REVIEW
+                  </div>
+                  <p style={{ margin: "6px 0 12px", fontSize: "12px", color: "#aaa8ba", lineHeight: 1.5 }}>
+                    Your UPI Transaction Reference (UTR: <strong>{statusModalReg.utr || "Submitted"}</strong>) is currently being verified against our bank records. Your entry pass QR code will appear here once approved.
+                  </p>
+                  {/* Progress tracker */}
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "11px" }}>
+                    <span style={{ color: "#4ade80", fontWeight: 600 }}>✓ Enrolled</span>
+                    <span style={{ color: "#6b667a" }}>→</span>
+                    <span style={{ color: "#facc15", fontWeight: 600 }}>⏳ Under Review</span>
+                    <span style={{ color: "#6b667a" }}>→</span>
+                    <span style={{ color: "#8d8a9e" }}>○ Dais Clearance</span>
+                  </div>
+                </div>
+              )}
+
+              {statusModalReg.status === "rejected" && (
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.5)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#f87171", fontWeight: 700, fontSize: "14px" }}>
+                    <ShieldAlert size={18} /> PAYMENT REJECTED BY SECRETARIAT
+                  </div>
+                  <div style={{ marginTop: "10px", padding: "10px 12px", background: "rgba(0, 0, 0, 0.4)", borderRadius: "4px" }}>
+                    <span style={{ display: "block", color: "#ff8288", fontSize: "11px", fontWeight: 600, textTransform: "uppercase" }}>
+                      Reason for Rejection:
+                    </span>
+                    <p style={{ margin: "4px 0 0", color: "#fff", fontSize: "13px" }}>
+                      {statusModalReg.reject_reason || "Invalid transaction reference or unreadable proof."}
+                    </p>
+                  </div>
+                  <div style={{ marginTop: "12px" }}>
+                    <Link
+                      href="/register"
+                      className="primary-button"
+                      style={{ padding: "8px 16px", fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                    >
+                      Update UTR &amp; Resubmit <ArrowRight size={12} />
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {statusModalReg.status === "pending_payment" && (
+                <div
+                  style={{
+                    padding: "16px",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(249, 115, 22, 0.12)",
+                    border: "1px solid rgba(249, 115, 22, 0.45)",
+                  }}
+                >
+                  <div style={{ color: "#fb923c", fontWeight: 700, fontSize: "14px" }}>PAYMENT PENDING</div>
+                  <p style={{ margin: "6px 0 10px", fontSize: "12px", color: "#aaa8ba" }}>
+                    Please scan our payment QR code and submit your UTR reference to confirm your delegate seat.
+                  </p>
+                  <Link href="/register" className="primary-button" style={{ padding: "8px 16px", fontSize: "12px" }}>
+                    Complete Payment Now
+                  </Link>
+                </div>
+              )}
             </div>
 
-            <p style={{ color: "#aaa8ba", fontSize: "12px", lineHeight: 1.5, margin: "0 0 20px" }}>
-              Present this digital pass at the Arkham Security Checkpoint. Once scanned by Secretariat personnel, you
-              will be granted Dais credentials.
-            </p>
+            {/* IF APPROVED: SHOW ENTRY QR PASS */}
+            {statusModalReg.status === "approved" && (
+              <div
+                style={{
+                  backgroundColor: "#07070d",
+                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                  borderRadius: "8px",
+                  padding: "20px",
+                  textAlign: "center",
+                }}
+              >
+                {modalLoadingQr ? (
+                  <div style={{ padding: "30px", color: "#aaa8ba" }}>
+                    <LoaderCircle size={28} className="animate-spin" style={{ color: "#4ade80", margin: "0 auto 8px" }} />
+                    <span style={{ fontSize: "12px" }}>Rendering Cryptographic Pass...</span>
+                  </div>
+                ) : modalPassData ? (
+                  <>
+                    <div
+                      style={{
+                        backgroundColor: "#fff",
+                        padding: "14px",
+                        borderRadius: "8px",
+                        display: "inline-block",
+                        marginBottom: "12px",
+                        boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
+                      }}
+                    >
+                      <img
+                        src={modalPassData.qr}
+                        alt="Signed Venue Entry QR Pass"
+                        style={{ width: "220px", height: "220px", display: "block" }}
+                      />
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: 700, marginBottom: "8px" }}>
+                      ✓ CRYPTOGRAPHICALLY SIGNED PASS
+                    </div>
+                    <p style={{ margin: "0 0 14px", color: "#8d8a9e", fontSize: "11px", lineHeight: 1.4 }}>
+                      Registration ID: <code style={{ color: "#fff" }}>{statusModalReg._id}</code>
+                      <br />
+                      Keep this pass saved on your mobile device for security check-in.
+                    </p>
+                    <button
+                      onClick={() =>
+                        downloadPassQr(modalPassData.qr, statusModalReg.name, statusModalReg._id)
+                      }
+                      className="primary-button"
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        fontSize: "12px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        backgroundColor: "#22c55e",
+                      }}
+                    >
+                      <Download size={14} /> Download Entry Pass (PNG)
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ color: "#f87171", fontSize: "12px" }}>
+                    {modalError || "Pass could not be rendered. Contact Secretariat."}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DETAILS GRID */}
+            <div
+              style={{
+                backgroundColor: "#07070f",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                borderRadius: "6px",
+                padding: "16px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "12px",
+                fontSize: "12px",
+              }}
+            >
+              <div>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Delegate Name</span>
+                <strong style={{ color: "#fff", fontSize: "13px" }}>{statusModalReg.name}</strong>
+              </div>
+              <div>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Committee Allocation</span>
+                <strong style={{ color: "#fff", fontSize: "13px" }}>{statusModalReg.committee || "General Delegate"}</strong>
+              </div>
+              <div>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Institution / School</span>
+                <strong style={{ color: "#fff", fontSize: "13px" }}>{statusModalReg.organization || "Independent"}</strong>
+              </div>
+              <div>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Registered Email</span>
+                <strong style={{ color: "#fff", fontSize: "13px" }}>{statusModalReg.email || user?.email}</strong>
+              </div>
+              <div>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Payment UTR</span>
+                <strong style={{ color: "#fff", fontSize: "13px", fontFamily: "monospace" }}>{statusModalReg.utr || "Pending"}</strong>
+              </div>
+              <div>
+                <span style={{ color: "#8d8a9e", display: "block" }}>Entry Fee Amount</span>
+                <strong style={{ color: "#fff", fontSize: "13px" }}>₹{statusModalReg.amount}</strong>
+              </div>
+            </div>
+
+            {/* SECRETARIAT NOTICES FOR THIS DELEGATE */}
+            <div>
+              <span style={{ color: "#8d8a9e", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                Secretariat Notice Log:
+              </span>
+              <div style={{ marginTop: "6px", display: "grid", gap: "6px" }}>
+                {notifications
+                  .filter(
+                    (n) =>
+                      !n.eventId ||
+                      n.eventId ===
+                        (typeof statusModalReg.eventId === "string"
+                          ? statusModalReg.eventId
+                          : statusModalReg.eventId?._id)
+                  )
+                  .slice(0, 3)
+                  .map((n) => (
+                    <div
+                      key={n._id}
+                      style={{
+                        padding: "8px 12px",
+                        backgroundColor: "rgba(255, 255, 255, 0.03)",
+                        border: "1px solid rgba(255, 255, 255, 0.08)",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        color: "#aaa8ba",
+                      }}
+                    >
+                      <span style={{ color: "#e3262e", fontWeight: 600 }}>•</span> {n.message}
+                    </div>
+                  ))}
+              </div>
+            </div>
 
             <button
-              onClick={() => setSelectedPass(null)}
-              className="primary-button"
-              style={{ width: "100%", padding: "12px" }}
+              onClick={() => setStatusModalReg(null)}
+              className="secondary-button"
+              style={{ width: "100%", padding: "10px", fontSize: "12px" }}
             >
-              Dismiss Pass
+              Close Status Inspector
             </button>
           </div>
         </div>

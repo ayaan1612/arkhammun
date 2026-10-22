@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { GlobalMouseAura } from '@/components/global-mouse-aura'
-import { NotificationSystem } from '@/components/notification-center'
 import { ArkhamLoadingScreen } from '@/components/arkham-loading-screen'
 import { AuthProvider } from '@/lib/auth-context'
 
@@ -43,7 +42,6 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <ArkhamLoadingScreen />
         <AuthProvider>
-          <NotificationSystem />
           <GlobalMouseAura>{children}</GlobalMouseAura>
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </AuthProvider>

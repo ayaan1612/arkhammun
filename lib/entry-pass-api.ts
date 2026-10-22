@@ -474,6 +474,17 @@ export const entryPassApi = {
     })
   },
 
+  toggleRegistrationOpen(id: string, tokenOrKey: string, registrationOpen?: boolean) {
+    return request<{ event: DbEvent; message: string }>(
+      `/api/admin/events/${encodeURIComponent(id)}/toggle-registration`,
+      {
+        method: "POST",
+        headers: authHeaders(tokenOrKey, true),
+        body: JSON.stringify({ registrationOpen }),
+      }
+    )
+  },
+
   deleteAdminEvent(id: string, tokenOrKey: string) {
     return request<{ message: string }>(`/api/admin/events/${encodeURIComponent(id)}`, {
       method: "DELETE",

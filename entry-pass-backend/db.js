@@ -85,6 +85,7 @@ const eventSchema = new mongoose.Schema(
     entryFee: { type: Number, default: 2200 },
     upiId: { type: String, default: "chauhan5408k@okaxis" },
     registrationOpen: { type: Boolean, default: true },
+    registrationDeadline: { type: Date, default: null },
     registrationNotice: { type: String, default: "" },
     paymentQrUrl: { type: String, default: null },
     formSections: { type: Object, default: defaultFormSections },
