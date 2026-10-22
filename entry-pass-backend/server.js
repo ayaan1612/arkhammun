@@ -1530,8 +1530,16 @@ app.post("/api/admin/registrations/:id/reject", requireAdmin, async (req, res) =
           reason,
         });
         emailResult = { status: "sent" };
+        reg.email_status = "sent";
+        reg.email_sent_at = new Date();
+        reg.email_error = null;
+        await reg.save();
       } catch (err) {
-        emailResult = { status: "failed", error: mailer.sanitizeEmailError(err) };
+        const sanitized = mailer.sanitizeEmailError(err);
+        emailResult = { status: "failed", error: sanitized };
+        reg.email_status = "failed";
+        reg.email_error = sanitized;
+        await reg.save();
       }
     }
 

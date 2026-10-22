@@ -673,11 +673,14 @@ export const entryPassApi = {
   },
 
   rejectRegistration(id: string, reason: string, adminKey: string) {
-    return request<{ id: string; status: "rejected" }>(`/api/admin/registrations/${encodeURIComponent(id)}/reject`, {
-      method: "POST",
-      headers: authHeaders(adminKey, true),
-      body: JSON.stringify({ reason }),
-    })
+    return request<{ id: string; status: "rejected"; reject_reason?: string; email?: EmailDeliveryResult }>(
+      `/api/admin/registrations/${encodeURIComponent(id)}/reject`,
+      {
+        method: "POST",
+        headers: authHeaders(adminKey, true),
+        body: JSON.stringify({ reason }),
+      }
+    )
   },
 
   verifyEntry(payload: string, adminKey: string, admit = true) {

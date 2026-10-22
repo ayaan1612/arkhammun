@@ -501,10 +501,15 @@ export default function AdminPage() {
     setBusyId(id)
     setError("")
     try {
-      await entryPassApi.rejectRegistration(id, rejectReason.trim(), adminKey)
+      const res = await entryPassApi.rejectRegistration(id, rejectReason.trim(), adminKey)
       setRejectingId("")
       setRejectReason("")
-      await loadData(adminKey, "Payment submission rejected and notification sent to user.", queueFilter)
+      const noticeMsg = res.email?.status === "sent"
+        ? "Payment rejected. Rejection reason has been emailed to the delegate and posted to their dashboard."
+        : res.email?.status === "failed"
+        ? `Payment rejected. User notified on dashboard (email delivery note: ${res.email.error || "delivery failed"}).`
+        : "Payment rejected and notice posted to user dashboard."
+      await loadData(adminKey, noticeMsg, queueFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to reject registration.")
     } finally {
