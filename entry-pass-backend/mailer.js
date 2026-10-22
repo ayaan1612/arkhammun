@@ -249,23 +249,26 @@ async function sendViaResend({ from, to, subject, text, html, attachments }) {
   
   // Resend requires unquoted 'Name <email@example.com>' or plain 'email@example.com'.
   // Default to onboarding@resend.dev unless a custom verified domain is provided in RESEND_FROM.
+  // Resend requires an authorized domain. Public webmail domains (gmail.com, yahoo.com, etc.)
+  // cannot be used as the 'from' address on Resend and trigger a 403 error.
+  // We use "Arkham MUN <onboarding@resend.dev>" as the authorized sender, and set reply_to
+  // so delegates can reply directly to the Secretariat's Gmail.
   let sender = (process.env.RESEND_FROM || "").trim();
-  if (!sender) {
-    const customFrom = (process.env.SMTP_FROM || "").trim();
-    if (customFrom && !customFrom.includes("arkhammun.org") && !customFrom.includes("example.com")) {
-      sender = customFrom;
-    } else {
-      sender = "Arkham MUN <onboarding@resend.dev>";
-    }
+  const publicOrUnverifiedDomains = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "arkhammun.org", "example.com"];
+  const isInvalidDomain = !sender || publicOrUnverifiedDomains.some((d) => sender.toLowerCase().includes(d));
+
+  if (isInvalidDomain) {
+    sender = "Arkham MUN <onboarding@resend.dev>";
   }
-  // Strip any inner double or single quotes from the sender string:
   sender = sender.replace(/["']/g, "").trim();
 
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
   const recipient = Array.isArray(to) ? to[0] : to;
 
   const payload = {
     from: sender,
     to: [recipient],
+    reply_to: replyTo,
     subject,
     text,
     html,
