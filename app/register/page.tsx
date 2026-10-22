@@ -89,13 +89,21 @@ function TextField({
   )
 }
 
-function CommitteeChoice({ title, name }: { title: string; name: string }) {
+function CommitteeChoice({
+  title,
+  name,
+  options = committees,
+}: {
+  title: string
+  name: string
+  options?: string[]
+}) {
   return (
     <fieldset className="registration-choice-group">
       <legend>
         {title} <span aria-hidden="true">*</span>
       </legend>
-      {committees.map((committee) => (
+      {options.map((committee) => (
         <label key={committee} className="radio-row">
           <input type="radio" name={name} value={committee} required />
           <span>{committee}</span>
@@ -236,7 +244,8 @@ export default function RegisterPage() {
     setNotice("")
 
     try {
-      // 1. Create registration record (with authentication token)
+      // 1. Create registration record with authentication token and UTR
+      // Passing utr here guarantees the registration is created as payment_submitted and appears in the Secretariat queue immediately!
       const created = await entryPassApi.createRegistration(
         {
           name,
@@ -244,14 +253,17 @@ export default function RegisterPage() {
           phone,
           organization: school,
           committee,
+          utr,
         },
         token
       )
       setRegistration(created)
 
-      // 2. Submit payment proof
+      // 2. Submit payment proof screenshot if attached
       const file = proofFile instanceof File && proofFile.size > 0 ? proofFile : undefined
-      await entryPassApi.submitPaymentProof(created.id, utr, file)
+      if (file) {
+        await entryPassApi.submitPaymentProof(created.id, utr, file)
+      }
 
       setStatus("payment_submitted")
       setNotice("Registration and payment proof submitted! Stored persistently in cloud database.")
@@ -277,6 +289,20 @@ export default function RegisterPage() {
   }
 
   const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
+
+  const formSections = publicEvent?.formSections || {}
+  const delegateDetailsCfg = formSections.delegateDetails
+  const experienceCfg = formSections.experience
+  const committeesCfg = formSections.committees
+  const portfolioCfg = formSections.portfolioPreferences
+  const referencesCfg = formSections.references
+  const paymentCfg = formSections.paymentSection
+  const specialRequestsCfg = formSections.specialRequests
+
+  const committeeList =
+    committeesCfg?.items && committeesCfg.items.length > 0 ? committeesCfg.items : committees
+  const experienceTiers =
+    experienceCfg?.tiers && experienceCfg.tiers.length > 0 ? experienceCfg.tiers : ["0-5", "5-12", "12-20", "20+"]
 
   function copyUpi() {
     navigator.clipboard.writeText(upiId)
@@ -686,8 +712,13 @@ export default function RegisterPage() {
             <section className="registration-section">
               <div className="registration-section-heading">
                 <span>01</span>
-                <h2>Delegate details</h2>
+                <h2>{delegateDetailsCfg?.title || "Delegate details"}</h2>
               </div>
+              {delegateDetailsCfg?.description && (
+                <p style={{ margin: "-12px 0 16px", color: "#aaa8ba", fontSize: 13 }}>
+                  {delegateDetailsCfg.description}
+                </p>
+              )}
               <div className="registration-grid">
                 <TextField
                   label="Full name"
@@ -709,9 +740,9 @@ export default function RegisterPage() {
                 <TextField label="Phone no." name="phone" type="tel" placeholder="+91 98765 43210" />
                 <TextField label="School / College" name="school" placeholder="School or University name" />
                 <TextField
-                  label="Class / Year / Grade"
+                  label={delegateDetailsCfg?.gradeLabel || "Class / Year / Grade"}
                   name="grade"
-                  placeholder="e.g. 11th Grade / 2nd Year"
+                  placeholder={delegateDetailsCfg?.gradePlaceholder || "e.g. 11th Grade / 2nd Year"}
                   required={false}
                 />
               </div>
@@ -720,15 +751,15 @@ export default function RegisterPage() {
             <section className="registration-section">
               <div className="registration-section-heading">
                 <span>02</span>
-                <h2>Experience</h2>
+                <h2>{experienceCfg?.title || "Experience"}</h2>
               </div>
               <fieldset className="registration-choice-group">
                 <legend>
-                  Past MUN Experience <span aria-hidden="true">*</span>
+                  {experienceCfg?.description || "Past MUN Experience"} <span aria-hidden="true">*</span>
                 </legend>
-                {["0-5", "5-12", "12-20", "20+"].map((item) => (
+                {experienceTiers.map((item, idx) => (
                   <label className="radio-row compact" key={item}>
-                    <input type="radio" name="experience" value={item} defaultChecked={item === "0-5"} required />
+                    <input type="radio" name="experience" value={item} defaultChecked={idx === 0} required />
                     <span>{item} conferences</span>
                   </label>
                 ))}
@@ -738,17 +769,27 @@ export default function RegisterPage() {
             <section className="registration-section">
               <div className="registration-section-heading">
                 <span>03</span>
-                <h2>Committee preferences</h2>
+                <h2>{committeesCfg?.title || "Committee preferences"}</h2>
               </div>
-              <CommitteeChoice title="Committee Preference 1" name="committee-one" />
-              <CommitteeChoice title="Committee Preference 2" name="committee-two" />
+              {committeesCfg?.description && (
+                <p style={{ margin: "-12px 0 16px", color: "#aaa8ba", fontSize: 13 }}>
+                  {committeesCfg.description}
+                </p>
+              )}
+              <CommitteeChoice title="Committee Preference 1" name="committee-one" options={committeeList} />
+              <CommitteeChoice title="Committee Preference 2" name="committee-two" options={committeeList} />
             </section>
 
             <section className="registration-section">
               <div className="registration-section-heading">
                 <span>04</span>
-                <h2>Portfolio preferences</h2>
+                <h2>{portfolioCfg?.title || "Portfolio preferences"}</h2>
               </div>
+              {portfolioCfg?.description && (
+                <p style={{ margin: "-12px 0 16px", color: "#aaa8ba", fontSize: 13 }}>
+                  {portfolioCfg.description}
+                </p>
+              )}
               <div className="registration-grid">
                 <TextField
                   label="Portfolio Preference 1"
@@ -764,7 +805,10 @@ export default function RegisterPage() {
                 />
               </div>
               <TextField
-                label="Are you open to being assigned to any committee or portfolio if your top preferences are full?"
+                label={
+                  portfolioCfg?.flexiblePrompt ||
+                  "Are you open to being assigned to any committee or portfolio if your top preferences are full?"
+                }
                 name="flexible-assignment"
                 placeholder="Yes / No"
                 required={false}
@@ -774,22 +818,31 @@ export default function RegisterPage() {
             <section className="registration-section">
               <div className="registration-section-heading">
                 <span>05</span>
-                <h2>References</h2>
+                <h2>{referencesCfg?.title || "References"}</h2>
               </div>
-              <TextField label="CA Reference (IF NO TYPE NIL)" name="ca-reference" required={false} placeholder="NIL" />
+              {referencesCfg?.description && (
+                <p style={{ margin: "-12px 0 16px", color: "#aaa8ba", fontSize: 13 }}>
+                  {referencesCfg.description}
+                </p>
+              )}
+              <TextField
+                label={referencesCfg?.caPrompt || "CA Reference (IF NO TYPE NIL)"}
+                name="ca-reference"
+                required={false}
+                placeholder={referencesCfg?.caPlaceholder || "NIL"}
+              />
             </section>
 
             <section className="registration-section payment-section">
               <div className="registration-section-heading">
                 <span>06</span>
-                <h2>Payment & Verification</h2>
+                <h2>{paymentCfg?.title || "Payment & Verification"}</h2>
               </div>
               <p className="payment-note">
                 <strong>Entry Fee: INR {publicEvent ? Number(publicEvent.amount).toFixed(2) : "2200.00"}</strong>
                 <br />
-                Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.).
-                Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment
-                confirmation box.
+                {paymentCfg?.instructions ||
+                  "Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment confirmation box."}
               </p>
 
               <div
@@ -823,7 +876,7 @@ export default function RegisterPage() {
                       textTransform: "uppercase",
                     }}
                   >
-                    Official UPI Payment QR
+                    {paymentCfg?.upiNote || "Official UPI Payment QR"}
                   </span>
                   <Image
                     src={publicEvent?.paymentQrUrl ? entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl) : "/payment-qr.jpeg"}
@@ -952,13 +1005,16 @@ export default function RegisterPage() {
             <section className="registration-section">
               <div className="registration-section-heading">
                 <span>07</span>
-                <h2>Special requests / Notes</h2>
+                <h2>{specialRequestsCfg?.title || "Special requests / Notes"}</h2>
               </div>
               <label className="registration-field">
                 <span className="sr-only">Message</span>
                 <textarea
                   name="message"
-                  placeholder="Any dietary restrictions, special accommodations, or notes for the secretariat"
+                  placeholder={
+                    specialRequestsCfg?.placeholder ||
+                    "Any dietary restrictions, special accommodations, or notes for the secretariat"
+                  }
                   rows={4}
                 />
               </label>

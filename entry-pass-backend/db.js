@@ -11,6 +11,50 @@ if (!cached) {
 // 1. DATA SCHEMAS (Mongoose)
 // -------------------------------------------------------------
 
+// Default Form Configuration
+const defaultFormSections = {
+  delegateDetails: {
+    title: "Delegate details",
+    instructions: "Enter your official delegate information for verification and certification.",
+    gradeLabel: "Class / Year / Grade",
+    gradePlaceholder: "e.g. 11th Grade / 2nd Year",
+  },
+  experience: {
+    title: "Experience",
+    tiers: ["0-5", "5-12", "12-20", "20+"],
+  },
+  committees: {
+    title: "Committee preferences",
+    items: [
+      "UNCSW (Advancing women's protection, leadership and rights in conflict zone with special emphasis on women)",
+      "UNGA (Strengthening Nuclear Weapon-Free Zones with Focus on the Middle East and South Asia.)",
+      "AIPPM (Use of Central Agencies (ED/CBI): Law Enforcement or Political Tool?)",
+      "UNODC (Human Rights Implications of the Global War on Drugs.)",
+      "UNHRC (Deliberating on Safeguarding Political Leaders Under International Human Rights Law.)",
+      "IP",
+      "IPL (Mega Auction)",
+    ],
+  },
+  portfolioPreferences: {
+    title: "Portfolio preferences",
+    flexiblePrompt: "Are you open to being assigned to any committee or portfolio if your top preferences are full?",
+  },
+  references: {
+    title: "References",
+    label: "CA Reference (IF NO TYPE NIL)",
+    placeholder: "NIL",
+  },
+  paymentSection: {
+    title: "Payment & Verification",
+    note: "Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment confirmation box.",
+    paymentQrUrl: null,
+  },
+  specialRequests: {
+    title: "Special requests / Notes",
+    placeholder: "Any dietary restrictions, special accommodations, or notes for the secretariat",
+  },
+};
+
 // User Schema
 const userSchema = new mongoose.Schema(
   {
@@ -36,6 +80,7 @@ const eventSchema = new mongoose.Schema(
     registrationOpen: { type: Boolean, default: true },
     registrationNotice: { type: String, default: "" },
     paymentQrUrl: { type: String, default: null },
+    formSections: { type: Object, default: defaultFormSections },
     createdAt: { type: Date, default: Date.now },
   },
   { collection: "events" }
@@ -143,8 +188,12 @@ memoryStore.events.push({
   registrationOpen: true,
   registrationNotice: "Early bird delegate registration is currently live. Limited seats per committee.",
   paymentQrUrl: null,
+  formSections: { ...defaultFormSections },
   createdAt: new Date(),
   save: async function () {
+    const idx = memoryStore.events.findIndex((e) => e._id.toString() === this._id.toString());
+    if (idx >= 0) memoryStore.events[idx] = this;
+    else memoryStore.events.push(this);
     return this;
   },
 });
@@ -153,7 +202,10 @@ function matchesQuery(doc, query = {}) {
   if (!doc) return false;
   for (const [key, val] of Object.entries(query)) {
     if (val === undefined) continue;
-    if (key === "_id" || key === "id") {
+    if (key === "$or" && Array.isArray(val)) {
+      const anyMatch = val.some((subQ) => matchesQuery(doc, subQ));
+      if (!anyMatch) return false;
+    } else if (key === "_id" || key === "id") {
       const docId = doc._id ? doc._id.toString() : String(doc.id);
       const targetId = val && val.toString ? val.toString() : String(val);
       if (docId !== targetId) return false;
@@ -161,6 +213,11 @@ function matchesQuery(doc, query = {}) {
       const docVal = doc[key] ? (doc[key]._id ? doc[key]._id.toString() : doc[key].toString()) : "";
       const targetVal = val && val.toString ? val.toString() : String(val);
       if (docVal !== targetVal) return false;
+    } else if (val && typeof val === "object" && Array.isArray(val.$in)) {
+      if (!val.$in.includes(doc[key])) return false;
+    } else if (val && typeof val === "object" && val.$regex) {
+      const regex = new RegExp(val.$regex, val.$options || "");
+      if (!regex.test(String(doc[key] || ""))) return false;
     } else if (typeof val === "boolean") {
       if (Boolean(doc[key]) !== val) return false;
     } else if (doc[key] !== val) {
@@ -170,10 +227,20 @@ function matchesQuery(doc, query = {}) {
   return true;
 }
 
-function cloneDoc(doc) {
+function cloneDoc(doc, collectionName) {
   if (!doc) return null;
   const copy = { ...doc };
   copy.save = async function () {
+    if (collectionName && memoryStore[collectionName]) {
+      const idx = memoryStore[collectionName].findIndex(
+        (d) => d._id && d._id.toString() === copy._id.toString()
+      );
+      if (idx >= 0) {
+        memoryStore[collectionName][idx] = { ...copy };
+      } else {
+        memoryStore[collectionName].push({ ...copy });
+      }
+    }
     return copy;
   };
   return copy;
@@ -208,7 +275,11 @@ class FallbackQuery {
         if (field === "eventId" && copy.eventId) {
           const evId = copy.eventId._id ? copy.eventId._id.toString() : copy.eventId.toString();
           const found = memoryStore.events.find((e) => e._id.toString() === evId);
-          if (found) copy.eventId = found;
+          if (found) copy.eventId = cloneDoc(found, "events");
+        } else if (field === "userId" && copy.userId) {
+          const uId = copy.userId._id ? copy.userId._id.toString() : copy.userId.toString();
+          const found = memoryStore.users.find((u) => u._id.toString() === uId);
+          if (found) copy.userId = cloneDoc(found, "users");
         }
         return copy;
       };
@@ -257,17 +328,17 @@ const User = {
   findOne(query) {
     if (isMongoConnected()) return RealUser.findOne(query);
     const found = memoryStore.users.find((u) => matchesQuery(u, query));
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "users") : null));
   },
   findById(id) {
     if (isMongoConnected()) return RealUser.findById(id);
     const targetId = id && id.toString ? id.toString() : String(id);
     const found = memoryStore.users.find((u) => u._id.toString() === targetId);
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "users") : null));
   },
   find(query = {}) {
     if (isMongoConnected()) return RealUser.find(query);
-    const list = memoryStore.users.filter((u) => matchesQuery(u, query)).map(cloneDoc);
+    const list = memoryStore.users.filter((u) => matchesQuery(u, query)).map((u) => cloneDoc(u, "users"));
     return new FallbackQuery(Promise.resolve(list));
   },
   async create(data) {
@@ -280,12 +351,12 @@ const User = {
     };
     doc.save = async function () {
       const idx = memoryStore.users.findIndex((u) => u._id.toString() === doc._id.toString());
-      if (idx >= 0) memoryStore.users[idx] = doc;
+      if (idx >= 0) memoryStore.users[idx] = { ...doc };
       else memoryStore.users.push(doc);
       return doc;
     };
     memoryStore.users.push(doc);
-    return doc;
+    return cloneDoc(doc, "users");
   },
 };
 
@@ -293,17 +364,17 @@ const Event = {
   findOne(query = {}) {
     if (isMongoConnected()) return RealEvent.findOne(query);
     const found = memoryStore.events.find((e) => matchesQuery(e, query));
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "events") : null));
   },
   findById(id) {
     if (isMongoConnected()) return RealEvent.findById(id);
     const targetId = id && id.toString ? id.toString() : String(id);
     const found = memoryStore.events.find((e) => e._id.toString() === targetId);
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "events") : null));
   },
   find(query = {}) {
     if (isMongoConnected()) return RealEvent.find(query);
-    const list = memoryStore.events.filter((e) => matchesQuery(e, query)).map(cloneDoc);
+    const list = memoryStore.events.filter((e) => matchesQuery(e, query)).map((e) => cloneDoc(e, "events"));
     return new FallbackQuery(Promise.resolve(list));
   },
   async create(data) {
@@ -314,16 +385,17 @@ const Event = {
       registrationOpen: true,
       entryFee: 2200,
       upiId: "chauhan5408k@okaxis",
+      formSections: { ...defaultFormSections },
       ...data,
     };
     doc.save = async function () {
       const idx = memoryStore.events.findIndex((e) => e._id.toString() === doc._id.toString());
-      if (idx >= 0) memoryStore.events[idx] = doc;
+      if (idx >= 0) memoryStore.events[idx] = { ...doc };
       else memoryStore.events.push(doc);
       return doc;
     };
     memoryStore.events.push(doc);
-    return doc;
+    return cloneDoc(doc, "events");
   },
   async findByIdAndUpdate(id, update, opts = {}) {
     if (isMongoConnected()) return RealEvent.findByIdAndUpdate(id, update, opts);
@@ -336,7 +408,7 @@ const Event = {
       return updated;
     };
     memoryStore.events[idx] = updated;
-    return updated;
+    return cloneDoc(updated, "events");
   },
   async findByIdAndDelete(id) {
     if (isMongoConnected()) return RealEvent.findByIdAndDelete(id);
@@ -356,17 +428,19 @@ const Registration = {
   findOne(query) {
     if (isMongoConnected()) return RealRegistration.findOne(query);
     const found = memoryStore.registrations.find((r) => matchesQuery(r, query));
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "registrations") : null));
   },
   findById(id) {
     if (isMongoConnected()) return RealRegistration.findById(id);
     const targetId = id && id.toString ? id.toString() : String(id);
     const found = memoryStore.registrations.find((r) => r._id.toString() === targetId);
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "registrations") : null));
   },
   find(query = {}) {
     if (isMongoConnected()) return RealRegistration.find(query);
-    const list = memoryStore.registrations.filter((r) => matchesQuery(r, query)).map(cloneDoc);
+    const list = memoryStore.registrations
+      .filter((r) => matchesQuery(r, query))
+      .map((r) => cloneDoc(r, "registrations"));
     return new FallbackQuery(Promise.resolve(list));
   },
   async create(data) {
@@ -379,12 +453,12 @@ const Registration = {
     };
     doc.save = async function () {
       const idx = memoryStore.registrations.findIndex((r) => r._id.toString() === doc._id.toString());
-      if (idx >= 0) memoryStore.registrations[idx] = doc;
+      if (idx >= 0) memoryStore.registrations[idx] = { ...doc };
       else memoryStore.registrations.push(doc);
       return doc;
     };
     memoryStore.registrations.push(doc);
-    return doc;
+    return cloneDoc(doc, "registrations");
   },
   async deleteMany(query = {}) {
     if (isMongoConnected()) return RealRegistration.deleteMany(query);
@@ -397,7 +471,9 @@ const Registration = {
 const Notification = {
   find(query = {}) {
     if (isMongoConnected()) return RealNotification.find(query);
-    const list = memoryStore.notifications.filter((n) => matchesQuery(n, query)).map(cloneDoc);
+    const list = memoryStore.notifications
+      .filter((n) => matchesQuery(n, query))
+      .map((n) => cloneDoc(n, "notifications"));
     return new FallbackQuery(Promise.resolve(list));
   },
   async countDocuments(query = {}) {
@@ -416,7 +492,7 @@ const Notification = {
       return doc;
     };
     memoryStore.notifications.push(doc);
-    return doc;
+    return cloneDoc(doc, "notifications");
   },
   async insertMany(docs = []) {
     if (isMongoConnected()) return RealNotification.insertMany(docs);
@@ -437,7 +513,7 @@ const Notification = {
     const found = memoryStore.notifications.find((n) => matchesQuery(n, query));
     if (!found) return null;
     Object.assign(found, update);
-    return cloneDoc(found);
+    return cloneDoc(found, "notifications");
   },
   async deleteMany(query = {}) {
     if (isMongoConnected()) return RealNotification.deleteMany(query);
@@ -450,14 +526,16 @@ const Notification = {
 const ContactQuery = {
   find(query = {}) {
     if (isMongoConnected()) return RealContactQuery.find(query);
-    const list = memoryStore.queries.filter((q) => matchesQuery(q, query)).map(cloneDoc);
+    const list = memoryStore.queries
+      .filter((q) => matchesQuery(q, query))
+      .map((q) => cloneDoc(q, "queries"));
     return new FallbackQuery(Promise.resolve(list));
   },
   findById(id) {
     if (isMongoConnected()) return RealContactQuery.findById(id);
     const targetId = id && id.toString ? id.toString() : String(id);
     const found = memoryStore.queries.find((q) => q._id.toString() === targetId);
-    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found) : null));
+    return new FallbackQuery(Promise.resolve(found ? cloneDoc(found, "queries") : null));
   },
   async create(data) {
     if (isMongoConnected()) return RealContactQuery.create(data);
@@ -469,12 +547,12 @@ const ContactQuery = {
     };
     doc.save = async function () {
       const idx = memoryStore.queries.findIndex((q) => q._id.toString() === doc._id.toString());
-      if (idx >= 0) memoryStore.queries[idx] = doc;
+      if (idx >= 0) memoryStore.queries[idx] = { ...doc };
       else memoryStore.queries.push(doc);
       return doc;
     };
     memoryStore.queries.push(doc);
-    return doc;
+    return cloneDoc(doc, "queries");
   },
 };
 
@@ -539,6 +617,8 @@ async function seedDefaults() {
         upiId: "chauhan5408k@okaxis",
         registrationOpen: true,
         registrationNotice: "Early bird delegate registration is currently live. Limited seats per committee.",
+        paymentQrUrl: null,
+        formSections: { ...defaultFormSections },
       });
       console.log("[MongoDB Seed] Created initial Arkham MUN 2026 conference event");
     }
@@ -571,6 +651,7 @@ async function seedDefaults() {
 module.exports = {
   connectToDatabase,
   isMongoConnected,
+  defaultFormSections,
   User,
   Event,
   Registration,

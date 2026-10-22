@@ -14,6 +14,7 @@ const mailer = require("./mailer");
 const {
   connectToDatabase,
   isMongoConnected,
+  defaultFormSections,
   User,
   Event,
   Registration,
@@ -179,6 +180,8 @@ async function getDefaultEventDetails() {
         upiId: ev.upiId,
         registrationOpen: ev.registrationOpen,
         registrationNotice: ev.registrationNotice,
+        paymentQrUrl: ev.paymentQrUrl || ev.formSections?.paymentSection?.paymentQrUrl || null,
+        formSections: ev.formSections || defaultFormSections,
       };
     }
   } catch {}
@@ -193,6 +196,8 @@ async function getDefaultEventDetails() {
     upiId: "chauhan5408k@okaxis",
     registrationOpen: true,
     registrationNotice: "",
+    paymentQrUrl: null,
+    formSections: defaultFormSections,
   };
 }
 
@@ -466,10 +471,11 @@ app.get("/api/event", async (req, res) => {
       },
       amount: details.amount,
       upiId: details.upiId || "chauhan5408k@okaxis",
-      paymentQrUrl: "/api/payment-qr.png",
-      paymentQrConfigured: true,
+      paymentQrUrl: details.paymentQrUrl || "/api/payment-qr.png",
+      paymentQrConfigured: Boolean(details.paymentQrUrl),
       registrationOpen: details.registrationOpen,
       registrationNotice: details.registrationNotice || "",
+      formSections: details.formSections || defaultFormSections,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch event settings." });
@@ -682,7 +688,10 @@ app.get("/api/admin/registrations", requireAdmin, async (req, res) => {
     if (eventId && eventId !== "all") {
       filter.eventId = eventId;
     }
-    if (status && status !== "all") {
+    if (status === "payment_submitted") {
+      // Pending review queue includes both submitted payment proofs and newly initiated registrations
+      filter.status = { $in: ["payment_submitted", "pending_payment"] };
+    } else if (status && status !== "all") {
       filter.status = status;
     }
 
@@ -787,7 +796,7 @@ app.post("/api/admin/notifications", requireAdmin, async (req, res) => {
 // POST /api/registrations (Start delegate registration - requires authenticated user)
 app.post("/api/registrations", async (req, res) => {
   try {
-    const { name, email, phone = "", organization = "", committee = "", eventId } = req.body || {};
+    const { name, email, phone = "", organization = "", committee = "", eventId, utr = null } = req.body || {};
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ error: "Name is required." });
     }
@@ -854,6 +863,8 @@ app.post("/api/registrations", async (req, res) => {
       });
     }
 
+    const cleanUtr = typeof utr === "string" && utr.trim() ? utr.trim() : null;
+
     const registration = await Registration.create({
       userId: user._id,
       eventId: targetEvent._id,
@@ -864,7 +875,8 @@ app.post("/api/registrations", async (req, res) => {
       organization: organization.trim(),
       committee: committee.trim(),
       amount: targetEvent.entryFee,
-      status: "pending_payment",
+      utr: cleanUtr,
+      status: "payment_submitted",
     });
 
     // Create user notification
@@ -1418,32 +1430,90 @@ app.get("/api/admin/settings", requireAdmin, async (req, res) => {
       upiId: details.upiId || "chauhan5408k@okaxis",
       registrationOpen: details.registrationOpen,
       registrationNotice: details.registrationNotice || "",
-      paymentQrConfigured: true,
-      paymentQrUrl: "/api/payment-qr.png",
+      paymentQrConfigured: Boolean(details.paymentQrUrl),
+      paymentQrUrl: details.paymentQrUrl || "/api/payment-qr.png",
+      formSections: details.formSections || defaultFormSections,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to load admin settings." });
   }
 });
 
+// POST /api/admin/payment-qr (Upload custom payment QR poster image)
+app.post("/api/admin/payment-qr", requireAdmin, upload.single("paymentQr"), async (req, res, next) => {
+  try {
+    let currentEvent = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
+    if (!currentEvent) {
+      currentEvent = await Event.create({
+        title: "Arkham MUN 2026",
+        date: "October 24-25, 2026",
+        venue: "Central Delhi, India",
+      });
+    }
+
+    let qrUrl = null;
+    if (req.file) {
+      const mime = req.file.mimetype;
+      const base64Data = req.file.buffer.toString("base64");
+      qrUrl = `data:${mime};base64,${base64Data}`;
+    } else if (req.body?.paymentQrUrl) {
+      qrUrl = req.body.paymentQrUrl.trim();
+    }
+
+    if (!qrUrl) {
+      return res.status(400).json({ error: "Please upload an image file (PNG, JPG, WebP) or provide a payment QR image URL." });
+    }
+
+    currentEvent.paymentQrUrl = qrUrl;
+    if (!currentEvent.formSections) currentEvent.formSections = { ...defaultFormSections };
+    if (!currentEvent.formSections.paymentSection) currentEvent.formSections.paymentSection = {};
+    currentEvent.formSections.paymentSection.paymentQrUrl = qrUrl;
+
+    await currentEvent.save();
+
+    res.json({
+      success: true,
+      paymentQrConfigured: true,
+      paymentQrUrl: qrUrl,
+      message: "Payment QR poster successfully uploaded and updated.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PUT /api/admin/settings
 app.put("/api/admin/settings", requireAdmin, async (req, res) => {
   try {
-    const { event, amount, upiId, registrationOpen, registrationNotice } = req.body || {};
+    const { event, amount, upiId, registrationOpen, registrationNotice, paymentQrUrl, formSections } = req.body || {};
 
     let currentEvent = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
     if (!currentEvent) {
-      currentEvent = new Event();
+      currentEvent = await Event.create({
+        title: "Arkham MUN 2026",
+        date: "October 24-25, 2026",
+        venue: "Central Delhi, India",
+      });
     }
 
     if (event?.name) currentEvent.title = event.name.trim();
     if (event?.date) currentEvent.date = event.date.trim();
     if (event?.time) currentEvent.time = event.time.trim();
     if (event?.venue) currentEvent.venue = event.venue.trim();
-    if (amount) currentEvent.entryFee = Number(amount);
-    if (upiId) currentEvent.upiId = upiId.trim();
+    if (amount !== undefined) currentEvent.entryFee = Number(amount);
+    if (upiId !== undefined) currentEvent.upiId = upiId.trim();
     if (registrationOpen !== undefined) currentEvent.registrationOpen = Boolean(registrationOpen);
     if (registrationNotice !== undefined) currentEvent.registrationNotice = registrationNotice.trim();
+    if (paymentQrUrl !== undefined) currentEvent.paymentQrUrl = paymentQrUrl;
+    if (formSections) {
+      currentEvent.formSections = {
+        ...(currentEvent.formSections || defaultFormSections),
+        ...formSections,
+      };
+      if (formSections.paymentSection?.paymentQrUrl !== undefined) {
+        currentEvent.paymentQrUrl = formSections.paymentSection.paymentQrUrl;
+      }
+    }
 
     await currentEvent.save();
 
@@ -1458,10 +1528,13 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
       upiId: currentEvent.upiId,
       registrationOpen: currentEvent.registrationOpen,
       registrationNotice: currentEvent.registrationNotice,
-      paymentQrConfigured: true,
-      paymentQrUrl: "/api/payment-qr.png",
+      paymentQrConfigured: Boolean(currentEvent.paymentQrUrl),
+      paymentQrUrl: currentEvent.paymentQrUrl || "/api/payment-qr.png",
+      formSections: currentEvent.formSections || defaultFormSections,
+      message: "Conference and registration form settings successfully updated.",
     });
   } catch (err) {
+    console.error("Save admin settings error:", err);
     res.status(500).json({ error: "Failed to update admin settings." });
   }
 });

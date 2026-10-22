@@ -12,6 +12,50 @@ export type EventDetails = {
   venue: string
 }
 
+export type FormSectionsConfig = {
+  delegateDetails?: {
+    title?: string
+    description?: string
+    instructions?: string
+    gradeLabel?: string
+    gradePlaceholder?: string
+  }
+  experience?: {
+    title?: string
+    description?: string
+    tiers?: string[]
+  }
+  committees?: {
+    title?: string
+    description?: string
+    items?: string[]
+  }
+  portfolioPreferences?: {
+    title?: string
+    description?: string
+    flexiblePrompt?: string
+  }
+  references?: {
+    title?: string
+    description?: string
+    caPrompt?: string
+    caPlaceholder?: string
+    label?: string
+    placeholder?: string
+  }
+  paymentSection?: {
+    title?: string
+    instructions?: string
+    note?: string
+    upiNote?: string
+    paymentQrUrl?: string | null
+  }
+  specialRequests?: {
+    title?: string
+    placeholder?: string
+  }
+}
+
 export type PublicEvent = {
   event: EventDetails
   amount: number
@@ -19,6 +63,7 @@ export type PublicEvent = {
   paymentQrUrl: string | null
   registrationOpen: boolean
   registrationNotice?: string
+  formSections?: FormSectionsConfig
 }
 
 export type AdminEventSettings = {
@@ -29,6 +74,7 @@ export type AdminEventSettings = {
   registrationNotice: string
   paymentQrConfigured: boolean
   paymentQrUrl: string | null
+  formSections?: FormSectionsConfig
 }
 
 export type RegistrationStatusResponse = {
@@ -450,7 +496,15 @@ export const entryPassApi = {
   // REGISTRATION (Authenticated delegate registration)
   // -----------------------------------------------------------
   createRegistration(
-    details: { name: string; email: string; phone: string; organization: string; committee: string; eventId?: string },
+    details: {
+      name: string
+      email: string
+      phone: string
+      organization: string
+      committee: string
+      eventId?: string
+      utr?: string
+    },
     token?: string
   ) {
     const headers: Record<string, string> = { "Content-Type": "application/json" }
@@ -508,6 +562,8 @@ export const entryPassApi = {
       upiId?: string
       registrationOpen?: boolean
       registrationNotice?: string
+      paymentQrUrl?: string | null
+      formSections?: FormSectionsConfig
     },
     adminKey: string
   ) {

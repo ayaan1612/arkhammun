@@ -1,6 +1,7 @@
 "use client"
 
 import { FormEvent, useEffect, useRef, useState } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -29,6 +30,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Trash2,
+  Upload,
   UserCheck,
   Users,
   X,
@@ -41,6 +43,7 @@ import {
   DbEvent,
   EntryPassApiError,
   EventDetails,
+  FormSectionsConfig,
   RegistrationStatus,
   ScannedRegistration,
   entryPassApi,
@@ -59,6 +62,55 @@ type AdminView =
   | "settings"
 
 type ScanState = { type: "idle" | "valid" | "used" | "invalid" | "error"; message: string }
+
+const defaultFormSections: FormSectionsConfig = {
+  delegateDetails: {
+    title: "Delegate details",
+    description: "Personal and institutional details for pass issuance.",
+    gradeLabel: "Class / Year / Grade",
+    gradePlaceholder: "e.g. 11th Grade / 2nd Year",
+  },
+  experience: {
+    title: "Experience",
+    description: "Past MUN experience level.",
+    tiers: ["0-5", "5-12", "12-20", "20+"],
+  },
+  committees: {
+    title: "Committee preferences",
+    description: "Rank your preferred committee assignments.",
+    items: [
+      "UNCSW (Advancing women's protection, leadership and rights in conflict zone with special emphasis on women)",
+      "UNGA (Strengthening Nuclear Weapon-Free Zones with Focus on the Middle East and South Asia.)",
+      "AIPPM (Use of Central Agencies (ED/CBI): Law Enforcement or Political Tool?)",
+      "UNODC (Human Rights Implications of the Global War on Drugs.)",
+      "UNHRC (Deliberating on Safeguarding Political Leaders Under International Human Rights Law.)",
+      "IP",
+      "IPL (Mega Auction)",
+    ],
+  },
+  portfolioPreferences: {
+    title: "Portfolio preferences",
+    description: "Specify your country or candidate allocations.",
+    flexiblePrompt: "Are you open to being assigned to any committee or portfolio if your top preferences are full?",
+  },
+  references: {
+    title: "References",
+    description: "Campus Ambassador and referral identification.",
+    caPrompt: "CA Reference (IF NO TYPE NIL)",
+    caPlaceholder: "NIL",
+  },
+  paymentSection: {
+    title: "Payment & Verification",
+    instructions:
+      "Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment confirmation box.",
+    upiNote: "Official UPI Payment QR",
+    paymentQrUrl: "",
+  },
+  specialRequests: {
+    title: "Special requests / Notes",
+    placeholder: "Any dietary restrictions, special accommodations, or notes for the secretariat",
+  },
+}
 
 export default function AdminPage() {
   const router = useRouter()
@@ -114,6 +166,11 @@ export default function AdminPage() {
   const [upiIdInput, setUpiIdInput] = useState<string>("chauhan5408k@okaxis")
   const [registrationOpenInput, setRegistrationOpenInput] = useState<boolean>(true)
   const [registrationNoticeInput, setRegistrationNoticeInput] = useState<string>("")
+  const [paymentQrUrl, setPaymentQrUrl] = useState<string>("")
+  const [formSections, setFormSections] = useState<FormSectionsConfig>(defaultFormSections)
+  const [qrUploadBusy, setQrUploadBusy] = useState(false)
+  const [newCommitteeName, setNewCommitteeName] = useState("")
+  const [newTierName, setNewTierName] = useState("")
   const [settingsBusy, setSettingsBusy] = useState(false)
 
   // Inquiries / Helpdesk state
@@ -308,6 +365,33 @@ export default function AdminPage() {
         setUpiIdInput(currentSettings.upiId || "chauhan5408k@okaxis")
         setRegistrationOpenInput(currentSettings.registrationOpen)
         setRegistrationNoticeInput(currentSettings.registrationNotice || "")
+        if (currentSettings.paymentQrUrl) {
+          setPaymentQrUrl(currentSettings.paymentQrUrl)
+        }
+        if (currentSettings.formSections) {
+          setFormSections({
+            ...defaultFormSections,
+            ...currentSettings.formSections,
+            delegateDetails: { ...defaultFormSections.delegateDetails, ...currentSettings.formSections.delegateDetails },
+            experience: {
+              ...defaultFormSections.experience,
+              ...currentSettings.formSections.experience,
+              tiers: currentSettings.formSections.experience?.tiers || defaultFormSections.experience?.tiers,
+            },
+            committees: {
+              ...defaultFormSections.committees,
+              ...currentSettings.formSections.committees,
+              items: currentSettings.formSections.committees?.items || defaultFormSections.committees?.items,
+            },
+            portfolioPreferences: {
+              ...defaultFormSections.portfolioPreferences,
+              ...currentSettings.formSections.portfolioPreferences,
+            },
+            references: { ...defaultFormSections.references, ...currentSettings.formSections.references },
+            paymentSection: { ...defaultFormSections.paymentSection, ...currentSettings.formSections.paymentSection },
+            specialRequests: { ...defaultFormSections.specialRequests, ...currentSettings.formSections.specialRequests },
+          })
+        }
       }
       setAdminKey(key)
       setAuthenticated(true)
@@ -494,6 +578,8 @@ export default function AdminPage() {
           upiId: upiIdInput.trim(),
           registrationOpen: registrationOpenInput,
           registrationNotice: registrationNoticeInput.trim(),
+          paymentQrUrl: paymentQrUrl || undefined,
+          formSections: formSections,
         },
         adminKey
       )
@@ -504,12 +590,99 @@ export default function AdminPage() {
       setUpiIdInput(result.upiId)
       setRegistrationOpenInput(result.registrationOpen)
       setRegistrationNoticeInput(result.registrationNotice)
-      setNotice("Configuration saved successfully.")
+      if (result.paymentQrUrl) setPaymentQrUrl(result.paymentQrUrl)
+      if (result.formSections) setFormSections(result.formSections)
+      setNotice("Conference settings & registration form updated successfully.")
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to save configuration.")
     } finally {
       setSettingsBusy(false)
     }
+  }
+
+  async function handleQrPosterUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setQrUploadBusy(true)
+    setError("")
+    try {
+      const result = await entryPassApi.uploadPaymentQr(file, adminKey)
+      setPaymentQrUrl(result.paymentQrUrl)
+      setSettings((current) =>
+        current ? { ...current, paymentQrConfigured: result.paymentQrConfigured, paymentQrUrl: result.paymentQrUrl } : current
+      )
+      setNotice("Official UPI QR poster uploaded and updated live!")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to upload payment QR poster.")
+    } finally {
+      setQrUploadBusy(false)
+      e.target.value = ""
+    }
+  }
+
+  function handleResetPaymentQr() {
+    setPaymentQrUrl("")
+    setNotice("Reset payment QR poster to default. Click 'Save Conference & Form Studio' to persist.")
+  }
+
+  function handleAddCommittee() {
+    if (!newCommitteeName.trim()) return
+    const currentItems = formSections.committees?.items || []
+    setFormSections({
+      ...formSections,
+      committees: {
+        ...formSections.committees,
+        items: [...currentItems, newCommitteeName.trim()],
+      },
+    })
+    setNewCommitteeName("")
+  }
+
+  function handleRemoveCommittee(index: number) {
+    const currentItems = formSections.committees?.items || []
+    setFormSections({
+      ...formSections,
+      committees: {
+        ...formSections.committees,
+        items: currentItems.filter((_, i) => i !== index),
+      },
+    })
+  }
+
+  function handleUpdateCommittee(index: number, val: string) {
+    const currentItems = [...(formSections.committees?.items || [])]
+    currentItems[index] = val
+    setFormSections({
+      ...formSections,
+      committees: {
+        ...formSections.committees,
+        items: currentItems,
+      },
+    })
+  }
+
+  function handleAddTier() {
+    if (!newTierName.trim()) return
+    const currentTiers = formSections.experience?.tiers || []
+    setFormSections({
+      ...formSections,
+      experience: {
+        ...formSections.experience,
+        tiers: [...currentTiers, newTierName.trim()],
+      },
+    })
+    setNewTierName("")
+  }
+
+  function handleRemoveTier(index: number) {
+    const currentTiers = formSections.experience?.tiers || []
+    setFormSections({
+      ...formSections,
+      experience: {
+        ...formSections.experience,
+        tiers: currentTiers.filter((_, i) => i !== index),
+      },
+    })
   }
 
   async function uploadPaymentQr(event: FormEvent<HTMLFormElement>) {
@@ -1908,93 +2081,812 @@ export default function AdminPage() {
         </section>
       )}
 
-      {/* VIEW 8: CONFERENCE SETTINGS */}
+      {/* VIEW 8: CONFERENCE & REGISTRATION FORM STUDIO */}
       {activeView === "settings" && (
-        <section className={styles.settingsPanel}>
+        <section className={styles.settingsPanel} style={{ maxWidth: 960 }}>
           <div className={styles.sectionHeading}>
             <div>
-              <span className={styles.kicker}>CONFIGURATION</span>
-              <h2>Global Registration Controls</h2>
+              <span className={styles.kicker}>SECRETARIAT STUDIO</span>
+              <h2>Conference &amp; Registration Form Studio</h2>
+              <p>Configure live conference details, upload payment QR posters, and customize every section of the delegate registration form.</p>
             </div>
           </div>
 
-          <form onSubmit={saveAllSettings} style={{ display: "grid", gap: 14, maxWidth: 580 }}>
-            <label style={{ display: "grid", gap: 6, color: "#fff", fontSize: 12 }}>
-              CONFERENCE NAME
-              <input
-                type="text"
-                value={eventForm.name}
-                onChange={(e) => setEventForm({ ...eventForm, name: e.target.value })}
-                style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
-              />
-            </label>
+          <form onSubmit={saveAllSettings} style={{ display: "grid", gap: 28 }}>
+            {/* SUB-SECTION 1: CORE LOGISTICS */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 16,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <Calendar size={18} style={{ color: "#e3262e" }} />
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Conference Core Logistics &amp; Gate</h3>
+              </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <label style={{ display: "grid", gap: 6, color: "#fff", fontSize: 12 }}>
-                CONFERENCE DATES
+              <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                CONFERENCE NAME
                 <input
                   type="text"
-                  value={eventForm.date}
-                  onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                  value={eventForm.name}
+                  onChange={(e) => setEventForm({ ...eventForm, name: e.target.value })}
                   style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
                 />
               </label>
-              <label style={{ display: "grid", gap: 6, color: "#fff", fontSize: 12 }}>
-                TIMINGS
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  CONFERENCE DATES
+                  <input
+                    type="text"
+                    value={eventForm.date}
+                    onChange={(e) => setEventForm({ ...eventForm, date: e.target.value })}
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  TIMINGS
+                  <input
+                    type="text"
+                    value={eventForm.time}
+                    onChange={(e) => setEventForm({ ...eventForm, time: e.target.value })}
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                VENUE
                 <input
                   type="text"
-                  value={eventForm.time}
-                  onChange={(e) => setEventForm({ ...eventForm, time: e.target.value })}
+                  value={eventForm.venue}
+                  onChange={(e) => setEventForm({ ...eventForm, venue: e.target.value })}
+                  style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                />
+              </label>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  ENTRY FEE (₹ INR)
+                  <input
+                    type="number"
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(Number(e.target.value))}
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  UPI ID
+                  <input
+                    type="text"
+                    value={upiIdInput}
+                    onChange={(e) => setUpiIdInput(e.target.value)}
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff", fontSize: 13, cursor: "pointer", marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={registrationOpenInput}
+                  onChange={(e) => setRegistrationOpenInput(e.target.checked)}
+                  style={{ accentColor: "#e3262e", width: 18, height: 18 }}
+                />
+                <span>Accept registrations on public site (Registration Gate Open)</span>
+              </label>
+
+              {!registrationOpenInput && (
+                <label style={{ display: "grid", gap: 6, color: "#ffd19c", fontSize: 11, fontWeight: 600 }}>
+                  REGISTRATION CLOSED NOTICE BANNER
+                  <textarea
+                    rows={2}
+                    value={registrationNoticeInput}
+                    onChange={(e) => setRegistrationNoticeInput(e.target.value)}
+                    placeholder="Notice displayed on registration page when closed..."
+                    style={{ padding: 10, background: "#080808", border: "1px solid #e6a54a", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* SUB-SECTION 2: SECTION 06 PAYMENT & QR POSTER */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(227, 38, 46, 0.3)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 16,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid rgba(227, 38, 46, 0.2)", paddingBottom: 10, flexWrap: "wrap", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <ImageIcon size={18} style={{ color: "#e3262e" }} />
+                  <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 06: Payment &amp; Official QR Poster</h3>
+                </div>
+                <span style={{ fontSize: 11, color: paymentQrUrl ? "#4ade80" : "#aaa8ba", fontWeight: 700 }}>
+                  {paymentQrUrl ? "✓ CUSTOM QR POSTER ACTIVE" : "DEFAULT QR ACTIVE"}
+                </span>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "minmax(240px, 300px) 1fr", gap: 20, alignItems: "start" }}>
+                {/* QR Poster Preview & Uploader */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", padding: 14, background: "#05050c", border: "1px solid rgba(255, 255, 255, 0.12)", borderRadius: 6 }}>
+                  <span style={{ color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>LIVE QR POSTER PREVIEW</span>
+                  <div style={{ position: "relative", width: 200, height: 280, background: "#000", border: "1px solid rgba(227, 38, 46, 0.4)", borderRadius: 6, overflow: "hidden" }}>
+                    <Image
+                      src={paymentQrUrl ? entryPassApi.paymentQrUrl(paymentQrUrl) : "/payment-qr.jpeg"}
+                      alt="Current Payment QR Poster"
+                      fill
+                      unoptimized
+                      style={{ objectFit: "contain" }}
+                    />
+                  </div>
+
+                  <label
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      width: "100%",
+                      padding: "9px 12px",
+                      background: qrUploadBusy ? "rgba(227, 38, 46, 0.3)" : "rgba(227, 38, 46, 0.2)",
+                      border: "1px solid rgba(227, 38, 46, 0.5)",
+                      borderRadius: 4,
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: qrUploadBusy ? "wait" : "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    {qrUploadBusy ? <LoaderCircle size={14} className={styles.spinner} /> : <Upload size={14} />}
+                    {qrUploadBusy ? "Uploading Poster…" : "Upload New QR Poster"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      disabled={qrUploadBusy}
+                      onChange={handleQrPosterUpload}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+
+                  {paymentQrUrl && (
+                    <button
+                      type="button"
+                      onClick={handleResetPaymentQr}
+                      style={{
+                        background: "transparent",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        color: "#aaa8ba",
+                        borderRadius: 4,
+                        padding: "6px 10px",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        width: "100%",
+                      }}
+                    >
+                      Reset to Default Poster
+                    </button>
+                  )}
+                </div>
+
+                {/* Section 06 Text Controls */}
+                <div style={{ display: "grid", gap: 14 }}>
+                  <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                    SECTION 06 TITLE
+                    <input
+                      type="text"
+                      value={formSections.paymentSection?.title || "Payment & Verification"}
+                      onChange={(e) =>
+                        setFormSections({
+                          ...formSections,
+                          paymentSection: {
+                            ...formSections.paymentSection,
+                            title: e.target.value,
+                          },
+                        })
+                      }
+                      style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                    DELEGATE PAYMENT INSTRUCTIONS
+                    <textarea
+                      rows={3}
+                      value={
+                        formSections.paymentSection?.instructions ||
+                        "Scan the official Arkham MUN UPI QR poster below in any payment app (Google Pay, PhonePe, Paytm, etc.). Then enter the UPI Transaction Reference (UTR), upload your screenshot, and check the payment confirmation box."
+                      }
+                      onChange={(e) =>
+                        setFormSections({
+                          ...formSections,
+                          paymentSection: {
+                            ...formSections.paymentSection,
+                            instructions: e.target.value,
+                          },
+                        })
+                      }
+                      style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                    UPI POSTER HEADER NOTE
+                    <input
+                      type="text"
+                      value={formSections.paymentSection?.upiNote || "Official UPI Payment QR"}
+                      onChange={(e) =>
+                        setFormSections({
+                          ...formSections,
+                          paymentSection: {
+                            ...formSections.paymentSection,
+                            upiNote: e.target.value,
+                          },
+                        })
+                      }
+                      style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* SUB-SECTION 3: SECTION 01 DELEGATE DETAILS */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <span style={{ color: "#e3262e", fontWeight: 700, fontSize: 13 }}>01</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 01: Delegate Details Customizer</h3>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION TITLE
+                  <input
+                    type="text"
+                    value={formSections.delegateDetails?.title || "Delegate details"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        delegateDetails: {
+                          ...formSections.delegateDetails,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION SUBTITLE / HINT
+                  <input
+                    type="text"
+                    value={formSections.delegateDetails?.description || "Personal and institutional details for pass issuance."}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        delegateDetails: {
+                          ...formSections.delegateDetails,
+                          description: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  CLASS / GRADE FIELD LABEL
+                  <input
+                    type="text"
+                    value={formSections.delegateDetails?.gradeLabel || "Class / Year / Grade"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        delegateDetails: {
+                          ...formSections.delegateDetails,
+                          gradeLabel: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  CLASS / GRADE FIELD PLACEHOLDER
+                  <input
+                    type="text"
+                    value={formSections.delegateDetails?.gradePlaceholder || "e.g. 11th Grade / 2nd Year"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        delegateDetails: {
+                          ...formSections.delegateDetails,
+                          gradePlaceholder: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* SUB-SECTION 4: SECTION 02 EXPERIENCE TIERS */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <span style={{ color: "#e3262e", fontWeight: 700, fontSize: 13 }}>02</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 02: Experience Tiers Customizer</h3>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION TITLE
+                  <input
+                    type="text"
+                    value={formSections.experience?.title || "Experience"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        experience: {
+                          ...formSections.experience,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SUBTITLE / FIELDSET LEGEND
+                  <input
+                    type="text"
+                    value={formSections.experience?.description || "Past MUN Experience"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        experience: {
+                          ...formSections.experience,
+                          description: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <div>
+                <span style={{ display: "block", color: "#aaa8ba", fontSize: 11, fontWeight: 600, marginBottom: 8 }}>
+                  EXPERIENCE TIERS
+                </span>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                  {(formSections.experience?.tiers || ["0-5", "5-12", "12-20", "20+"]).map((tier, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 12px",
+                        background: "rgba(227, 38, 46, 0.12)",
+                        border: "1px solid rgba(227, 38, 46, 0.4)",
+                        borderRadius: 4,
+                        fontSize: 12,
+                        color: "#fff",
+                      }}
+                    >
+                      <span>{tier} conferences</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTier(idx)}
+                        style={{
+                          background: "transparent",
+                          border: 0,
+                          color: "#ff8589",
+                          cursor: "pointer",
+                          padding: 0,
+                          display: "flex",
+                          alignItems: "center",
+                        }}
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, maxWidth: 360 }}>
+                  <input
+                    type="text"
+                    placeholder="e.g. 25+ or Specialist"
+                    value={newTierName}
+                    onChange={(e) => setNewTierName(e.target.value)}
+                    style={{ flex: 1, padding: 8, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4, fontSize: 12 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTier}
+                    className={styles.secondaryButton}
+                    style={{ minHeight: 36, padding: "0 14px", fontSize: 11 }}
+                  >
+                    <Plus size={13} /> Add Tier
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* SUB-SECTION 5: SECTION 03 COMMITTEES */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <span style={{ color: "#e3262e", fontWeight: 700, fontSize: 13 }}>03</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 03: Committee Choices &amp; Agendas</h3>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION TITLE
+                  <input
+                    type="text"
+                    value={formSections.committees?.title || "Committee preferences"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        committees: {
+                          ...formSections.committees,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SUBTITLE / INSTRUCTION
+                  <input
+                    type="text"
+                    value={formSections.committees?.description || "Rank your preferred committee assignments."}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        committees: {
+                          ...formSections.committees,
+                          description: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                <span style={{ color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  ACTIVE COMMITTEES LIST ({(formSections.committees?.items || []).length})
+                </span>
+                {(formSections.committees?.items || []).map((comm, idx) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 11, color: "#e3262e", fontWeight: 700, width: 28 }}>#{idx + 1}</span>
+                    <input
+                      type="text"
+                      value={comm}
+                      onChange={(e) => handleUpdateCommittee(idx, e.target.value)}
+                      style={{ flex: 1, padding: 8, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4, fontSize: 12 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCommittee(idx)}
+                      style={{
+                        padding: 8,
+                        background: "rgba(227, 38, 46, 0.1)",
+                        border: "1px solid rgba(227, 38, 46, 0.3)",
+                        borderRadius: 4,
+                        color: "#ff8589",
+                        cursor: "pointer",
+                      }}
+                      title="Remove Committee"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+
+                <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="New Committee Name &amp; Agenda in parentheses..."
+                    value={newCommitteeName}
+                    onChange={(e) => setNewCommitteeName(e.target.value)}
+                    style={{ flex: 1, padding: 9, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4, fontSize: 12 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCommittee}
+                    className={styles.secondaryButton}
+                    style={{ minHeight: 38, padding: "0 14px", fontSize: 12 }}
+                  >
+                    <Plus size={14} /> Add Committee
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* SUB-SECTION 6: SECTION 04 PORTFOLIO PREFERENCES */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <span style={{ color: "#e3262e", fontWeight: 700, fontSize: 13 }}>04</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 04: Portfolio Preferences Customizer</h3>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION TITLE
+                  <input
+                    type="text"
+                    value={formSections.portfolioPreferences?.title || "Portfolio preferences"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        portfolioPreferences: {
+                          ...formSections.portfolioPreferences,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION SUBTITLE
+                  <input
+                    type="text"
+                    value={formSections.portfolioPreferences?.description || "Specify your country or candidate allocations."}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        portfolioPreferences: {
+                          ...formSections.portfolioPreferences,
+                          description: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                FLEXIBLE ALLOCATION PROMPT QUESTION
+                <input
+                  type="text"
+                  value={
+                    formSections.portfolioPreferences?.flexiblePrompt ||
+                    "Are you open to being assigned to any committee or portfolio if your top preferences are full?"
+                  }
+                  onChange={(e) =>
+                    setFormSections({
+                      ...formSections,
+                      portfolioPreferences: {
+                        ...formSections.portfolioPreferences,
+                        flexiblePrompt: e.target.value,
+                      },
+                    })
+                  }
                   style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
                 />
               </label>
             </div>
 
-            <label style={{ display: "grid", gap: 6, color: "#fff", fontSize: 12 }}>
-              VENUE
-              <input
-                type="text"
-                value={eventForm.venue}
-                onChange={(e) => setEventForm({ ...eventForm, venue: e.target.value })}
-                style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
-              />
-            </label>
+            {/* SUB-SECTION 7: SECTION 05 REFERENCES */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <span style={{ color: "#e3262e", fontWeight: 700, fontSize: 13 }}>05</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 05: References &amp; CA Customizer</h3>
+              </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <label style={{ display: "grid", gap: 6, color: "#fff", fontSize: 12 }}>
-                ENTRY FEE (₹ INR)
-                <input
-                  type="number"
-                  value={amountInput}
-                  onChange={(e) => setAmountInput(Number(e.target.value))}
-                  style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
-                />
-              </label>
-              <label style={{ display: "grid", gap: 6, color: "#fff", fontSize: 12 }}>
-                UPI ID
-                <input
-                  type="text"
-                  value={upiIdInput}
-                  onChange={(e) => setUpiIdInput(e.target.value)}
-                  style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
-                />
-              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION TITLE
+                  <input
+                    type="text"
+                    value={formSections.references?.title || "References"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        references: {
+                          ...formSections.references,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION SUBTITLE
+                  <input
+                    type="text"
+                    value={formSections.references?.description || "Campus Ambassador and referral identification."}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        references: {
+                          ...formSections.references,
+                          description: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  CA REFERENCE PROMPT
+                  <input
+                    type="text"
+                    value={formSections.references?.caPrompt || "CA Reference (IF NO TYPE NIL)"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        references: {
+                          ...formSections.references,
+                          caPrompt: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  CA REFERENCE PLACEHOLDER
+                  <input
+                    type="text"
+                    value={formSections.references?.caPlaceholder || "NIL"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        references: {
+                          ...formSections.references,
+                          caPlaceholder: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
             </div>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#fff", fontSize: 13, marginTop: 6 }}>
-              <input
-                type="checkbox"
-                checked={registrationOpenInput}
-                onChange={(e) => setRegistrationOpenInput(e.target.checked)}
-                style={{ accentColor: "#e3262e", width: 16, height: 16 }}
-              />
-              Accept registrations on public site
-            </label>
+            {/* SUB-SECTION 8: SECTION 07 SPECIAL REQUESTS */}
+            <div
+              style={{
+                padding: 20,
+                background: "rgba(8, 8, 18, 0.6)",
+                border: "1px solid rgba(160, 150, 205, 0.18)",
+                borderRadius: 8,
+                display: "grid",
+                gap: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid rgba(160, 150, 205, 0.14)", paddingBottom: 10 }}>
+                <span style={{ color: "#e3262e", fontWeight: 700, fontSize: 13 }}>07</span>
+                <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 07: Special Requests &amp; Notes</h3>
+              </div>
 
-            <button className={styles.primaryButton} type="submit" disabled={settingsBusy} style={{ marginTop: 10 }}>
-              {settingsBusy ? <LoaderCircle className={styles.spinner} size={15} /> : <Check size={15} />}
-              Save Controls
-            </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  SECTION TITLE
+                  <input
+                    type="text"
+                    value={formSections.specialRequests?.title || "Special requests / Notes"}
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        specialRequests: {
+                          ...formSections.specialRequests,
+                          title: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
+                  NOTES TEXTAREA PLACEHOLDER
+                  <input
+                    type="text"
+                    value={
+                      formSections.specialRequests?.placeholder ||
+                      "Any dietary restrictions, special accommodations, or notes for the secretariat"
+                    }
+                    onChange={(e) =>
+                      setFormSections({
+                        ...formSections,
+                        specialRequests: {
+                          ...formSections.specialRequests,
+                          placeholder: e.target.value,
+                        },
+                      })
+                    }
+                    style={{ padding: 10, background: "#080808", border: "1px solid #454052", color: "#fff", borderRadius: 4 }}
+                  />
+                </label>
+              </div>
+            </div>
+
+            {/* SAVE ALL SETTINGS ACTION BAR */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingTop: 10, borderTop: "1px solid rgba(160, 150, 205, 0.2)", flexWrap: "wrap" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#908b9d" }}>
+                All updates are saved persistently to MongoDB Atlas and will update the public registration form instantly.
+              </p>
+              <button
+                className={styles.primaryButton}
+                type="submit"
+                disabled={settingsBusy || qrUploadBusy}
+                style={{ padding: "12px 24px", fontSize: 13 }}
+              >
+                {settingsBusy ? <LoaderCircle className={styles.spinner} size={16} /> : <Check size={16} />}
+                Save Conference &amp; Form Studio Settings
+              </button>
+            </div>
           </form>
         </section>
       )}
