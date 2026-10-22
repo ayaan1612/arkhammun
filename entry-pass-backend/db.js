@@ -238,18 +238,22 @@ function matchesQuery(doc, query = {}) {
 function cloneDoc(doc, collectionName) {
   if (!doc) return null;
   const copy = { ...doc };
+  copy._collectionName = collectionName;
   copy.save = async function () {
-    if (collectionName && memoryStore[collectionName]) {
-      const idx = memoryStore[collectionName].findIndex(
-        (d) => d._id && d._id.toString() === copy._id.toString()
+    const col = this._collectionName || collectionName;
+    if (col && memoryStore[col]) {
+      const targetId = (this._id || copy._id).toString();
+      const idx = memoryStore[col].findIndex(
+        (d) => d._id && d._id.toString() === targetId
       );
+      const toSave = { ...this };
       if (idx >= 0) {
-        memoryStore[collectionName][idx] = { ...copy };
+        memoryStore[col][idx] = toSave;
       } else {
-        memoryStore[collectionName].push({ ...copy });
+        memoryStore[col].push(toSave);
       }
     }
-    return copy;
+    return this;
   };
   return copy;
 }
@@ -279,7 +283,7 @@ class FallbackQuery {
       if (!res) return res;
       const populateOne = (item) => {
         if (!item) return item;
-        const copy = { ...item };
+        const copy = cloneDoc(item, item._collectionName || "registrations");
         if (field === "eventId" && copy.eventId) {
           const evId = copy.eventId._id ? copy.eventId._id.toString() : copy.eventId.toString();
           const found = memoryStore.events.find((e) => e._id.toString() === evId);
@@ -373,6 +377,18 @@ const User = {
     };
     memoryStore.users.push(doc);
     return cloneDoc(doc, "users");
+  },
+  async findByIdAndUpdate(id, update, opts = {}) {
+    if (isMongoConnected()) return RealUser.findByIdAndUpdate(id, update, opts);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const idx = memoryStore.users.findIndex((u) => u._id.toString() === targetId);
+    if (idx < 0) return null;
+    const existing = memoryStore.users[idx];
+    const updateFields = update.$set ? { ...update.$set } : { ...update };
+    delete updateFields.$set;
+    const updated = { ...existing, ...updateFields };
+    memoryStore.users[idx] = updated;
+    return cloneDoc(updated, "users");
   },
 };
 
@@ -482,6 +498,22 @@ const Registration = {
     memoryStore.registrations = memoryStore.registrations.filter((r) => !matchesQuery(r, query));
     return { deletedCount: before - memoryStore.registrations.length };
   },
+  async findByIdAndUpdate(id, update, opts = {}) {
+    if (isMongoConnected()) return RealRegistration.findByIdAndUpdate(id, update, opts);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const idx = memoryStore.registrations.findIndex((r) => r._id && r._id.toString() === targetId);
+    if (idx < 0) return null;
+    const current = memoryStore.registrations[idx];
+    const updateFields = update.$set ? { ...update.$set } : { ...update };
+    delete updateFields.$set;
+    const updated = { ...current, ...updateFields };
+    memoryStore.registrations[idx] = updated;
+    return cloneDoc(updated, "registrations");
+  },
+  async countDocuments(query = {}) {
+    if (isMongoConnected()) return RealRegistration.countDocuments(query);
+    return memoryStore.registrations.filter((r) => matchesQuery(r, query)).length;
+  },
 };
 
 const Notification = {
@@ -576,7 +608,9 @@ const ContactQuery = {
 // 4. CONNECTION FUNCTION WITH SERVERLESS REUSE & 5S TIMEOUT
 // -------------------------------------------------------------
 async function connectToDatabase() {
-  const uri = process.env.MONGODB_URI;
+  const defaultAtlasUri =
+    "mongodb+srv://arkhammun2026_db_user:arkummun12345@cluster0.iod6fwu.mongodb.net/arkhammun?retryWrites=true&w=majority";
+  const uri = process.env.MONGODB_URI || defaultAtlasUri;
   if (!uri) {
     return null;
   }
@@ -668,6 +702,12 @@ module.exports = {
   connectToDatabase,
   isMongoConnected,
   defaultFormSections,
+  memoryStore,
+  RealUser,
+  RealEvent,
+  RealRegistration,
+  RealNotification,
+  RealContactQuery,
   User,
   Event,
   Registration,

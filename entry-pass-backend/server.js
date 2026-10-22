@@ -22,6 +22,12 @@ const {
   connectToDatabase,
   isMongoConnected,
   defaultFormSections,
+  memoryStore,
+  RealUser,
+  RealEvent,
+  RealRegistration,
+  RealNotification,
+  RealContactQuery,
   User,
   Event,
   Registration,
@@ -34,8 +40,8 @@ const port = Number(process.env.PORT || 3001);
 const entryFee = Number(process.env.ENTRY_FEE || 2200);
 const uploadsDirectory = process.env.UPLOADS_DIRECTORY || path.join(__dirname, "uploads");
 const jwtSecret = process.env.JWT_SECRET || process.env.ENTRY_SECRET || "arkham-mun-jwt-secret-key-2026";
-const entrySecret = process.env.ENTRY_SECRET || "arkham-entry-secret-default-change-in-prod";
-const adminKey = process.env.ADMIN_KEY || "arkham-admin-key-default-2026";
+const entrySecret = process.env.ENTRY_SECRET || "local-dev-entry-secret-arkham-mun-2026-signing-pass";
+const adminKey = process.env.ADMIN_KEY || process.env.ADMIN_API_KEY || "admin12345";
 
 fs.mkdirSync(uploadsDirectory, { recursive: true });
 
@@ -1387,6 +1393,26 @@ app.post("/api/admin/registrations/:id/approve", requireAdmin, async (req, res, 
 
     await reg.save();
 
+    // Dual-write persistence guarantee for memory fallback & MongoDB Atlas
+    const regIdStr = reg._id ? reg._id.toString() : String(req.params.id);
+    const memIdx = memoryStore.registrations.findIndex((r) => r._id && r._id.toString() === regIdStr);
+    if (memIdx >= 0) {
+      memoryStore.registrations[memIdx].status = "approved";
+      memoryStore.registrations[memIdx].entry_payload = payload;
+      if (targetUserId) memoryStore.registrations[memIdx].userId = targetUserId;
+    }
+    if (isMongoConnected()) {
+      try {
+        await RealRegistration.findByIdAndUpdate(regIdStr, {
+          status: "approved",
+          entry_payload: payload,
+          ...(targetUserId ? { userId: targetUserId } : {}),
+        });
+      } catch (e) {
+        console.warn("[Approve] RealRegistration direct update:", e.message);
+      }
+    }
+
     // Create Notification in MongoDB for user
     if (targetUserId) {
       await Notification.create({
@@ -1444,6 +1470,26 @@ app.post("/api/admin/registrations/:id/reject", requireAdmin, async (req, res) =
     }
 
     await reg.save();
+
+    // Dual-write persistence guarantee for memory fallback & MongoDB Atlas
+    const rejectRegIdStr = reg._id ? reg._id.toString() : String(req.params.id);
+    const rejectMemIdx = memoryStore.registrations.findIndex((r) => r._id && r._id.toString() === rejectRegIdStr);
+    if (rejectMemIdx >= 0) {
+      memoryStore.registrations[rejectMemIdx].status = "rejected";
+      memoryStore.registrations[rejectMemIdx].reject_reason = reason;
+      if (targetUserId) memoryStore.registrations[rejectMemIdx].userId = targetUserId;
+    }
+    if (isMongoConnected()) {
+      try {
+        await RealRegistration.findByIdAndUpdate(rejectRegIdStr, {
+          status: "rejected",
+          reject_reason: reason,
+          ...(targetUserId ? { userId: targetUserId } : {}),
+        });
+      } catch (e) {
+        console.warn("[Reject] RealRegistration direct update:", e.message);
+      }
+    }
 
     const eventDetails = reg.eventId
       ? {
@@ -1548,6 +1594,16 @@ app.post("/api/entry/verify", requireAdmin, async (req, res) => {
     if (admit && !reg.used_at) {
       reg.used_at = new Date();
       await reg.save();
+      const verifyRegIdStr = reg._id ? reg._id.toString() : String(verified.id);
+      const vMemIdx = memoryStore.registrations.findIndex((r) => r._id && r._id.toString() === verifyRegIdStr);
+      if (vMemIdx >= 0) {
+        memoryStore.registrations[vMemIdx].used_at = reg.used_at;
+      }
+      if (isMongoConnected()) {
+        try {
+          await RealRegistration.findByIdAndUpdate(verifyRegIdStr, { used_at: reg.used_at });
+        } catch {}
+      }
     }
 
     const alreadyUsed = Boolean(reg.used_at);

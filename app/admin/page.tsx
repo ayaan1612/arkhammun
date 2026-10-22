@@ -1292,40 +1292,6 @@ export default function AdminPage() {
                 ))}
               </select>
 
-              {/* Registration Quick Toggle in Queue Header */}
-              {eventsList.length > 0 && (() => {
-                const targetEvent =
-                  selectedEventFilter !== "all"
-                    ? eventsList.find((e) => e._id === selectedEventFilter)
-                    : eventsList[0]
-                if (!targetEvent) return null
-                return (
-                  <button
-                    type="button"
-                    onClick={() => handleToggleRegistration(targetEvent._id, targetEvent.registrationOpen)}
-                    disabled={loading}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      backgroundColor: targetEvent.registrationOpen
-                        ? "rgba(227, 38, 46, 0.15)"
-                        : "rgba(34, 197, 94, 0.15)",
-                      border: targetEvent.registrationOpen ? "1px solid #e3262e" : "1px solid #22c55e",
-                      color: targetEvent.registrationOpen ? "#ff8288" : "#4ade80",
-                    }}
-                    title={`Click to ${targetEvent.registrationOpen ? "Close" : "Open"} delegate registrations`}
-                  >
-                    {targetEvent.registrationOpen ? "🔒 Close Registration" : "🔓 Open Registration"}
-                  </button>
-                )
-              })()}
-
               <button
                 className={styles.secondaryButton}
                 onClick={() => void loadData(adminKey, undefined, queueFilter)}
