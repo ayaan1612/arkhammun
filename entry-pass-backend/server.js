@@ -442,15 +442,13 @@ app.post("/api/admin/login", async (req, res) => {
 
     const isEmailAuthorized = recognizedAdminEmails.includes(cleanEmail) || (adminUser && adminUser.role === "admin");
 
-    if (!isEmailAuthorized && !process.env.ADMIN_EMAIL) {
-      // Fallback: first master key bearer
-    } else if (!isEmailAuthorized && !recognizedAdminEmails.includes(cleanEmail)) {
+    if (!isEmailAuthorized) {
       return res.status(403).json({
         error: "Unauthorized email address. Only designated secretariat administrator emails can access the portal.",
       });
     }
 
-    if (cleanEmail === configuredAdminEmail) {
+    if (recognizedAdminEmails.includes(cleanEmail)) {
       if (!adminUser) {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), salt);
@@ -532,15 +530,13 @@ app.post("/api/auth/login", async (req, res) => {
 
       const isEmailAuthorized = recognizedAdminEmails.includes(cleanEmail) || (adminUser && adminUser.role === "admin");
 
-      if (!isEmailAuthorized && !process.env.ADMIN_EMAIL) {
-        // Fallback: allow master key bearer
-      } else if (!isEmailAuthorized && !recognizedAdminEmails.includes(cleanEmail)) {
+      if (!isEmailAuthorized) {
         return res.status(403).json({
           error: "Unauthorized email address. Only designated secretariat administrator emails can access the portal.",
         });
       }
 
-      if (cleanEmail === configuredAdminEmail) {
+      if (recognizedAdminEmails.includes(cleanEmail)) {
         if (!adminUser) {
           const salt = await bcrypt.genSalt(10);
           const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), salt);
