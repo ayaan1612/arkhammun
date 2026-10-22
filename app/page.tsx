@@ -90,7 +90,6 @@ export default function Home() {
             <Link href="/register"><ArrowRight size={15} /> Delegate Portal</Link>
           </div>
         </div>
-        <p className="copyright">© 2025 Arkham Model United Nations · An Aarush Chaudhary Design</p>
       </footer>
     </main>
   )
