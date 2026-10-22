@@ -16,6 +16,8 @@ import {
   LoaderCircle,
   LogOut,
   MapPin,
+  MessageSquareText,
+  HelpCircle,
   QrCode,
   RefreshCw,
   Shield,
@@ -28,6 +30,7 @@ import {
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { useAuth } from "@/lib/auth-context"
 import {
+  ContactQuery,
   DbEvent,
   EntryQrResponse,
   UserNotification,
@@ -43,6 +46,8 @@ export default function DashboardPage() {
   const [registrations, setRegistrations] = useState<UserRegistration[]>([])
   const [notifications, setNotifications] = useState<UserNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [myQueries, setMyQueries] = useState<ContactQuery[]>([])
+  const [inquiriesModalOpen, setInquiriesModalOpen] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -66,16 +71,18 @@ export default function DashboardPage() {
     if (!token) return
     setError("")
     try {
-      const [eventsRes, regsRes, notifsRes] = await Promise.all([
+      const [eventsRes, regsRes, notifsRes, queriesRes] = await Promise.all([
         entryPassApi.getEvents().catch(() => ({ events: [] })),
         entryPassApi.getMyRegistrations(token).catch(() => ({ registrations: [] })),
         entryPassApi.getMyNotifications(token).catch(() => ({ notifications: [], unreadCount: 0 })),
+        entryPassApi.getMyQueries(token).catch(() => ({ queries: [] })),
       ])
 
       setEvents(eventsRes.events || [])
       setRegistrations(regsRes.registrations || [])
       setNotifications(notifsRes.notifications || [])
       setUnreadCount(notifsRes.unreadCount || 0)
+      setMyQueries(queriesRes.queries || [])
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load dashboard data."
       setError(msg)
@@ -150,7 +157,210 @@ export default function DashboardPage() {
             <p style={{ letterSpacing: "0.1em", fontSize: "14px" }}>INITIALIZING DELEGATE DAIS...</p>
           </div>
         </div>
-      </ArkhamShell>
+        {/* ENQUIRIES & SECRETARIAT REPLIES MODAL */}
+      {inquiriesModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0, 0, 0, 0.88)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            overflowY: "auto",
+          }}
+          onClick={() => setInquiriesModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "600px",
+              backgroundColor: "#0c0b16",
+              border: "1px solid rgba(168, 85, 247, 0.4)",
+              borderRadius: "10px",
+              padding: "28px",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.95), 0 0 32px rgba(168, 85, 247, 0.15)",
+              display: "grid",
+              gap: "20px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            {/* Modal Top Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "6px",
+                    backgroundColor: "rgba(168, 85, 247, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#c084fc",
+                  }}
+                >
+                  <MessageSquareText size={18} />
+                </div>
+                <div>
+                  <span className="section-kicker" style={{ color: "#c084fc" }}>
+                    SECRETARIAT HELPDESK
+                  </span>
+                  <h3 style={{ margin: "2px 0 0", color: "#fff", fontSize: "20px", fontWeight: 600 }}>
+                    My Enquiries &amp; Official Replies
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setInquiriesModalOpen(false)}
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: 0,
+                  color: "#aaa8ba",
+                  cursor: "pointer",
+                  padding: "6px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* List of Enquiries */}
+            {myQueries.length === 0 ? (
+              <div
+                style={{
+                  padding: "40px 20px",
+                  textAlign: "center",
+                  backgroundColor: "#08080f",
+                  borderRadius: "6px",
+                  border: "1px dashed rgba(255, 255, 255, 0.15)",
+                }}
+              >
+                <HelpCircle size={36} style={{ color: "#48435c", margin: "0 auto 12px" }} />
+                <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "16px" }}>No Enquiries Submitted</h4>
+                <p style={{ margin: "0 0 16px", color: "#8d8a9e", fontSize: "13px" }}>
+                  Have questions about registration, committee allocation, or delegations? Reach out to the Secretariat.
+                </p>
+                <Link
+                  href="/contact"
+                  className="primary-button"
+                  style={{ padding: "8px 16px", fontSize: "12px", display: "inline-block" }}
+                >
+                  Contact Secretariat Desk →
+                </Link>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "16px" }}>
+                {myQueries.map((q) => (
+                  <div
+                    key={q.id}
+                    style={{
+                      padding: "18px",
+                      backgroundColor: "#08080f",
+                      border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "6px",
+                      display: "grid",
+                      gap: "12px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" }}>
+                      <div>
+                        <h4 style={{ margin: "0 0 4px", color: "#fff", fontSize: "16px" }}>{q.subject}</h4>
+                        <span style={{ fontSize: "11px", color: "#8d8a9e" }}>
+                          Submitted: {new Date(q.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <span
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: "4px",
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          backgroundColor: q.status === "replied" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
+                          color: q.status === "replied" ? "#4ade80" : "#facc15",
+                          border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(234, 179, 8, 0.3)",
+                        }}
+                      >
+                        {q.status === "replied" ? "✓ SECRETARIAT REPLIED" : "⏳ PENDING REVIEW"}
+                      </span>
+                    </div>
+
+                    {/* Original Message */}
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        backgroundColor: "rgba(255, 255, 255, 0.02)",
+                        borderLeft: "2px solid #5a546d",
+                        borderRadius: "2px",
+                        fontSize: "13px",
+                        color: "#c2bed2",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      <strong style={{ display: "block", fontSize: "10px", textTransform: "uppercase", color: "#8d8a9e", marginBottom: "4px" }}>
+                        Your Message:
+                      </strong>
+                      {q.message}
+                    </div>
+
+                    {/* Secretariat Reply Box */}
+                    {q.reply_message ? (
+                      <div
+                        style={{
+                          padding: "12px 14px",
+                          backgroundColor: "rgba(34, 197, 94, 0.08)",
+                          borderLeft: "3px solid #22c55e",
+                          borderRadius: "4px",
+                          display: "grid",
+                          gap: "6px",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "11px", fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                            Official Secretariat Response:
+                          </span>
+                          {q.replied_at && (
+                            <span style={{ fontSize: "10px", color: "#8d8a9e" }}>
+                              {new Date(q.replied_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, fontSize: "13px", color: "#eefbee", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                          {q.reply_message}
+                        </p>
+                      </div>
+                    ) : (
+                      <p style={{ margin: 0, fontSize: "11px", color: "#8d8a9e", fontStyle: "italic" }}>
+                        Secretariat review is in progress. The official response will appear here once addressed.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => setInquiriesModalOpen(false)}
+              className="secondary-button"
+              style={{ width: "100%", padding: "10px", fontSize: "12px" }}
+            >
+              Close Helpdesk
+            </button>
+          </div>
+        </div>
+      )}
+
+    </ArkhamShell>
     )
   }
 
@@ -238,6 +448,44 @@ export default function DashboardPage() {
             >
               <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
               {refreshing ? "Updating..." : "Refresh"}
+            </button>
+
+            {/* Helpdesk Queries & Replies Icon Button */}
+            <button
+              onClick={() => setInquiriesModalOpen(true)}
+              className="secondary-button"
+              style={{
+                padding: "8px 14px",
+                fontSize: "12px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                backgroundColor: myQueries.some((q) => q.status === "replied")
+                  ? "rgba(34, 197, 94, 0.12)"
+                  : "transparent",
+                borderColor: myQueries.some((q) => q.status === "replied")
+                  ? "rgba(34, 197, 94, 0.45)"
+                  : "rgba(255, 255, 255, 0.2)",
+                color: myQueries.some((q) => q.status === "replied") ? "#4ade80" : "#fff",
+              }}
+              title="Secretariat Enquiry Replies"
+            >
+              <MessageSquareText size={14} />
+              <span>Enquiry Replies</span>
+              {myQueries.filter((q) => q.status === "replied").length > 0 && (
+                <span
+                  style={{
+                    backgroundColor: "#22c55e",
+                    color: "#000",
+                    borderRadius: "10px",
+                    padding: "1px 6px",
+                    fontSize: "10px",
+                    fontWeight: 800,
+                  }}
+                >
+                  {myQueries.filter((q) => q.status === "replied").length}
+                </span>
+              )}
             </button>
 
             {isAdmin && (
@@ -436,6 +684,51 @@ export default function DashboardPage() {
               </span>
               <div style={{ fontSize: "24px", fontWeight: 700, color: "#fff", marginTop: "2px" }}>
                 {notifications.length}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Helpdesk Inquiries & Replies */}
+          <div
+            onClick={() => setInquiriesModalOpen(true)}
+            style={{
+              backgroundColor: "#0d0c14",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "6px",
+              padding: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "16px",
+              cursor: "pointer",
+              transition: "border-color 0.2s ease",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(192, 132, 252, 0.5)")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = "rgba(255, 255, 255, 0.1)")}
+            title="Click to view enquiry replies"
+          >
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(168, 85, 247, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#c084fc",
+              }}
+            >
+              <MessageSquareText size={22} />
+            </div>
+            <div>
+              <span style={{ fontSize: "11px", color: "#8d8a9e", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                Helpdesk Replies
+              </span>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#fff", marginTop: "2px" }}>
+                {myQueries.filter((q) => q.status === "replied").length}
+                <span style={{ fontSize: "12px", color: "#8d8a9e", fontWeight: 400, marginLeft: "6px" }}>
+                  / {myQueries.length} Total
+                </span>
               </div>
             </div>
           </div>

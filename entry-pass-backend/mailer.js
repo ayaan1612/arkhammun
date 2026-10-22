@@ -35,18 +35,29 @@ function getTransporter() {
   if (!isSmtpConfigured()) return null;
 
   const host = (process.env.SMTP_HOST || "").trim();
-  const port = Number(process.env.SMTP_PORT || 587);
+  const port = Number(process.env.SMTP_PORT || 465);
   const secure = process.env.SMTP_SECURE === "true" || process.env.SMTP_SECURE === "1" || port === 465;
   const user = (process.env.SMTP_USER || "").trim();
-  const pass = process.env.SMTP_PASS || "";
+  const pass = (process.env.SMTP_PASS || "").replace(/\s+/g, "");
+
+  // If host is Gmail or user has @gmail.com address, use Nodemailer's built-in Gmail service configuration
+  if (host.toLowerCase().includes("gmail") || (!host && user.toLowerCase().endsWith("@gmail.com"))) {
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 25000,
+    });
+  }
 
   const config = {
     host,
     port,
     secure,
-    connectionTimeout: 4000,
-    greetingTimeout: 4000,
-    socketTimeout: 8000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 25000,
   };
 
   if (user || pass) {
@@ -254,7 +265,7 @@ function buildQueryReplyPayload({ query, replyMessage }) {
     "",
     "--- YOUR ORIGINAL ENQUIRY ---",
     `Subject: ${query.subject}`,
-    `Submitted on: ${new Date(query.created_at).toLocaleString()}`,
+    `Submitted on: ${new Date(query.createdAt || query.created_at || Date.now()).toLocaleString()}`,
     query.message,
     "",
     "Warm regards,",
@@ -317,13 +328,14 @@ function buildQueryReplyPayload({ query, replyMessage }) {
   };
 }
 
-async function sendQueryReplyMail({ query, replyMessage, transporter }) {
+async function sendQueryReplyMail({ query, replyMessage, reply, event, transporter }) {
+  const finalReply = (replyMessage || reply || "").trim();
   const mailTransporter = transporter || getTransporter();
   if (!mailTransporter) {
     throw new Error("SMTP server is not configured");
   }
 
-  const mailOptions = buildQueryReplyPayload({ query, replyMessage });
+  const mailOptions = buildQueryReplyPayload({ query, replyMessage: finalReply, event });
   const info = await mailTransporter.sendMail(mailOptions);
   return info;
 }
@@ -446,6 +458,7 @@ module.exports = {
   sendApprovalMail,
   buildQueryReplyPayload,
   sendQueryReplyMail,
+  sendReplyMail: sendQueryReplyMail,
   buildRejectionEmailPayload,
   sendRejectionMail,
 };

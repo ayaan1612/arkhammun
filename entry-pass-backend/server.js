@@ -1745,8 +1745,37 @@ app.get("/api/admin/queries", requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/my-queries (Fetch inquiries and replies for logged-in user)
+app.get("/api/my-queries", requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: "User not found." });
+
+    const userEmail = (user.email || "").toLowerCase().trim();
+    const rawQueries = await ContactQuery.find({ email: userEmail }).sort({ createdAt: -1 });
+
+    const queries = rawQueries.map((q) => ({
+      id: q._id ? q._id.toString() : String(q.id),
+      name: q.name,
+      email: q.email,
+      phone: q.phone,
+      subject: q.subject,
+      message: q.message,
+      status: q.status,
+      reply_message: q.reply_message,
+      replied_at: q.replied_at ? (q.replied_at.toISOString ? q.replied_at.toISOString() : q.replied_at) : null,
+      created_at: q.createdAt ? (q.createdAt.toISOString ? q.createdAt.toISOString() : q.createdAt) : new Date().toISOString(),
+    }));
+
+    res.json({ queries });
+  } catch (err) {
+    console.error("my-queries error:", err);
+    res.status(500).json({ error: "Failed to fetch queries." });
+  }
+});
+
 // POST /api/admin/queries/:id/reply
-app.post("/api/admin/queries/:id/reply", requireAdmin, async (req, res, next) => {
+app.post("/api/admin/queries/:id/reply", requireAdmin, async (req, res) => {
   try {
     const { reply } = req.body || {};
     if (!reply || !reply.trim()) {
@@ -1761,34 +1790,60 @@ app.post("/api/admin/queries/:id/reply", requireAdmin, async (req, res, next) =>
     query.replied_at = new Date();
     await query.save();
 
+    // Dual-write persistence for memoryStore and MongoDB Atlas
+    const qIdStr = query._id ? query._id.toString() : String(req.params.id);
+    const mIdx = memoryStore.queries.findIndex((q) => q._id && q._id.toString() === qIdStr);
+    if (mIdx >= 0) {
+      memoryStore.queries[mIdx].status = "replied";
+      memoryStore.queries[mIdx].reply_message = query.reply_message;
+      memoryStore.queries[mIdx].replied_at = query.replied_at;
+    }
+    if (isMongoConnected()) {
+      try {
+        await RealContactQuery.findByIdAndUpdate(qIdStr, {
+          status: "replied",
+          reply_message: query.reply_message,
+          replied_at: query.replied_at,
+        });
+      } catch (e) {
+        console.warn("[Reply] RealContactQuery update error:", e.message);
+      }
+    }
+
     // If there is a registered user with this email, send them a Notification in MongoDB
-    const user = await User.findOne({ email: query.email });
-    if (user) {
-      await Notification.create({
-        userId: user._id,
-        message: `Secretariat replied to your query "${query.subject}": ${reply.trim()}`,
-        type: "reply",
-        read: false,
-      });
+    try {
+      const user = await User.findOne({ email: query.email.toLowerCase().trim() });
+      if (user) {
+        await Notification.create({
+          userId: user._id,
+          message: `Secretariat replied to your enquiry "${query.subject}": ${reply.trim()}`,
+          type: "reply",
+          read: false,
+        });
+      }
+    } catch (notifErr) {
+      console.warn("[Reply] Notification create warning:", notifErr.message);
     }
 
     // Attempt email reply if configured
     let emailResult = { status: "not_configured" };
     if (mailer.isSmtpConfigured() && query.email) {
       try {
-        await mailer.sendReplyMail({
+        await mailer.sendQueryReplyMail({
           query: {
             id: query._id.toString(),
             name: query.name,
             email: query.email,
             subject: query.subject,
             message: query.message,
+            createdAt: query.createdAt || query.created_at,
           },
-          reply: reply.trim(),
+          replyMessage: reply.trim(),
           event: await getDefaultEventDetails(),
         });
         emailResult = { status: "sent" };
       } catch (err) {
+        console.warn("[Mailer] Query reply email error:", err.message);
         emailResult = { status: "failed", error: mailer.sanitizeEmailError(err) };
       }
     }
@@ -1799,7 +1854,8 @@ app.post("/api/admin/queries/:id/reply", requireAdmin, async (req, res, next) =>
       email: emailResult,
     });
   } catch (err) {
-    next(err);
+    console.error("Admin query reply error:", err);
+    res.status(500).json({ error: err?.message || "Failed to process query reply." });
   }
 });
 

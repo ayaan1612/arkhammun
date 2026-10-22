@@ -609,6 +609,12 @@ export const entryPassApi = {
     })
   },
 
+  getMyQueries(token: string) {
+    return request<{ queries: ContactQuery[] }>("/api/my-queries", {
+      headers: authHeaders(token),
+    })
+  },
+
   getAdminQueries(adminKey: string, status = "all") {
     return request<{ queries: ContactQuery[] }>(`/api/admin/queries?status=${encodeURIComponent(status)}`, {
       headers: authHeaders(adminKey),

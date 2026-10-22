@@ -602,6 +602,18 @@ const ContactQuery = {
     memoryStore.queries.push(doc);
     return cloneDoc(doc, "queries");
   },
+  async findByIdAndUpdate(id, update, opts = {}) {
+    if (isMongoConnected()) return RealContactQuery.findByIdAndUpdate(id, update, opts);
+    const targetId = id && id.toString ? id.toString() : String(id);
+    const idx = memoryStore.queries.findIndex((q) => q._id && q._id.toString() === targetId);
+    if (idx < 0) return null;
+    const current = memoryStore.queries[idx];
+    const updateFields = update.$set ? { ...update.$set } : { ...update };
+    delete updateFields.$set;
+    const updated = { ...current, ...updateFields };
+    memoryStore.queries[idx] = updated;
+    return cloneDoc(updated, "queries");
+  },
 };
 
 // -------------------------------------------------------------
