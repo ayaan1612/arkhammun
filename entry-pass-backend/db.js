@@ -1,3 +1,10 @@
+const dns = require("dns");
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+} catch (e) {
+  // Ignore in restricted environments
+}
+
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 

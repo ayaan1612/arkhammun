@@ -1,3 +1,10 @@
+const dns = require("node:dns");
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+} catch (e) {
+  // Ignore in restricted environments
+}
+
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
