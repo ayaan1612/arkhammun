@@ -246,10 +246,26 @@ function buildEmailPayload({ registration, event, qrBuffer }) {
 
 async function sendViaResend({ from, to, subject, text, html, attachments }) {
   const apiKey = (process.env.RESEND_API_KEY || "").trim();
-  const fromAddress = (process.env.SMTP_FROM || "").trim() || "Arkham MUN Secretariat <onboarding@resend.dev>";
+  
+  // Resend requires unquoted 'Name <email@example.com>' or plain 'email@example.com'.
+  // Default to onboarding@resend.dev unless a custom verified domain is provided in RESEND_FROM.
+  let sender = (process.env.RESEND_FROM || "").trim();
+  if (!sender) {
+    const customFrom = (process.env.SMTP_FROM || "").trim();
+    if (customFrom && !customFrom.includes("arkhammun.org") && !customFrom.includes("example.com")) {
+      sender = customFrom;
+    } else {
+      sender = "Arkham MUN <onboarding@resend.dev>";
+    }
+  }
+  // Strip any inner double or single quotes from the sender string:
+  sender = sender.replace(/["']/g, "").trim();
+
+  const recipient = Array.isArray(to) ? to[0] : to;
+
   const payload = {
-    from: fromAddress,
-    to: Array.isArray(to) ? to : [to],
+    from: sender,
+    to: [recipient],
     subject,
     text,
     html,
@@ -270,7 +286,15 @@ async function sendViaResend({ from, to, subject, text, html, attachments }) {
   });
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Resend email delivery failed (${response.status}): ${errText}`);
+    let message = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      message = parsed.message || errText;
+    } catch {}
+    if (message.includes("testing emails to your own email address") || message.includes("validation_error")) {
+      message = `Resend Test Mode: ${message}. Tip: In Resend test mode you can only send to your Resend account email. To send to all delegates, verify your domain at resend.com or use Brevo.`;
+    }
+    throw new Error(`Resend (${response.status}): ${message}`);
   }
   return await response.json();
 }

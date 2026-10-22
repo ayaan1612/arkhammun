@@ -480,12 +480,16 @@ export default function AdminPage() {
     setError("")
     try {
       const res = await entryPassApi.retryEmail(id, adminKey, force)
-      const msg = res.email.status === "sent" ? "Approval email sent successfully." : `Email status: ${res.email.status}`
-      await loadData(adminKey, msg, queueFilter)
+      if (res.email.status === "sent") {
+        setNotice("Entry pass QR email sent successfully to delegate!")
+      } else {
+        setError(`Email delivery failed: ${res.email.error || res.email.status}`)
+      }
+      await loadData(adminKey)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to send approval email.")
     } finally {
-      setRetryingId("")
+      setRetryingId(null)
     }
   }
 
@@ -1701,6 +1705,56 @@ export default function AdminPage() {
                       />
                     </div>
                   )}
+
+                  {/* Email Delivery Control & Status for Approved Delegate */}
+                  <div
+                    style={{
+                      marginTop: 14,
+                      paddingTop: 12,
+                      borderTop: "1px dashed rgba(255, 255, 255, 0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 12 }}>
+                      <span style={{ color: "#aaa8ba" }}>Pass Email: </span>
+                      {reg.email_status === "sent" ? (
+                        <strong style={{ color: "#4ade80", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Check size={13} /> Sent to {reg.email || reg.contact}
+                        </strong>
+                      ) : reg.email_status === "failed" ? (
+                        <span style={{ color: "#f87171", display: "inline-flex", alignItems: "center", gap: 4 }} title={reg.email_error || "Delivery failed"}>
+                          <CircleAlert size={13} /> Delivery Failed ({reg.email_error ? reg.email_error.slice(0, 50) + "..." : "Error"})
+                        </span>
+                      ) : (
+                        <span style={{ color: "#facc15" }}>⏳ Not sent yet</span>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      disabled={retryingId === reg.id}
+                      onClick={() => handleRetryEmail(reg.id, true)}
+                      style={{
+                        padding: "6px 14px",
+                        fontSize: 11,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        backgroundColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.06)" : "#e3262e",
+                        color: "#fff",
+                        borderColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.2)" : "#e3262e",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {retryingId === reg.id ? <LoaderCircle size={13} className={styles.spinner} /> : <Mail size={13} />}
+                      {reg.email_status === "sent" ? "Resend Pass to Email" : "Send Entry Pass to Email"}
+                    </button>
+                  </div>
                 </article>
               ))}
           </div>
