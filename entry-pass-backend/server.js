@@ -1333,7 +1333,7 @@ async function deliverApprovalEmail(registrationId) {
       width: 360,
     });
 
-    await mailer.sendApprovalMail({
+    const mailResult = await mailer.sendApprovalMail({
       registration: {
         id: reg._id.toString(),
         name: reg.name,
@@ -1352,6 +1352,7 @@ async function deliverApprovalEmail(registrationId) {
     reg.email_sent_at = sentAt;
     reg.email_error = null;
     await reg.save();
+    console.log(`[Approval Email] Sent to ${recipientEmail} for reg ${reg._id}:`, JSON.stringify(mailResult));
 
     return { status: "sent", sentAt: sentAt.toISOString() };
   } catch (err) {

@@ -326,6 +326,8 @@ async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
       content: Buffer.isBuffer(att.content) ? att.content.toString("base64") : Buffer.from(att.content).toString("base64"),
     }));
   }
+  const recipientEmail = Array.isArray(to) ? to[0] : to;
+  console.log(`[Brevo Email] Attempting send to ${recipientEmail} from ${senderEmail}...`);
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
@@ -337,9 +339,12 @@ async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
   });
   if (!response.ok) {
     const errText = await response.text();
+    console.error(`[Brevo Email Error] HTTP ${response.status}: ${errText}`);
     throw new Error(`Brevo email delivery failed (${response.status}): ${errText}`);
   }
-  return await response.json();
+  const result = await response.json();
+  console.log(`[Brevo Email Success] Sent to ${recipientEmail}. MessageId:`, result.messageId);
+  return result;
 }
 
 async function sendEmailPayload(mailOptions, transporter) {
