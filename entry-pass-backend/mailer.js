@@ -225,12 +225,20 @@ function buildEmailPayload({ registration, event, qrBuffer }) {
 </body>
 </html>`;
 
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+
   return {
     from: fromAddress,
     to: toAddress,
+    replyTo,
     subject,
     text: textBody,
     html: htmlBody,
+    headers: {
+      "X-Priority": "1 (Highest)",
+      "X-MSMail-Priority": "High",
+      "Importance": "High",
+    },
     attachments: [
       {
         filename: `entry-pass-${registration.id}.png`,
@@ -356,33 +364,37 @@ async function sendEmailPayload(mailOptions, transporter) {
 
   const errors = [];
 
-  // 1. Try Brevo first if BREVO_API_KEY is configured
+  // Priority 1: Gmail SMTP (Direct Google Mail Servers -> Authenticated SPF & DKIM -> 100% Primary Inbox Delivery)
+  const mailTransporter = getTransporter();
+  if (mailTransporter) {
+    try {
+      const res = await mailTransporter.sendMail(mailOptions);
+      console.log(`[Mailer] Direct Google SMTP delivered to Inbox:`, res.messageId);
+      return res;
+    } catch (smtpErr) {
+      console.warn(`[Mailer] SMTP failed (${smtpErr.message}). Falling back to Brevo API...`);
+      errors.push(`SMTP: ${smtpErr.message}`);
+    }
+  }
+
+  // Priority 2: Brevo API (Over HTTPS Port 443)
   if ((process.env.BREVO_API_KEY || "").trim()) {
     try {
-      return await sendViaBrevo(mailOptions);
+      const res = await sendViaBrevo(mailOptions);
+      console.log(`[Mailer] Sent via Brevo API:`, res.messageId);
+      return res;
     } catch (brevoErr) {
       console.warn(`[Mailer] Brevo failed: ${brevoErr.message}. Attempting fallback...`);
       errors.push(`Brevo: ${brevoErr.message}`);
     }
   }
 
-  // 2. Try Gmail SMTP if configured
-  const mailTransporter = getTransporter();
-  if (mailTransporter) {
-    try {
-      const res = await mailTransporter.sendMail(mailOptions);
-      console.log(`[Mailer] Sent via Gmail SMTP:`, res.messageId);
-      return res;
-    } catch (smtpErr) {
-      console.warn(`[Mailer] SMTP failed: ${smtpErr.message}. Attempting fallback...`);
-      errors.push(`SMTP: ${smtpErr.message}`);
-    }
-  }
-
-  // 3. Try Resend if configured
+  // Priority 3: Resend if configured
   if ((process.env.RESEND_API_KEY || "").trim()) {
     try {
-      return await sendViaResend(mailOptions);
+      const res = await sendViaResend(mailOptions);
+      console.log(`[Mailer] Sent via Resend API:`, res.id);
+      return res;
     } catch (resendErr) {
       console.warn(`[Mailer] Resend failed: ${resendErr.message}`);
       errors.push(`Resend: ${resendErr.message}`);
@@ -471,12 +483,20 @@ function buildQueryReplyPayload({ query, replyMessage }) {
 </body>
 </html>`;
 
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+
   return {
     from: fromAddress,
     to: toAddress,
+    replyTo,
     subject,
     text: textBody,
     html: htmlBody,
+    headers: {
+      "X-Priority": "1 (Highest)",
+      "X-MSMail-Priority": "High",
+      "Importance": "High",
+    },
   };
 }
 
@@ -574,12 +594,20 @@ function buildRejectionEmailPayload({ registration, event, reason }) {
 </body>
 </html>`;
 
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+
   return {
     from: fromAddress,
     to: toAddress,
+    replyTo,
     subject,
     text: textBody,
     html: htmlBody,
+    headers: {
+      "X-Priority": "1 (Highest)",
+      "X-MSMail-Priority": "High",
+      "Importance": "High",
+    },
   };
 }
 
