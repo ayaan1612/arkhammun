@@ -306,15 +306,18 @@ async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
   const apiKey = (process.env.BREVO_API_KEY || "").trim();
   const senderEmail = (
     process.env.BREVO_SENDER_EMAIL ||
-    process.env.SMTP_USER ||
     process.env.ADMIN_EMAIL ||
+    process.env.SMTP_USER ||
     "arkhammun2026@gmail.com"
   ).replace(/["']/g, "").trim();
   const senderName = (process.env.BREVO_SENDER_NAME || "Arkham MUN Secretariat").trim();
 
+  const recipientEmail = Array.isArray(to) ? to[0] : to;
+  console.log(`[Brevo Email] Attempting send to ${recipientEmail} from ${senderEmail}...`);
+
   const payload = {
     sender: { name: senderName, email: senderEmail },
-    to: [{ email: Array.isArray(to) ? to[0] : to }],
+    to: [{ email: recipientEmail }],
     replyTo: { email: senderEmail, name: senderName },
     subject,
     textContent: text,
@@ -326,8 +329,6 @@ async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
       content: Buffer.isBuffer(att.content) ? att.content.toString("base64") : Buffer.from(att.content).toString("base64"),
     }));
   }
-  const recipientEmail = Array.isArray(to) ? to[0] : to;
-  console.log(`[Brevo Email] Attempting send to ${recipientEmail} from ${senderEmail}...`);
   const response = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
@@ -352,25 +353,47 @@ async function sendEmailPayload(mailOptions, transporter) {
     const t = transporter || customTransporter;
     return await t.sendMail(mailOptions);
   }
-  // Try Brevo first if configured (Brevo can send to any email with no test-mode sandbox)
+
+  const errors = [];
+
+  // 1. Try Brevo first if BREVO_API_KEY is configured
   if ((process.env.BREVO_API_KEY || "").trim()) {
     try {
       return await sendViaBrevo(mailOptions);
     } catch (brevoErr) {
-      if ((process.env.RESEND_API_KEY || "").trim()) {
-        return await sendViaResend(mailOptions);
-      }
-      throw brevoErr;
+      console.warn(`[Mailer] Brevo failed: ${brevoErr.message}. Attempting fallback...`);
+      errors.push(`Brevo: ${brevoErr.message}`);
     }
   }
-  if ((process.env.RESEND_API_KEY || "").trim()) {
-    return await sendViaResend(mailOptions);
-  }
+
+  // 2. Try Gmail SMTP if configured
   const mailTransporter = getTransporter();
-  if (!mailTransporter) {
-    throw new Error("SMTP server is not configured");
+  if (mailTransporter) {
+    try {
+      const res = await mailTransporter.sendMail(mailOptions);
+      console.log(`[Mailer] Sent via Gmail SMTP:`, res.messageId);
+      return res;
+    } catch (smtpErr) {
+      console.warn(`[Mailer] SMTP failed: ${smtpErr.message}. Attempting fallback...`);
+      errors.push(`SMTP: ${smtpErr.message}`);
+    }
   }
-  return await mailTransporter.sendMail(mailOptions);
+
+  // 3. Try Resend if configured
+  if ((process.env.RESEND_API_KEY || "").trim()) {
+    try {
+      return await sendViaResend(mailOptions);
+    } catch (resendErr) {
+      console.warn(`[Mailer] Resend failed: ${resendErr.message}`);
+      errors.push(`Resend: ${resendErr.message}`);
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Email dispatch failed across all providers: ${errors.join(" | ")}`);
+  }
+
+  throw new Error("SMTP server is not configured and no email API keys were found");
 }
 
 async function sendApprovalMail({ registration, event, qrBuffer, transporter }) {
