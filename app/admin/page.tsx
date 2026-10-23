@@ -24,7 +24,6 @@ import {
   Plus,
   QrCode,
   Download,
-  Share2,
   RefreshCw,
   Search,
   Send,
@@ -3394,49 +3393,28 @@ export default function AdminPage() {
                     <Download size={15} /> Download Pass Image (PNG)
                   </button>
 
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <a
-                      href={`https://api.whatsapp.com/send?phone=${(adminPassModalReg.phone || "").replace(/[^0-9]/g, "")}&text=${encodeURIComponent(
-                        `Dear ${adminPassModalReg.name}, your registration for Arkham MUN 2026 is APPROVED! Your Registration ID is ${adminPassModalReg.id}. View and download your official entry pass on your dashboard: https://arkhammun.vercel.app/dashboard`
-                      )}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={styles.secondaryButton}
-                      style={{
-                        flex: 1,
-                        padding: 8,
-                        fontSize: 11,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                        color: "#25D366",
-                        borderColor: "rgba(37, 211, 102, 0.4)",
-                        textDecoration: "none",
-                      }}
-                    >
-                      <Share2 size={13} /> Share on WhatsApp
-                    </a>
-
-                    <button
-                      type="button"
-                      disabled={retryingId === adminPassModalReg.id}
-                      onClick={() => handleRetryEmail(adminPassModalReg.id, true)}
-                      className={styles.secondaryButton}
-                      style={{
-                        flex: 1,
-                        padding: 8,
-                        fontSize: 11,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                      }}
-                    >
-                      {retryingId === adminPassModalReg.id ? <LoaderCircle size={13} className={styles.spinner} /> : <Mail size={13} />}
-                      Email Pass
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    disabled={retryingId === adminPassModalReg.id}
+                    onClick={() => handleRetryEmail(adminPassModalReg.id, true)}
+                    className={styles.secondaryButton}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      fontSize: 12,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      backgroundColor: "#e3262e",
+                      borderColor: "#e3262e",
+                      color: "#fff",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {retryingId === adminPassModalReg.id ? <LoaderCircle size={14} className={styles.spinner} /> : <Mail size={14} />}
+                    Send Entry Pass to Delegate's Email ({adminPassModalReg.email || adminPassModalReg.contact})
+                  </button>
                 </div>
               </>
             ) : (
@@ -3512,7 +3490,7 @@ export default function AdminPage() {
                 <li>Go to <strong>SMTP &amp; API</strong> -&gt; <strong>Generate API Key</strong>.</li>
                 <li>In your <strong>Render Dashboard</strong> -&gt; <strong>Environment</strong>, add <code>BREVO_API_KEY</code>.</li>
               </ol>
-              Alternatively, you can click <strong>View Pass QR</strong> to download the pass image or share it directly on WhatsApp with the delegate!
+              Alternatively, you can click <strong>View Pass QR</strong> to preview the pass or download the official pass image.
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
