@@ -877,17 +877,19 @@ export default function AdminPage() {
     }
   }
 
-  async function handleConfirmEntry(payloadToAdmit: string) {
-    if (!payloadToAdmit || admitting) return
+  async function handleConfirmEntry(payloadToAdmit?: string) {
+    const targetPayload = (payloadToAdmit || scannedPayload || scannedRegistration?.id || "").trim()
+    if (!targetPayload || admitting) return
     setAdmitting(true)
     setError("")
     try {
-      const res = await entryPassApi.verifyEntry(payloadToAdmit, adminKey, true)
+      const res = await entryPassApi.verifyEntry(targetPayload, adminKey, true)
       if (res.valid) {
-        const checkinTime = res.registration.checkedInAt || new Date().toISOString()
-        setNotice(`✓ ENTRY GRANTED: ${res.registration.name} has been admitted and checked in! Pass is now expired.`)
+        const delegateName = res.registration?.name || scannedRegistration?.name || "Delegate"
+        const checkinTime = res.registration?.checkedInAt || new Date().toISOString()
+        setNotice(`✓ ENTRY GRANTED: ${delegateName} has been admitted and checked in! Pass is now expired.`)
         setAllApprovedRegistrations((prev) =>
-          prev.map((item) => (item.id === res.registration.id ? { ...item, used_at: checkinTime } : item))
+          prev.map((item) => (item.id === (res.registration?.id || scannedRegistration?.id) ? { ...item, used_at: checkinTime } : item))
         )
         setScannedRegistration(null)
         setScannedPayload("")
@@ -2297,7 +2299,7 @@ export default function AdminPage() {
                     </strong>
                     <span style={{ fontSize: 12, color: "#aaa8ba" }}>
                       {scannedRegistration.checkedInAt
-                        ? `Entry was already granted at ${new Date(scannedRegistration.checkedInAt).toLocaleTimeString()} on ${new Date(scannedRegistration.checkedInAt).toLocaleDateString()}. Repeat entry is strictly rejected.`
+                        ? "Entry was already granted on this pass. Repeat entry is strictly rejected."
                         : "Cryptographic signature verified. Review delegate information below and click Grant Venue Entry."}
                     </span>
                   </div>
@@ -2346,7 +2348,7 @@ export default function AdminPage() {
                     boxShadow: "0 6px 18px rgba(0,0,0,0.4)",
                   }}
                 >
-                  {scannedRegistration.name.charAt(0).toUpperCase()}
+                  {(scannedRegistration.name || "Delegate").charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1 }}>
                   <h2 style={{ margin: "0 0 6px", fontSize: 24, color: "#fff", fontWeight: 700 }}>
@@ -2526,7 +2528,7 @@ export default function AdminPage() {
                   <>
                     <button
                       type="button"
-                      onClick={() => handleConfirmEntry(scannedPayload)}
+                      onClick={() => handleConfirmEntry(scannedPayload || scannedRegistration.id)}
                       disabled={admitting}
                       style={{
                         width: "100%",
