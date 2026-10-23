@@ -1669,6 +1669,7 @@ app.post("/api/entry/verify", requireAdmin, async (req, res) => {
         utr: reg.utr,
         paymentStatus: reg.status,
         checkedInAt: reg.used_at ? reg.used_at.toISOString() : null,
+        screenshot_path: reg.screenshot_path || null,
         event: eventDetails,
       },
     });

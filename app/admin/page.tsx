@@ -184,8 +184,6 @@ export default function AdminPage() {
   const [replyBusy, setReplyBusy] = useState(false)
 
   // Venue scanner state (Admin only)
-  const [manualPayload, setManualPayload] = useState("")
-  const [manualBusy, setManualBusy] = useState(false)
   const [scannedRegistration, setScannedRegistration] = useState<ScannedRegistration | null>(null)
   const [scannedPayload, setScannedPayload] = useState("")
   const [admitting, setAdmitting] = useState(false)
@@ -820,77 +818,87 @@ export default function AdminPage() {
     }
   }
 
-  // Scanner logic: immediately check in candidate & expire pass on camera scan
+  // Scanner logic: scans QR, turns off camera, and displays full-page delegate info review
   async function verifyPass(payload: string) {
     if (scanBusyRef.current) return
     scanBusyRef.current = true
-    setScanState({ type: "idle", message: "Scanning QR & verifying Secretariat cryptographic signature…" })
+
+    // Immediately stop camera upon scanning QR
+    setCameraOn(false)
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+
+    setScanState({ type: "idle", message: "Verifying pass cryptographic signature…" })
+
     try {
-      // Auto-admit candidate upon scan (admit: true) so pass is immediately checked in and expired
-      const result = await entryPassApi.verifyEntry(payload, adminKey, true)
+      // Check pass validity without admitting yet (admit: false)
+      const result = await entryPassApi.verifyEntry(payload, adminKey, false)
       if (result.valid) {
         setScannedPayload(payload)
         setScannedRegistration(result.registration)
-        const checkinTime = result.registration.checkedInAt || new Date().toISOString()
+        const isAlreadyUsed = Boolean(result.registration.checkedInAt || result.alreadyUsed)
 
-        if (result.alreadyUsed && !result.newlyAdmitted) {
-          // Pass was already used on an earlier scan
+        if (isAlreadyUsed) {
           setScanState({
             type: "used",
-            message: `⚠️ QR EXPIRED & ALREADY USED · ${result.registration.name} was admitted earlier at ${new Date(
-              checkinTime
-            ).toLocaleTimeString()}. Entry rejected for repeat scan.`,
+            message: `⚠️ QR EXPIRED & ALREADY USED · Admitted earlier at ${new Date(
+              result.registration.checkedInAt || Date.now()
+            ).toLocaleTimeString()}.`,
           })
         } else {
-          // Pass was just admitted and expired now
           setScanState({
             type: "valid",
-            message: `✓ ENTRY CLEARED & QR EXPIRED · ${result.registration.name} admitted at ${new Date(
-              checkinTime
-            ).toLocaleTimeString()}! Checked in on website.`,
+            message: `✓ VALID ENTRY PASS · Review details below and click Grant Entry.`,
           })
-          setNotice(`Delegate ${result.registration.name} checked in successfully. Entry QR is now expired.`)
-          setAllApprovedRegistrations((prev) =>
-            prev.map((item) => (item.id === result.registration.id ? { ...item, used_at: checkinTime } : item))
-          )
         }
       } else {
-        setScanState({ type: "invalid", message: "INVALID PASS · This is not a valid signed entry QR." })
+        setScanState({ type: "invalid", message: "INVALID PASS · This is not a valid signed Arkham MUN entry QR." })
+        setTimeout(() => {
+          setScanState({ type: "idle", message: "Point camera at delegate QR code." })
+          setCameraOn(true)
+          scanBusyRef.current = false
+        }, 2500)
       }
     } catch (requestError) {
-      if (requestError instanceof EntryPassApiError && requestError.status === 409 && requestError.body.reason === "already_used") {
-        setScanState({
-          type: "used",
-          message: `ALREADY USED · ${String(requestError.body.name || "This pass")} was admitted earlier.`,
-        })
-      } else {
-        setScanState({
-          type: "error",
-          message: requestError instanceof Error ? requestError.message : "Unable to verify this pass.",
-        })
-      }
+      setScanState({
+        type: "error",
+        message: requestError instanceof Error ? requestError.message : "Unable to verify this pass.",
+      })
+      setTimeout(() => {
+        setScanState({ type: "idle", message: "Point camera at delegate QR code." })
+        setCameraOn(true)
+        scanBusyRef.current = false
+      }, 2500)
     } finally {
       scanBusyRef.current = false
     }
   }
 
   async function handleConfirmEntry(payloadToAdmit: string) {
-    if (!payloadToAdmit) return
+    if (!payloadToAdmit || admitting) return
     setAdmitting(true)
     setError("")
     try {
       const res = await entryPassApi.verifyEntry(payloadToAdmit, adminKey, true)
       if (res.valid) {
-        setScannedRegistration(res.registration)
         const checkinTime = res.registration.checkedInAt || new Date().toISOString()
-        setScanState({
-          type: "valid",
-          message: `ENTRY CLEARED · ${res.registration.name} admitted at ${new Date(checkinTime).toLocaleTimeString()}!`,
-        })
-        setNotice(`Delegate ${res.registration.name} checked in successfully.`)
+        setNotice(`✓ ENTRY GRANTED: ${res.registration.name} has been admitted and checked in! Pass is now expired.`)
         setAllApprovedRegistrations((prev) =>
           prev.map((item) => (item.id === res.registration.id ? { ...item, used_at: checkinTime } : item))
         )
+        setScannedRegistration(null)
+        setScannedPayload("")
+        previousPayloadRef.current = null
+        setScanState({ type: "idle", message: "Point camera at delegate QR code." })
+
+        // Automatically re-open the camera scanner for the next delegate in line
+        setTimeout(() => {
+          setCameraOn(true)
+        }, 400)
+      } else {
+        setError("Could not grant entry. The pass may be invalid or already consumed.")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to admit delegate.")
@@ -899,18 +907,20 @@ export default function AdminPage() {
     }
   }
 
+  function handleCancelOrNext() {
+    setScannedRegistration(null)
+    setScannedPayload("")
+    previousPayloadRef.current = null
+    setScanState({ type: "idle", message: "Point camera at delegate QR code." })
+    setTimeout(() => {
+      setCameraOn(true)
+    }, 300)
+  }
+
   const verifyPassRef = useRef(verifyPass)
   useEffect(() => {
     verifyPassRef.current = verifyPass
   })
-
-  async function handleManualVerify(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!manualPayload.trim()) return
-    setManualBusy(true)
-    await verifyPass(manualPayload)
-    setManualBusy(false)
-  }
 
   useEffect(() => {
     if (!cameraOn) return
@@ -1178,7 +1188,11 @@ export default function AdminPage() {
 
         <button
           className={activeView === "scanner" ? styles.activeTab : ""}
-          onClick={() => setActiveView("scanner")}
+          onClick={() => {
+            setActiveView("scanner")
+            setScannedRegistration(null)
+            setCameraOn(true)
+          }}
           type="button"
         >
           <Camera size={15} /> Venue Scanner
@@ -1375,7 +1389,14 @@ export default function AdminPage() {
             <button className={styles.secondaryButton} onClick={() => setActiveView("announcements")}>
               Dispatch Announcement
             </button>
-            <button className={styles.secondaryButton} onClick={() => setActiveView("scanner")}>
+            <button
+              className={styles.secondaryButton}
+              onClick={() => {
+                setActiveView("scanner")
+                setScannedRegistration(null)
+                setCameraOn(true)
+              }}
+            >
               Open Venue Gate Scanner
             </button>
           </div>
@@ -2221,98 +2242,458 @@ export default function AdminPage() {
       {/* VIEW 6: VENUE GATE SCANNER */}
       {activeView === "scanner" && (
         <section className={styles.scannerPanel}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <span className={styles.kicker}>SECURITY CHECKPOINT</span>
-              <h2>Venue Entrance QR Scanner</h2>
-              <p>Scan cryptographically signed passes presented on delegate dashboards.</p>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                className={cameraOn ? styles.rejectButton : styles.primaryButton}
-                onClick={() => setCameraOn(!cameraOn)}
-                type="button"
-              >
-                <Camera size={14} /> {cameraOn ? "Turn Camera Off" : "Enable Entrance Camera"}
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.scannerGrid}>
-            <div className={styles.videoFrame}>
-              <video ref={videoRef} playsInline muted />
-              <canvas ref={canvasRef} className={styles.hiddenCanvas} />
-              {!cameraOn && (
-                <div className={styles.cameraPlaceholder}>
-                  <Camera size={44} />
-                  <span>Camera paused. Click &quot;Enable Entrance Camera&quot; above.</span>
-                </div>
-              )}
-            </div>
-
-            <div className={styles.scanControls}>
+          {scannedRegistration ? (
+            /* FULL-PAGE DELEGATE ADMISSION VERIFICATION SCREEN */
+            <div
+              style={{
+                backgroundColor: "#0d0b18",
+                border: scannedRegistration.checkedInAt
+                  ? "1px solid rgba(239, 68, 68, 0.5)"
+                  : "1px solid rgba(34, 197, 94, 0.5)",
+                borderRadius: 12,
+                padding: "26px 30px",
+                display: "grid",
+                gap: 22,
+                boxShadow: scannedRegistration.checkedInAt
+                  ? "0 20px 50px rgba(239, 68, 68, 0.2)"
+                  : "0 20px 50px rgba(34, 197, 94, 0.2)",
+              }}
+            >
+              {/* Top Status Header */}
               <div
-                className={`${styles.scanResult} ${
-                  scanState.type === "valid" ? styles.valid : scanState.type === "used" ? styles.used : ""
-                }`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "14px 20px",
+                  borderRadius: 8,
+                  backgroundColor: scannedRegistration.checkedInAt
+                    ? "rgba(239, 68, 68, 0.15)"
+                    : "rgba(34, 197, 94, 0.15)",
+                  border: scannedRegistration.checkedInAt
+                    ? "1px solid #ef4444"
+                    : "1px solid #22c55e",
+                }}
               >
-                {scanState.message}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {scannedRegistration.checkedInAt ? (
+                    <CircleAlert size={26} color="#ef4444" />
+                  ) : (
+                    <CheckCircle2 size={26} color="#22c55e" />
+                  )}
+                  <div>
+                    <strong
+                      style={{
+                        fontSize: 16,
+                        color: scannedRegistration.checkedInAt ? "#fca5a5" : "#86efac",
+                        display: "block",
+                      }}
+                    >
+                      {scannedRegistration.checkedInAt
+                        ? "⛔ PASS EXPIRED / ALREADY ADMITTED"
+                        : "✓ VALID ENTRY PASS · READY FOR GATE ADMISSION"}
+                    </strong>
+                    <span style={{ fontSize: 12, color: "#aaa8ba" }}>
+                      {scannedRegistration.checkedInAt
+                        ? `Entry was already granted at ${new Date(scannedRegistration.checkedInAt).toLocaleTimeString()} on ${new Date(scannedRegistration.checkedInAt).toLocaleDateString()}. Repeat entry is strictly rejected.`
+                        : "Cryptographic signature verified. Review delegate information below and click Grant Venue Entry."}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCancelOrNext}
+                  style={{
+                    background: "rgba(255, 255, 255, 0.08)",
+                    border: 0,
+                    color: "#aaa8ba",
+                    cursor: "pointer",
+                    padding: 6,
+                    borderRadius: "50%",
+                    display: "flex",
+                  }}
+                  title="Close & Scan Next"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              {scannedRegistration && (
+              {/* Delegate Profile Card */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 18,
+                  paddingBottom: 18,
+                  borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                }}
+              >
                 <div
                   style={{
-                    padding: 16,
-                    background: "rgba(6, 6, 15, 0.75)",
-                    border: "1px solid rgba(255, 255, 255, 0.15)",
-                    borderRadius: 6,
+                    width: 60,
+                    height: 60,
+                    borderRadius: "50%",
+                    backgroundColor: scannedRegistration.checkedInAt ? "#ef4444" : "#22c55e",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: 24,
+                    fontWeight: 700,
+                    boxShadow: "0 6px 18px rgba(0,0,0,0.4)",
                   }}
                 >
-                  <h4 style={{ margin: "0 0 6px", color: "#fff" }}>{scannedRegistration.name}</h4>
-                  <p style={{ margin: 0, fontSize: 12, color: "#aaa8ba" }}>
-                    Committee: <strong>{scannedRegistration.committee || "General"}</strong>
-                    <br />
-                    Institution: {scannedRegistration.organization || "Independent"}
-                  </p>
+                  {scannedRegistration.name.charAt(0).toUpperCase()}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ margin: "0 0 6px", fontSize: 24, color: "#fff", fontWeight: 700 }}>
+                    {scannedRegistration.name}
+                  </h2>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <span
+                      style={{
+                        fontFamily: "monospace",
+                        fontSize: 12,
+                        backgroundColor: "rgba(255, 255, 255, 0.08)",
+                        padding: "3px 10px",
+                        borderRadius: 4,
+                        color: "#d1d5db",
+                      }}
+                    >
+                      Registration ID: {scannedRegistration.id}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        backgroundColor: "rgba(227, 38, 46, 0.2)",
+                        color: "#ff8289",
+                        padding: "3px 10px",
+                        borderRadius: 4,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {scannedRegistration.committee || "Delegate"}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-                  <button
-                    className={styles.primaryButton}
-                    onClick={() => handleConfirmEntry(scannedPayload)}
-                    disabled={admitting || Boolean(scannedRegistration.checkedInAt)}
-                    style={{ width: "100%", marginTop: 12 }}
-                  >
-                    {scannedRegistration.checkedInAt ? "✓ Already Checked In" : "Confirm Venue Entry"}
-                  </button>
+              {/* Comprehensive Details Grid */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+                  gap: 16,
+                }}
+              >
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8f8b9e", display: "block", marginBottom: 4 }}>
+                    Committee / Council
+                  </span>
+                  <strong style={{ fontSize: 14, color: "#fff" }}>
+                    {scannedRegistration.committee || "General Delegate"}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8f8b9e", display: "block", marginBottom: 4 }}>
+                    School / Institution
+                  </span>
+                  <strong style={{ fontSize: 14, color: "#fff" }}>
+                    {scannedRegistration.organization || "Independent Delegate"}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8f8b9e", display: "block", marginBottom: 4 }}>
+                    Email Address
+                  </span>
+                  <strong style={{ fontSize: 13, color: "#fff", wordBreak: "break-all" }}>
+                    {scannedRegistration.email}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8f8b9e", display: "block", marginBottom: 4 }}>
+                    Phone Number
+                  </span>
+                  <strong style={{ fontSize: 14, color: "#fff" }}>
+                    {scannedRegistration.phone || "Not provided"}
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8f8b9e", display: "block", marginBottom: 4 }}>
+                    Fee &amp; Payment Reference
+                  </span>
+                  <strong style={{ fontSize: 13, color: "#fff" }}>
+                    ₹ {scannedRegistration.amount || 2300} · <span style={{ fontFamily: "monospace", color: "#a5b4fc" }}>UTR: {scannedRegistration.utr || "Verified"}</span>
+                  </strong>
+                </div>
+
+                <div
+                  style={{
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: 14,
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "#8f8b9e", display: "block", marginBottom: 4 }}>
+                    Venue &amp; Dates
+                  </span>
+                  <strong style={{ fontSize: 13, color: "#fff" }}>
+                    {scannedRegistration.event?.venue || "Arkham Assembly Hall, New Delhi"}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Verified Payment Proof Thumbnail (if present) */}
+              {scannedRegistration.screenshot_path && (
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    background: "rgba(255, 255, 255, 0.02)",
+                    borderRadius: 8,
+                    border: "1px solid rgba(255, 255, 255, 0.06)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                  }}
+                >
+                  <img
+                    src={scannedRegistration.screenshot_path}
+                    alt="Payment Proof"
+                    onClick={() => setScreenshotModalUrl(scannedRegistration.screenshot_path || null)}
+                    style={{
+                      width: 50,
+                      height: 50,
+                      objectFit: "cover",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                    }}
+                    title="Click to enlarge"
+                  />
+                  <div style={{ fontSize: 12 }}>
+                    <span style={{ color: "#fff", display: "block", fontWeight: 600 }}>Verified Payment Screenshot</span>
+                    <span style={{ color: "#8f8b9e" }}>Click thumbnail to view full payment verification proof</span>
+                  </div>
                 </div>
               )}
 
-              <form onSubmit={handleManualVerify} style={{ marginTop: 12 }}>
-                <input
-                  type="text"
-                  placeholder="Paste payload manually…"
-                  value={manualPayload}
-                  onChange={(e) => setManualPayload(e.target.value)}
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: 10,
-                    background: "#080808",
-                    border: "1px solid #454052",
-                    color: "#fff",
-                    borderRadius: 4,
-                  }}
-                />
-                <button
-                  className={styles.secondaryButton}
-                  type="submit"
-                  disabled={manualBusy}
-                  style={{ width: "100%", marginTop: 8 }}
-                >
-                  Verify Payload
-                </button>
-              </form>
+              {/* Bottom Admission Actions */}
+              <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
+                {!scannedRegistration.checkedInAt ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmEntry(scannedPayload)}
+                      disabled={admitting}
+                      style={{
+                        width: "100%",
+                        padding: "18px 24px",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        letterSpacing: "0.04em",
+                        backgroundColor: "#22c55e",
+                        color: "#052e16",
+                        border: "none",
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                        boxShadow: "0 8px 24px rgba(34, 197, 94, 0.45)",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      {admitting ? <LoaderCircle size={22} className={styles.spinner} /> : <CheckCircle2 size={22} />}
+                      GRANT VENUE ENTRY &amp; CHECK IN
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCancelOrNext}
+                      disabled={admitting}
+                      style={{
+                        width: "100%",
+                        padding: "11px 16px",
+                        fontSize: 13,
+                        color: "#aaa8ba",
+                        background: "transparent",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Cancel &amp; Scan Next Delegate
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCancelOrNext}
+                    style={{
+                      width: "100%",
+                      padding: "16px 20px",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      backgroundColor: "#e3262e",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <X size={18} /> Pass Expired · Scan Next Delegate
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* LIVE GATE SCANNER VIEWPORT */
+            <div>
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span className={styles.kicker}>GATE SECURITY CHECKPOINT</span>
+                  <h2>Venue Entrance Scanner</h2>
+                  <p>Point camera directly at a delegate&apos;s Entry QR code to verify identity &amp; admission.</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      padding: "6px 14px",
+                      borderRadius: 20,
+                      background: "rgba(34, 197, 94, 0.1)",
+                      border: "1px solid rgba(34, 197, 94, 0.3)",
+                      color: "#86efac",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Checked In: {checkedInCount} / {allApprovedRegistrations.length}
+                  </div>
+                  <button
+                    className={cameraOn ? styles.rejectButton : styles.primaryButton}
+                    onClick={() => setCameraOn(!cameraOn)}
+                    type="button"
+                  >
+                    <Camera size={14} /> {cameraOn ? "Turn Camera Off" : "Enable Entrance Camera"}
+                  </button>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  maxWidth: 620,
+                  margin: "18px auto 0",
+                  display: "grid",
+                  gap: 16,
+                }}
+              >
+                <div className={styles.videoFrame} style={{ minHeight: 380, borderRadius: 10 }}>
+                  <video ref={videoRef} playsInline muted style={{ width: "100%", borderRadius: 10 }} />
+                  <canvas ref={canvasRef} className={styles.hiddenCanvas} />
+                  {!cameraOn ? (
+                    <div className={styles.cameraPlaceholder}>
+                      <Camera size={52} />
+                      <span style={{ fontSize: 14, color: "#d1d5db", fontWeight: 500 }}>Camera is Paused</span>
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => setCameraOn(true)}
+                        style={{ marginTop: 8 }}
+                      >
+                        <Camera size={14} /> Enable Entrance Camera
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 16,
+                        left: 16,
+                        right: 16,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <span
+                        style={{
+                          backgroundColor: "rgba(0,0,0,0.75)",
+                          color: "#22c55e",
+                          padding: "4px 12px",
+                          borderRadius: 20,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                          border: "1px solid rgba(34,197,94,0.4)",
+                        }}
+                      >
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#22c55e", display: "inline-block" }} />
+                        Scanner Live · Ready
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  className={`${styles.scanResult} ${
+                    scanState.type === "valid" ? styles.valid : scanState.type === "used" ? styles.used : ""
+                  }`}
+                  style={{ textAlign: "center", justifyContent: "center" }}
+                >
+                  {scanState.message}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       )}
 

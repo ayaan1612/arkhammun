@@ -203,6 +203,7 @@ export type ScannedRegistration = {
   utr: string | null
   paymentStatus: RegistrationStatus
   checkedInAt: string | null
+  screenshot_path?: string | null
   event: EventDetails
 }
 
