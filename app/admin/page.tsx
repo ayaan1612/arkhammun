@@ -463,14 +463,15 @@ export default function AdminPage() {
     setError("")
     try {
       const res = await entryPassApi.approveRegistration(id, adminKey)
-      let msg = "Payment approved and signed entry pass issued."
+      let msg = "✓ Payment approved and signed entry pass issued."
       if (res.email?.status === "sent") {
-        msg = "Payment approved and entry pass emailed to delegate."
+        msg = "✓ Payment approved! Entry pass QR has been automatically emailed to the delegate."
       } else if (res.email?.status === "failed") {
-        msg = `Payment approved, but email delivery failed: ${res.email.error || "delivery error"}. You can retry from Approved list.`
+        msg = `✓ Payment approved! Pass issued to dashboard (auto-email note: ${res.email.error || "delivery error"}).`
       } else if (res.email?.status === "not_configured") {
-        msg = "Payment approved. Pass is now available on delegate's dashboard."
+        msg = "✓ Payment approved. Pass is now available on delegate's dashboard."
       }
+      setNotice(msg)
       await loadData(adminKey, msg, queueFilter)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to approve registration.")
@@ -1775,10 +1776,10 @@ export default function AdminPage() {
                     }}
                   >
                     <div style={{ fontSize: 12 }}>
-                      <span style={{ color: "#aaa8ba" }}>Pass Email: </span>
+                      <span style={{ color: "#aaa8ba" }}>Email Delivery: </span>
                       {reg.email_status === "sent" ? (
                         <strong style={{ color: "#4ade80", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Check size={13} /> Sent to {reg.email || reg.contact}
+                          <Check size={13} /> Automatically Sent to {reg.email || reg.contact}
                         </strong>
                       ) : reg.email_status === "failed" ? (
                         <button
@@ -1841,9 +1842,10 @@ export default function AdminPage() {
                           borderColor: reg.email_status === "sent" ? "rgba(255, 255, 255, 0.2)" : "#e3262e",
                           cursor: "pointer",
                         }}
+                        title="Pass is emailed automatically on approval. Click to send another copy."
                       >
                         {retryingId === reg.id ? <LoaderCircle size={13} className={styles.spinner} /> : <Mail size={13} />}
-                        {reg.email_status === "sent" ? "Resend Pass to Email" : "Send Entry Pass to Email"}
+                        {reg.email_status === "sent" ? "Resend Email Copy" : "Send Entry Pass to Email"}
                       </button>
                     </div>
                   </div>
