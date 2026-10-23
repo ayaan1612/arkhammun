@@ -304,10 +304,18 @@ async function sendViaResend({ from, to, subject, text, html, attachments }) {
 
 async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
   const apiKey = (process.env.BREVO_API_KEY || "").trim();
-  const senderEmail = (process.env.SMTP_USER || "").trim() || "arkhammun2026@gmail.com";
+  const senderEmail = (
+    process.env.BREVO_SENDER_EMAIL ||
+    process.env.SMTP_USER ||
+    process.env.ADMIN_EMAIL ||
+    "arkhammun2026@gmail.com"
+  ).replace(/["']/g, "").trim();
+  const senderName = (process.env.BREVO_SENDER_NAME || "Arkham MUN Secretariat").trim();
+
   const payload = {
-    sender: { name: "Arkham MUN Secretariat", email: senderEmail },
+    sender: { name: senderName, email: senderEmail },
     to: [{ email: Array.isArray(to) ? to[0] : to }],
+    replyTo: { email: senderEmail, name: senderName },
     subject,
     textContent: text,
     htmlContent: html,
