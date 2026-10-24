@@ -33,8 +33,13 @@ const schedule = [
 
 export default function Home() {
   const { user } = useAuth()
+  const [isMounted, setIsMounted] = useState(false)
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const moveCommittee = (direction: number) => {
     setActiveCommittee((current) => (current + direction + committees.length) % committees.length)
@@ -45,6 +50,10 @@ export default function Home() {
     const autoplay = window.setInterval(() => moveCommittee(1), 4800)
     return () => window.clearInterval(autoplay)
   }, [isCommitteePaused])
+
+  if (!isMounted) {
+    return <main className="mun-site relative min-h-screen overflow-x-clip bg-transparent text-white" aria-busy="true" />
+  }
 
   return (
     <main className="mun-site relative min-h-screen overflow-x-clip bg-transparent text-white">
