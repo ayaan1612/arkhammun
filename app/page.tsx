@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
 import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LayoutDashboard, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
-import PulsingHexagonBackground from "@/components/pulsing-hexagon-background"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { useAuth } from "@/lib/auth-context"
 
@@ -48,8 +47,7 @@ export default function Home() {
   }, [isCommitteePaused])
 
   return (
-    <main className="mun-site relative min-h-screen overflow-hidden bg-[#080812] text-white">
-      <PulsingHexagonBackground />
+    <main className="mun-site relative min-h-screen overflow-hidden bg-transparent text-white">
       <div className="site-wash" aria-hidden="true" />
       <nav className="site-nav" aria-label="Primary navigation">
         <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>

@@ -5,6 +5,7 @@ import './globals.css'
 import { GlobalMouseAura } from '@/components/global-mouse-aura'
 import { ArkhamLoadingScreen } from '@/components/arkham-loading-screen'
 import { AuthProvider } from '@/lib/auth-context'
+import PulsingHexagonBackground from '@/components/pulsing-hexagon-background'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -40,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
+        <PulsingHexagonBackground />
         <ArkhamLoadingScreen />
         <AuthProvider>
           <GlobalMouseAura>{children}</GlobalMouseAura>

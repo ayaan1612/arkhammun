@@ -1,4 +1,4 @@
-.adminPage { min-height: 100vh; padding: 34px max(24px, calc((100vw - 1060px) / 2)) 80px; color: #efedf9; background: radial-gradient(ellipse at 15% 0%, rgba(227, 38, 46, .13), transparent 36%), #080812; }
+.adminPage { min-height: 100vh; padding: 34px max(24px, calc((100vw - 1060px) / 2)) 80px; color: #efedf9; background: radial-gradient(ellipse at 15% 0%, rgba(227, 38, 46, .13), transparent 36%), rgba(8, 8, 18, .82); position: relative; z-index: 1; }
 .header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding-bottom: 26px; border-bottom: 1px solid rgba(160, 150, 205, .18); }
 .backLink, .logoutButton { display: inline-flex; align-items: center; gap: 8px; color: #b9b7c9; text-decoration: none; font-size: 12px; }
 .backLink:hover, .logoutButton:hover { color: #fff; }

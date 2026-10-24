@@ -494,18 +494,10 @@ export default function PulsingHexagonBackground() {
   }, [settings.gridScaleFactor]) 
 
   return (
-    <div className="fixed inset-0 bg-[#0F0F0F] z-0">
-      
-      <SettingsPanel 
-        settings={settings} 
-        setSettings={setSettings} 
-        currentRhythm={currentRhythm}
-        setCurrentRhythm={setCurrentRhythm}
-      />
-
+    <div className="fixed inset-0 pointer-events-none select-none overflow-hidden" style={{ zIndex: 0, backgroundColor: "#080812" }} aria-hidden="true">
       {/* Canvas Elements */}
-      <canvas ref={canvasLightRef} className="fixed inset-0 w-full h-full z-10" />
-      <canvas ref={canvasGridRef} className="fixed inset-0 w-full h-full z-20" />
+      <canvas ref={canvasLightRef} className="fixed inset-0 w-full h-full pointer-events-none" style={{ zIndex: 0 }} />
+      <canvas ref={canvasGridRef} className="fixed inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }} />
     </div>
   )
 }
