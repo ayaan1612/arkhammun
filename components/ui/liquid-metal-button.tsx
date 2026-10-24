@@ -1,6 +1,8 @@
 "use client"
 
-import React, { useEffect, useRef, useState, useId } from "react"
+import React, { useEffect, useRef, useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Sparkles } from "lucide-react"
 import {
   ShaderMount,
@@ -19,6 +21,8 @@ export interface LiquidMetalButtonProps
   onClick?: () => void
   viewMode?: LiquidMetalViewMode
   variant?: LiquidMetalVariant
+  href?: string
+  icon?: React.ReactNode
   className?: string
 }
 
@@ -43,10 +47,13 @@ export function LiquidMetalButton({
   onClick,
   viewMode = "text",
   variant = "black",
+  href,
+  icon,
   className,
   disabled = false,
   ...props
 }: LiquidMetalButtonProps) {
+  const router = useRouter()
   const containerRef = useRef<HTMLDivElement>(null)
   const mountRef = useRef<ShaderMount | null>(null)
   const isHoveredRef = useRef<boolean>(false)
@@ -102,7 +109,7 @@ export function LiquidMetalButton({
         containerRef.current,
         liquidMetalFragmentShader,
         uniforms,
-        { alpha: true, antialias: true },
+        { alpha: true, antialias: true, premultipliedAlpha: false },
         0.6 // default resting speed
       )
       mountRef.current = mount
@@ -113,7 +120,7 @@ export function LiquidMetalButton({
         mountRef.current = null
       }
     } catch {
-      // Fallback seamlessly if WebGL is unavailable
+      // Fallback gracefully if WebGL is unavailable
     }
   }, [])
 
@@ -166,6 +173,10 @@ export function LiquidMetalButton({
       }, 300)
     }
 
+    if (href) {
+      router.push(href)
+    }
+
     onClick?.()
   }
 
@@ -184,6 +195,11 @@ export function LiquidMetalButton({
             opacity: 0;
           }
         }
+        .liquid-metal-canvas-layer canvas {
+          z-index: 1 !important;
+          display: block !important;
+          border-radius: 9999px !important;
+        }
       `}</style>
       <button
         type="button"
@@ -194,7 +210,7 @@ export function LiquidMetalButton({
         className={cn(
           "group relative inline-flex items-center justify-center select-none overflow-hidden rounded-full p-[3px] text-center font-medium",
           "cursor-pointer outline-none transition-all duration-150 ease-out",
-          // Press depth dynamics
+          // Press depth dynamics: translateY(1px) scale(0.98)
           "active:translate-y-[1px] active:scale-[0.98]",
           "disabled:pointer-events-none disabled:opacity-50",
           // Sizing: 142x46 px for text mode, 46x46 px for icon mode
@@ -211,27 +227,32 @@ export function LiquidMetalButton({
         aria-label={isIconOnly ? label : undefined}
         {...props}
       >
+        {/* Fallback metallic gradient backdrop */}
+        <div
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute inset-0 z-0 h-full w-full rounded-full",
+            variant === "red"
+              ? "bg-[radial-gradient(ellipse_at_top,_#2d2d31_0%,_#050505_100%)]"
+              : "bg-[radial-gradient(ellipse_at_top,_#ff1f1a_0%,_#380000_100%)]"
+          )}
+        />
+
         {/* Background Liquid Metal Shader Canvas Mount */}
         <div
           ref={containerRef}
           aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute inset-0 z-0 h-full w-full rounded-full overflow-hidden",
-            // CSS fallback gradient before/if WebGL renders
-            variant === "red"
-              ? "bg-[radial-gradient(ellipse_at_top,_#262629_0%,_#050505_100%)]"
-              : "bg-[radial-gradient(ellipse_at_top,_#ff1f1a_0%,_#380000_100%)]"
-          )}
+          className="liquid-metal-canvas-layer pointer-events-none absolute inset-0 z-[1] h-full w-full rounded-full overflow-hidden"
         />
 
         {/* Specular Glint Highlight on Outer Metal Ring */}
         <div
           aria-hidden="true"
           className={cn(
-            "pointer-events-none absolute inset-0 z-[1] rounded-full",
+            "pointer-events-none absolute inset-0 z-[2] rounded-full",
             variant === "red"
-              ? "bg-gradient-to-b from-white/30 via-transparent to-black/50"
-              : "bg-gradient-to-b from-white/35 via-transparent to-black/60"
+              ? "bg-gradient-to-b from-white/35 via-transparent to-black/50"
+              : "bg-gradient-to-b from-white/40 via-transparent to-black/60"
           )}
         />
 
@@ -280,8 +301,9 @@ export function LiquidMetalButton({
           {isIconOnly ? (
             <Sparkles className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
           ) : (
-            <span className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold tracking-wide">
-              {label}
+            <span className="inline-flex items-center justify-center gap-2 text-xs font-semibold tracking-wide whitespace-nowrap">
+              <span>{label}</span>
+              {icon}
             </span>
           )}
         </span>

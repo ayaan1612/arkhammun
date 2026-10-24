@@ -106,6 +106,7 @@ export function ArkhamHeader() {
     { label: "Policies", href: "/policies" },
     { label: "FAQ", href: "/faq" },
     { label: "Contact", href: "/contact" },
+    { label: "Demo", href: "/demo" },
   ]
 
   const isActiveLink = (href: string) => {
