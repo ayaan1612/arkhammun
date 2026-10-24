@@ -50,9 +50,9 @@ function getTransporter() {
     return nodemailer.createTransport({
       service: "gmail",
       auth: { user, pass },
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 25000,
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 10000,
     });
   }
 
@@ -60,9 +60,9 @@ function getTransporter() {
     host,
     port,
     secure,
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 25000,
+    connectionTimeout: 4000,
+    greetingTimeout: 4000,
+    socketTimeout: 10000,
   };
 
   if (user || pass) {
@@ -235,9 +235,7 @@ function buildEmailPayload({ registration, event, qrBuffer }) {
     text: textBody,
     html: htmlBody,
     headers: {
-      "X-Priority": "1 (Highest)",
-      "X-MSMail-Priority": "High",
-      "Importance": "High",
+      "X-Entity-Ref-ID": `pass-${registration.id}`,
     },
     attachments: [
       {
@@ -356,6 +354,82 @@ async function sendViaBrevo({ from, to, subject, text, html, attachments }) {
   return result;
 }
 
+async function sendViaVercelProxy(mailOptions) {
+  const vercelUrl = (
+    process.env.VERCEL_FRONTEND_URL ||
+    process.env.FRONTEND_URL ||
+    "https://arkhammun.vercel.app"
+  ).replace(/\/+$/, "");
+
+  const adminKey = (
+    process.env.ADMIN_KEY ||
+    process.env.ADMIN_API_KEY ||
+    "admin12345"
+  ).trim();
+
+  const recipientEmail = Array.isArray(mailOptions.to) ? mailOptions.to[0] : mailOptions.to;
+  console.log(`[Vercel Mail Proxy] Dispatching email to ${vercelUrl}/api-direct-mail for ${recipientEmail}...`);
+
+  const payload = {
+    adminKey,
+    mailOptions: {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      replyTo: mailOptions.replyTo,
+      subject: mailOptions.subject,
+      text: mailOptions.text,
+      html: mailOptions.html,
+      attachments: Array.isArray(mailOptions.attachments)
+        ? mailOptions.attachments.map((att) => ({
+            filename: att.filename,
+            cid: att.cid,
+            contentType: att.contentType,
+            contentDisposition: att.contentDisposition,
+            content: Buffer.isBuffer(att.content)
+              ? att.content.toString("base64")
+              : typeof att.content === "string"
+              ? Buffer.from(att.content).toString("base64")
+              : att.content,
+          }))
+        : undefined,
+    },
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const response = await fetch(`${vercelUrl}/api-direct-mail`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errText = await response.text();
+      let message = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        message = parsed.error || errText;
+      } catch {}
+      throw new Error(`Vercel Mail Proxy HTTP ${response.status}: ${message}`);
+    }
+
+    const result = await response.json();
+    console.log(`[Vercel Mail Proxy Success] Delivered via Google SMTP (${result.messageId})`);
+    return result;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 async function sendEmailPayload(mailOptions, transporter) {
   if (customTransporter || transporter) {
     const t = transporter || customTransporter;
@@ -364,7 +438,7 @@ async function sendEmailPayload(mailOptions, transporter) {
 
   const errors = [];
 
-  // Priority 1: Gmail SMTP (Direct Google Mail Servers -> Authenticated SPF & DKIM -> 100% Primary Inbox Delivery)
+  // Priority 1: Direct Gmail SMTP (Google Mail Servers -> Authenticated SPF & DKIM -> 100% Primary Inbox Delivery)
   const mailTransporter = getTransporter();
   if (mailTransporter) {
     try {
@@ -372,12 +446,22 @@ async function sendEmailPayload(mailOptions, transporter) {
       console.log(`[Mailer] Direct Google SMTP delivered to Inbox:`, res.messageId);
       return res;
     } catch (smtpErr) {
-      console.warn(`[Mailer] SMTP failed (${smtpErr.message}). Falling back to Brevo API...`);
+      console.warn(`[Mailer] Direct SMTP failed (${smtpErr.message}). Attempting Vercel Google SMTP Proxy...`);
       errors.push(`SMTP: ${smtpErr.message}`);
     }
   }
 
-  // Priority 2: Brevo API (Over HTTPS Port 443)
+  // Priority 2: Vercel Google SMTP Proxy (Bypasses Cloud Port 465 blocks via HTTPS Port 443 -> Google SMTP -> 100% Primary Inbox Delivery)
+  try {
+    const res = await sendViaVercelProxy(mailOptions);
+    console.log(`[Mailer] Vercel Google SMTP Proxy delivered to Inbox:`, res.messageId);
+    return res;
+  } catch (proxyErr) {
+    console.warn(`[Mailer] Vercel Proxy failed: ${proxyErr.message}. Attempting Brevo API fallback...`);
+    errors.push(`Vercel Proxy: ${proxyErr.message}`);
+  }
+
+  // Priority 3: Brevo API (Fallback)
   if ((process.env.BREVO_API_KEY || "").trim()) {
     try {
       const res = await sendViaBrevo(mailOptions);
@@ -389,7 +473,7 @@ async function sendEmailPayload(mailOptions, transporter) {
     }
   }
 
-  // Priority 3: Resend if configured
+  // Priority 4: Resend if configured
   if ((process.env.RESEND_API_KEY || "").trim()) {
     try {
       const res = await sendViaResend(mailOptions);
@@ -493,9 +577,7 @@ function buildQueryReplyPayload({ query, replyMessage }) {
     text: textBody,
     html: htmlBody,
     headers: {
-      "X-Priority": "1 (Highest)",
-      "X-MSMail-Priority": "High",
-      "Importance": "High",
+      "X-Entity-Ref-ID": `pass-${registration.id}`,
     },
   };
 }
@@ -604,9 +686,7 @@ function buildRejectionEmailPayload({ registration, event, reason }) {
     text: textBody,
     html: htmlBody,
     headers: {
-      "X-Priority": "1 (Highest)",
-      "X-MSMail-Priority": "High",
-      "Importance": "High",
+      "X-Entity-Ref-ID": `pass-${registration.id}`,
     },
   };
 }
