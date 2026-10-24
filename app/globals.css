@@ -796,10 +796,10 @@
 .arkham-mobile-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(3, 3, 6, 0.78);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 100;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 99998 !important;
 }
 
 .arkham-mobile-drawer {
@@ -809,10 +809,10 @@
   bottom: 0;
   width: min(340px, 86vw);
   height: 100dvh;
-  background: #090812;
-  border-left: 1px solid rgba(227, 38, 46, 0.32);
-  box-shadow: -15px 0 45px rgba(0, 0, 0, 0.85);
-  z-index: 101;
+  background: #080812 !important;
+  border-left: 1px solid rgba(227, 38, 46, 0.4) !important;
+  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.95) !important;
+  z-index: 99999 !important;
   display: flex;
   flex-direction: column;
   justify-content: space-between;

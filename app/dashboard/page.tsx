@@ -164,367 +164,6 @@ export default function DashboardPage() {
             <p style={{ letterSpacing: "0.1em", fontSize: "14px" }}>INITIALIZING DELEGATE DAIS...</p>
           </div>
         </div>
-        {/* ENQUIRIES & SECRETARIAT REPLIES MODAL */}
-      {notificationsModalOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 9999,
-            backgroundColor: "rgba(0, 0, 0, 0.88)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "20px",
-            overflowY: "auto",
-          }}
-          onClick={() => setNotificationsModalOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: "680px",
-              backgroundColor: "#0d0c18",
-              border: "1px solid rgba(227, 38, 46, 0.35)",
-              borderRadius: "12px",
-              padding: "28px",
-              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(227, 38, 46, 0.15)",
-              display: "grid",
-              gap: "20px",
-              maxHeight: "90vh",
-              overflowY: "auto",
-            }}
-          >
-            {/* Modal Top Bar */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "8px",
-                    backgroundColor: "rgba(227, 38, 46, 0.15)",
-                    border: "1px solid rgba(227, 38, 46, 0.4)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#e3262e",
-                  }}
-                >
-                  <Bell size={20} />
-                </div>
-                <div>
-                  <span className="section-kicker" style={{ color: "#e3262e" }}>
-                    SECRETARIAT COMMUNICATIONS
-                  </span>
-                  <h3 style={{ margin: "2px 0 0", color: "#fff", fontSize: "20px", fontWeight: 600 }}>
-                    Announcements &amp; Enquiry Replies
-                  </h3>
-                </div>
-              </div>
-              <button
-                onClick={() => setNotificationsModalOpen(false)}
-                style={{
-                  background: "rgba(255, 255, 255, 0.08)",
-                  border: 0,
-                  color: "#aaa8ba",
-                  cursor: "pointer",
-                  padding: "8px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                aria-label="Close modal"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-                paddingBottom: "10px",
-              }}
-            >
-              <button
-                onClick={() => setActiveNotifTab("announcements")}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "6px",
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  backgroundColor: activeNotifTab === "announcements" ? "#e3262e" : "rgba(255, 255, 255, 0.05)",
-                  color: activeNotifTab === "announcements" ? "#fff" : "#aaa8ba",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <Bell size={14} />
-                <span>Admin Announcements</span>
-                {notifications.length > 0 && (
-                  <span
-                    style={{
-                      backgroundColor: activeNotifTab === "announcements" ? "#fff" : "rgba(227, 38, 46, 0.8)",
-                      color: activeNotifTab === "announcements" ? "#e3262e" : "#fff",
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      padding: "1px 6px",
-                      borderRadius: "999px",
-                    }}
-                  >
-                    {notifications.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setActiveNotifTab("enquiries")}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "6px",
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  backgroundColor: activeNotifTab === "enquiries" ? "#e3262e" : "rgba(255, 255, 255, 0.05)",
-                  color: activeNotifTab === "enquiries" ? "#fff" : "#aaa8ba",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <MessageSquareText size={14} />
-                <span>Enquiry Replies</span>
-                {myQueries.filter((q) => q.status === "replied").length > 0 && (
-                  <span
-                    style={{
-                      backgroundColor: activeNotifTab === "enquiries" ? "#fff" : "#22c55e",
-                      color: activeNotifTab === "enquiries" ? "#000" : "#fff",
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      padding: "1px 6px",
-                      borderRadius: "999px",
-                    }}
-                  >
-                    {myQueries.filter((q) => q.status === "replied").length}
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* TAB 1: Admin Announcements */}
-            {activeNotifTab === "announcements" && (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {notifications.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "40px 20px",
-                      textAlign: "center",
-                      backgroundColor: "#08080f",
-                      borderRadius: "8px",
-                      border: "1px dashed rgba(255, 255, 255, 0.15)",
-                    }}
-                  >
-                    <Bell size={36} style={{ color: "#48435c", margin: "0 auto 12px" }} />
-                    <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "16px" }}>No Active Announcements</h4>
-                    <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px" }}>
-                      Official Secretariat notices, agenda updates, and room allocations will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif._id}
-                      style={{
-                        padding: "16px",
-                        backgroundColor: "#08080f",
-                        border: "1px solid rgba(227, 38, 46, 0.25)",
-                        borderRadius: "8px",
-                        display: "grid",
-                        gap: "8px",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            letterSpacing: "0.1em",
-                            textTransform: "uppercase",
-                            backgroundColor: "rgba(227, 38, 46, 0.18)",
-                            color: "#ff4d55",
-                            padding: "3px 8px",
-                            borderRadius: "4px",
-                            border: "1px solid rgba(227, 38, 46, 0.35)",
-                          }}
-                        >
-                          📢 OFFICIAL SECRETARIAT BROADCAST
-                        </span>
-                        <span style={{ fontSize: "11px", color: "#8d8a9e" }}>
-                          {new Date(notif.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: "13.5px", color: "#f2efff", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                        {notif.message}
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* TAB 2: Enquiry Replies */}
-            {activeNotifTab === "enquiries" && (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {myQueries.length === 0 ? (
-                  <div
-                    style={{
-                      padding: "40px 20px",
-                      textAlign: "center",
-                      backgroundColor: "#08080f",
-                      borderRadius: "8px",
-                      border: "1px dashed rgba(255, 255, 255, 0.15)",
-                    }}
-                  >
-                    <HelpCircle size={36} style={{ color: "#48435c", margin: "0 auto 12px" }} />
-                    <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "16px" }}>No Enquiries Submitted</h4>
-                    <p style={{ margin: "0 0 16px", color: "#8d8a9e", fontSize: "13px" }}>
-                      Have questions about your registration, committee allocations, or fees? Reach out to the Secretariat.
-                    </p>
-                    <Link
-                      href="/contact"
-                      className="primary-button"
-                      style={{ padding: "8px 16px", fontSize: "12px", display: "inline-block" }}
-                      onClick={() => setNotificationsModalOpen(false)}
-                    >
-                      Contact Secretariat Desk →
-                    </Link>
-                  </div>
-                ) : (
-                  myQueries.map((q) => (
-                    <div
-                      key={q.id}
-                      style={{
-                        padding: "16px",
-                        backgroundColor: "#08080f",
-                        border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.35)" : "1px solid rgba(255, 255, 255, 0.1)",
-                        borderRadius: "8px",
-                        display: "grid",
-                        gap: "10px",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" }}>
-                        <div>
-                          <h4 style={{ margin: "0 0 4px", color: "#fff", fontSize: "15px" }}>{q.subject}</h4>
-                          <span style={{ fontSize: "11px", color: "#8d8a9e" }}>
-                            Submitted: {new Date(q.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                        <span
-                          style={{
-                            padding: "3px 8px",
-                            borderRadius: "4px",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            backgroundColor: q.status === "replied" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
-                            color: q.status === "replied" ? "#4ade80" : "#facc15",
-                            border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(234, 179, 8, 0.3)",
-                          }}
-                        >
-                          {q.status === "replied" ? "✓ SECRETARIAT REPLIED" : "⏳ PENDING REVIEW"}
-                        </span>
-                      </div>
-
-                      {/* Original Message */}
-                      <div
-                        style={{
-                          padding: "10px 12px",
-                          backgroundColor: "rgba(255, 255, 255, 0.02)",
-                          borderLeft: "2px solid #5a546d",
-                          borderRadius: "2px",
-                          fontSize: "13px",
-                          color: "#c2bed2",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        <strong style={{ display: "block", fontSize: "10px", textTransform: "uppercase", color: "#8d8a9e", marginBottom: "4px" }}>
-                          Your Query:
-                        </strong>
-                        {q.message}
-                      </div>
-
-                      {/* Secretariat Reply */}
-                      {q.reply_message ? (
-                        <div
-                          style={{
-                            padding: "12px 14px",
-                            backgroundColor: "rgba(34, 197, 94, 0.08)",
-                            borderLeft: "3px solid #22c55e",
-                            borderRadius: "4px",
-                            display: "grid",
-                            gap: "6px",
-                          }}
-                        >
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                              Official Secretariat Response:
-                            </span>
-                            {q.replied_at && (
-                              <span style={{ fontSize: "10px", color: "#8d8a9e" }}>
-                                {new Date(q.replied_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            )}
-                          </div>
-                          <p style={{ margin: 0, fontSize: "13px", color: "#eefbee", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                            {q.reply_message}
-                          </p>
-                        </div>
-                      ) : (
-                        <p style={{ margin: 0, fontSize: "11px", color: "#8d8a9e", fontStyle: "italic" }}>
-                          Secretariat review is in progress. The official reply will appear here as soon as reviewed.
-                        </p>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-              <Link
-                href="/contact"
-                className="secondary-button"
-                style={{ padding: "8px 16px", fontSize: "12px" }}
-                onClick={() => setNotificationsModalOpen(false)}
-              >
-                Send New Query to Secretariat
-              </Link>
-              <button
-                onClick={() => setNotificationsModalOpen(false)}
-                className="primary-button"
-                style={{ padding: "8px 18px", fontSize: "12px" }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </ArkhamShell>
     )
   }
@@ -1599,6 +1238,367 @@ export default function DashboardPage() {
             >
               Close Status Inspector
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ENQUIRIES & SECRETARIAT REPLIES MODAL */}
+      {notificationsModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0, 0, 0, 0.88)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "16px",
+            overflowY: "auto",
+          }}
+          onClick={() => setNotificationsModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "680px",
+              backgroundColor: "#0d0c18",
+              border: "1px solid rgba(227, 38, 46, 0.35)",
+              borderRadius: "12px",
+              padding: "clamp(18px, 4vw, 28px)",
+              boxShadow: "0 24px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(227, 38, 46, 0.15)",
+              display: "grid",
+              gap: "20px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            {/* Modal Top Bar */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(227, 38, 46, 0.15)",
+                    border: "1px solid rgba(227, 38, 46, 0.4)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#e3262e",
+                  }}
+                >
+                  <Bell size={20} />
+                </div>
+                <div>
+                  <span className="section-kicker" style={{ color: "#e3262e" }}>
+                    SECRETARIAT COMMUNICATIONS
+                  </span>
+                  <h3 style={{ margin: "2px 0 0", color: "#fff", fontSize: "20px", fontWeight: 600 }}>
+                    Announcements &amp; Enquiry Replies
+                  </h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setNotificationsModalOpen(false)}
+                style={{
+                  background: "rgba(255, 255, 255, 0.08)",
+                  border: 0,
+                  color: "#aaa8ba",
+                  cursor: "pointer",
+                  padding: "8px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                paddingBottom: "10px",
+              }}
+            >
+              <button
+                onClick={() => setActiveNotifTab("announcements")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: 0,
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  backgroundColor: activeNotifTab === "announcements" ? "#e3262e" : "rgba(255, 255, 255, 0.05)",
+                  color: activeNotifTab === "announcements" ? "#fff" : "#aaa8ba",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <Bell size={14} />
+                <span>Admin Announcements</span>
+                {notifications.length > 0 && (
+                  <span
+                    style={{
+                      backgroundColor: activeNotifTab === "announcements" ? "#fff" : "rgba(227, 38, 46, 0.8)",
+                      color: activeNotifTab === "announcements" ? "#e3262e" : "#fff",
+                      fontSize: "10px",
+                      fontWeight: 800,
+                      padding: "1px 6px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setActiveNotifTab("enquiries")}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: 0,
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  backgroundColor: activeNotifTab === "enquiries" ? "#e3262e" : "rgba(255, 255, 255, 0.05)",
+                  color: activeNotifTab === "enquiries" ? "#fff" : "#aaa8ba",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <MessageSquareText size={14} />
+                <span>Enquiry Replies</span>
+                {myQueries.filter((q) => q.status === "replied").length > 0 && (
+                  <span
+                    style={{
+                      backgroundColor: activeNotifTab === "enquiries" ? "#fff" : "#22c55e",
+                      color: activeNotifTab === "enquiries" ? "#000" : "#fff",
+                      fontSize: "10px",
+                      fontWeight: 800,
+                      padding: "1px 6px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {myQueries.filter((q) => q.status === "replied").length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* TAB 1: Admin Announcements */}
+            {activeNotifTab === "announcements" && (
+              <div style={{ display: "grid", gap: "12px" }}>
+                {notifications.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "40px 20px",
+                      textAlign: "center",
+                      backgroundColor: "#08080f",
+                      borderRadius: "8px",
+                      border: "1px dashed rgba(255, 255, 255, 0.15)",
+                    }}
+                  >
+                    <Bell size={36} style={{ color: "#48435c", margin: "0 auto 12px" }} />
+                    <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "16px" }}>No Active Announcements</h4>
+                    <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px" }}>
+                      Official Secretariat notices, agenda updates, and room allocations will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif._id}
+                      style={{
+                        padding: "16px",
+                        backgroundColor: "#08080f",
+                        border: "1px solid rgba(227, 38, 46, 0.25)",
+                        borderRadius: "8px",
+                        display: "grid",
+                        gap: "8px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
+                        <span
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            backgroundColor: "rgba(227, 38, 46, 0.18)",
+                            color: "#ff4d55",
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            border: "1px solid rgba(227, 38, 46, 0.35)",
+                          }}
+                        >
+                          📢 OFFICIAL SECRETARIAT BROADCAST
+                        </span>
+                        <span style={{ fontSize: "11px", color: "#8d8a9e" }}>
+                          {new Date(notif.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: "13.5px", color: "#f2efff", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                        {notif.message}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* TAB 2: Enquiry Replies */}
+            {activeNotifTab === "enquiries" && (
+              <div style={{ display: "grid", gap: "12px" }}>
+                {myQueries.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "40px 20px",
+                      textAlign: "center",
+                      backgroundColor: "#08080f",
+                      borderRadius: "8px",
+                      border: "1px dashed rgba(255, 255, 255, 0.15)",
+                    }}
+                  >
+                    <HelpCircle size={36} style={{ color: "#48435c", margin: "0 auto 12px" }} />
+                    <h4 style={{ margin: "0 0 6px", color: "#fff", fontSize: "16px" }}>No Enquiries Submitted</h4>
+                    <p style={{ margin: "0 0 16px", color: "#8d8a9e", fontSize: "13px" }}>
+                      Have questions about your registration, committee allocations, or fees? Reach out to the Secretariat.
+                    </p>
+                    <Link
+                      href="/contact"
+                      className="primary-button"
+                      style={{ padding: "8px 16px", fontSize: "12px", display: "inline-block" }}
+                      onClick={() => setNotificationsModalOpen(false)}
+                    >
+                      Contact Secretariat Desk →
+                    </Link>
+                  </div>
+                ) : (
+                  myQueries.map((q) => (
+                    <div
+                      key={q.id}
+                      style={{
+                        padding: "16px",
+                        backgroundColor: "#08080f",
+                        border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.35)" : "1px solid rgba(255, 255, 255, 0.1)",
+                        borderRadius: "8px",
+                        display: "grid",
+                        gap: "10px",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", flexWrap: "wrap" }}>
+                        <div>
+                          <h4 style={{ margin: "0 0 4px", color: "#fff", fontSize: "15px" }}>{q.subject}</h4>
+                          <span style={{ fontSize: "11px", color: "#8d8a9e" }}>
+                            Submitted: {new Date(q.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                        <span
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            backgroundColor: q.status === "replied" ? "rgba(34, 197, 94, 0.15)" : "rgba(234, 179, 8, 0.15)",
+                            color: q.status === "replied" ? "#4ade80" : "#facc15",
+                            border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(234, 179, 8, 0.3)",
+                          }}
+                        >
+                          {q.status === "replied" ? "✓ SECRETARIAT REPLIED" : "⏳ PENDING REVIEW"}
+                        </span>
+                      </div>
+
+                      {/* Original Message */}
+                      <div
+                        style={{
+                          padding: "10px 12px",
+                          backgroundColor: "rgba(255, 255, 255, 0.02)",
+                          borderLeft: "2px solid #5a546d",
+                          borderRadius: "2px",
+                          fontSize: "13px",
+                          color: "#c2bed2",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        <strong style={{ display: "block", fontSize: "10px", textTransform: "uppercase", color: "#8d8a9e", marginBottom: "4px" }}>
+                          Your Query:
+                        </strong>
+                        {q.message}
+                      </div>
+
+                      {/* Secretariat Reply */}
+                      {q.reply_message ? (
+                        <div
+                          style={{
+                            padding: "12px 14px",
+                            backgroundColor: "rgba(34, 197, 94, 0.08)",
+                            borderLeft: "3px solid #22c55e",
+                            borderRadius: "4px",
+                            display: "grid",
+                            gap: "6px",
+                          }}
+                        >
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: "11px", fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                              Official Secretariat Response:
+                            </span>
+                            {q.replied_at && (
+                              <span style={{ fontSize: "10px", color: "#8d8a9e" }}>
+                                {new Date(q.replied_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ margin: 0, fontSize: "13px", color: "#eefbee", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                            {q.reply_message}
+                          </p>
+                        </div>
+                      ) : (
+                        <p style={{ margin: 0, fontSize: "11px", color: "#8d8a9e", fontStyle: "italic" }}>
+                          Secretariat review is in progress. The official reply will appear here as soon as reviewed.
+                        </p>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <Link
+                href="/contact"
+                className="secondary-button"
+                style={{ padding: "8px 16px", fontSize: "12px" }}
+                onClick={() => setNotificationsModalOpen(false)}
+              >
+                Send New Query to Secretariat
+              </Link>
+              <button
+                onClick={() => setNotificationsModalOpen(false)}
+                className="primary-button"
+                style={{ padding: "8px 18px", fontSize: "12px" }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

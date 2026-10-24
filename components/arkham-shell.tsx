@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
@@ -30,6 +31,11 @@ export function ArkhamHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
   const drawerRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Handle scroll detection for sticky glass header
   useEffect(() => {
@@ -246,34 +252,37 @@ export function ArkhamHeader() {
         </div>
       </div>
 
-      {/* Mobile Drawer and Backdrop */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              className="arkham-mobile-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setMobileMenuOpen(false)}
-              aria-hidden="true"
-            />
+      {/* Mobile Drawer and Backdrop - rendered via React Portal so header backdrop filter and stacking context cannot cause bleed-through */}
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  className="arkham-mobile-backdrop"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-hidden="true"
+                />
 
-            {/* Mobile Drawer Panel */}
-            <motion.div
-              ref={drawerRef}
-              id="arkham-mobile-drawer"
-              className="arkham-mobile-drawer"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Site navigation"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 240 }}
-            >
+                {/* Mobile Drawer Panel */}
+                <motion.div
+                  ref={drawerRef}
+                  id="arkham-mobile-drawer"
+                  className="arkham-mobile-drawer"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Site navigation"
+                  initial={{ x: "100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 240 }}
+                  style={{ backgroundColor: "#080812" }}
+                >
               {/* Drawer Top Bar */}
               <div className="arkham-drawer-header">
                 <Link
@@ -427,7 +436,9 @@ export function ArkhamHeader() {
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+    )}
     </header>
   )
 }
