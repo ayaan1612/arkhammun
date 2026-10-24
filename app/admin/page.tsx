@@ -87,8 +87,11 @@ const defaultFormSections: FormSectionsConfig = {
       "UNODC (Human Rights Implications of the Global War on Drugs.)",
       "UNHRC (Deliberating on Safeguarding Political Leaders Under International Human Rights Law.)",
       "IP",
-      "IPL (Mega Auction)",
-    ],
+  "IPL (Mega Auction)",
+  "Lok Sabha (Indian Parliamentary Debate)",
+  "WHO (Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Tests, and Treatments for All Countries.)",
+  "UNHCC (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
+  ],
   },
   portfolioPreferences: {
     title: "Portfolio preferences",
