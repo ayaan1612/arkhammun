@@ -202,6 +202,28 @@ export default function ContactPage() {
             )}
           </div>
         </section>
+        {/* Secretariat Operations & Support Hours */}
+        <section className="page-section" style={{ borderTop: "1px solid rgba(160,150,205,.16)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
+            <div style={{ padding: "24px", backgroundColor: "#0c0b16", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}>
+              <span className="section-kicker" style={{ color: "#e3262e" }}>RESPONSE SLA</span>
+              <h3 style={{ margin: "8px 0 6px", fontSize: "17px", color: "#fff" }}>4—8 Hour Turnaround</h3>
+              <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px", lineHeight: 1.6 }}>All delegate queries received via the portal are routed to the corresponding Secretariat desk and answered promptly.</p>
+            </div>
+
+            <div style={{ padding: "24px", backgroundColor: "#0c0b16", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}>
+              <span className="section-kicker" style={{ color: "#e3262e" }}>BULK DELEGATIONS</span>
+              <h3 style={{ margin: "8px 0 6px", fontSize: "17px", color: "#fff" }}>Faculty Advisor Support</h3>
+              <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px", lineHeight: 1.6 }}>School delegations of 10+ delegates receive dedicated assistance for invoice billing, allotment reservations, and chaperone passes.</p>
+            </div>
+
+            <div style={{ padding: "24px", backgroundColor: "#0c0b16", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}>
+              <span className="section-kicker" style={{ color: "#e3262e" }}>DAY-OF-EVENT</span>
+              <h3 style={{ margin: "8px 0 6px", fontSize: "17px", color: "#fff" }}>On-Ground Secretariat Desk</h3>
+              <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px", lineHeight: 1.6 }}>An on-site delegate affairs desk will be active throughout 24—25 October at the central conference foyer for real-time assistance.</p>
+            </div>
+          </div>
+        </section>
       </main>
     </ArkhamShell>
   )
