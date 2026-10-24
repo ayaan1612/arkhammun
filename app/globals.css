@@ -673,33 +673,63 @@
 
 
 /* ==========================================================================
-   ARKHAM MUN MASTER HEADER & RESPONSIVE COMPONENT SYSTEM
+   ARKHAM MUN CLASSIC CINEMATIC NAVBAR & ANIMATION SYSTEM
+   Look and feel:
+   - Background rgba(10,6,8,.55) with backdrop-blur(14px)
+   - Accent red #e5252d, deep red #8f0510, muted text #b9afb2
+   - Brand wordmark in Cinzel (600, letter-spacing .14em), body in Inter
+   - Bottom border (white at 8% opacity) + sweeping 30% red gradient highlight line
    ========================================================================== */
 
+:root {
+  --font-cinzel: 'Cinzel', Georgia, serif;
+  --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 1. Entrance Stagger Animation */
+@keyframes nav-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.nav-anim-item {
+  animation: nav-drop-in 520ms cubic-bezier(0.34, 1.4, 0.5, 1) both;
+  animation-delay: calc(var(--stagger-i, 0) * 70ms);
+}
+
+/* 6. Scroll behavior & Header container */
 .arkham-master-header {
   position: sticky;
   top: 0;
   left: 0;
   right: 0;
   width: 100%;
-  z-index: 99;
-  background: rgba(5, 5, 10, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  z-index: 50;
+  background: rgba(10, 6, 8, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  height: 74px;
+  transition: height 350ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              background-color 300ms ease,
+              box-shadow 300ms ease;
+  box-sizing: border-box;
 }
 
 .arkham-master-header.is-scrolled {
-  background: rgba(6, 6, 12, 0.94);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(227, 38, 46, 0.28);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  height: 58px;
+  background: rgba(10, 6, 8, 0.88);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), 0 4px 14px rgba(143, 5, 16, 0.15);
 }
 
 .arkham-master-header-bar {
-  min-height: 64px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -707,586 +737,539 @@
   box-sizing: border-box;
 }
 
-@media (max-width: 480px) {
-  .arkham-master-header-bar {
-    min-height: 58px;
+/* Red gradient highlight line sweeping left to right in a 5s loop */
+.nav-sweep-line {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.nav-sweep-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(229, 37, 45, 0.35) 30%, #e5252d 50%, rgba(229, 37, 45, 0.35) 70%, transparent 100%);
+  box-shadow: 0 0 10px #e5252d, 0 0 18px rgba(229, 37, 45, 0.7);
+  animation: sweep-horizontal 5s linear infinite;
+  will-change: transform;
+}
+
+@keyframes sweep-horizontal {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
   }
 }
 
-/* Brand */
+/* 5. Logo & Brand Typography */
 .arkham-brand {
   display: inline-flex;
   align-items: center;
-  gap: 11px;
-  color: #fff;
+  gap: 12px;
   text-decoration: none;
-  flex-shrink: 0;
   user-select: none;
+  min-height: 44px;
 }
 
-.arkham-brand-emblem {
+.arkham-brand-logo-wrapper {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.arkham-brand-logo-img {
   width: 40px;
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 0 0 0 3px rgba(227, 38, 46, 0.12), 0 0 20px rgba(227, 38, 46, 0.3);
-  flex-shrink: 0;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid rgba(229, 37, 45, 0.45);
+  box-shadow: 0 0 0 3px rgba(229, 37, 45, 0.08);
+  transition: transform 380ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              filter 380ms ease,
+              box-shadow 380ms ease;
+  transform-origin: center center;
 }
 
-.arkham-brand:hover .arkham-brand-emblem {
-  transform: scale(1.05) rotate(-6deg);
-  box-shadow: 0 0 0 4px rgba(227, 38, 46, 0.2), 0 0 28px rgba(227, 38, 46, 0.45);
+.arkham-brand:hover .arkham-brand-logo-img {
+  transform: rotate(-8deg) scale(1.08);
+  filter: drop-shadow(0 0 12px rgba(229, 37, 45, 0.65)) drop-shadow(0 0 24px rgba(229, 37, 45, 0.35));
+  box-shadow: 0 0 0 3px rgba(229, 37, 45, 0.35);
+}
+
+.arkham-master-header.is-scrolled .arkham-brand-logo-img {
+  transform: scale(0.84);
+}
+
+.arkham-master-header.is-scrolled .arkham-brand:hover .arkham-brand-logo-img {
+  transform: rotate(-8deg) scale(0.96);
 }
 
 .arkham-brand-text {
   display: flex;
   flex-direction: column;
-  line-height: 1;
+  line-height: 1.05;
 }
 
-.arkham-brand-text strong {
-  font-size: 14px;
-  font-weight: 700;
+.arkham-brand-title {
+  font-family: var(--font-cinzel), 'Cinzel', Georgia, serif;
+  font-weight: 600;
+  font-size: 15px;
   letter-spacing: 0.14em;
   color: #ffffff;
+  text-transform: uppercase;
 }
 
-.arkham-brand-text small {
-  font-size: 9px;
+.arkham-brand-sub {
+  font-family: var(--font-cinzel), 'Cinzel', Georgia, serif;
   font-weight: 600;
-  letter-spacing: 0.22em;
-  color: #9f9dae;
-  margin-top: 3px;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  color: #b9afb2;
+  margin-top: 2px;
+  text-transform: uppercase;
 }
 
-@media (max-width: 420px) {
-  .arkham-brand {
-    gap: 8px;
-  }
-  .arkham-brand-emblem {
-    width: 35px;
-    height: 35px;
-  }
-  .arkham-brand-text strong {
-    font-size: 12px;
-    letter-spacing: 0.1em;
-  }
-  .arkham-brand-text small {
-    font-size: 8px;
-    letter-spacing: 0.18em;
-  }
-}
-
-/* Desktop Nav */
+/* 2. Desktop Navigation & Gliding Hover Indicator */
 .arkham-desktop-nav {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: clamp(14px, 1.8vw, 26px);
+  gap: 4px;
 }
 
-.arkham-nav-item {
+.nav-gliding-pill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 38px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(229, 37, 45, 0.12), rgba(143, 5, 16, 0.05));
+  border: 1px solid rgba(229, 37, 45, 0.22);
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 0;
+  transition: transform 450ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              width 450ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              opacity 250ms ease;
+  will-change: transform, width;
+}
+
+.nav-gliding-pill::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: #e5252d;
+  border-radius: 2px;
+  box-shadow: 0 0 8px #e5252d, 0 0 16px rgba(229, 37, 45, 0.6);
+}
+
+/* 4. Link Styling & Hover Lift */
+.arkham-nav-link {
   position: relative;
-  color: #b5b3c4;
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  padding: 6px 2px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 8px 16px;
+  min-height: 44px;
+  color: #b9afb2;
+  font-family: var(--font-inter), 'Inter', -apple-system, sans-serif;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  transition: color 200ms ease, transform 200ms cubic-bezier(0.34, 1.4, 0.5, 1);
+  z-index: 1;
 }
 
-.arkham-nav-item:hover,
-.arkham-nav-item:focus-visible {
+.arkham-nav-link:hover {
   color: #ffffff;
+  transform: translateY(-1px);
 }
 
-.arkham-nav-item.is-active {
+.arkham-nav-link.is-active {
   color: #ffffff;
   font-weight: 600;
 }
 
-.arkham-nav-item .active-dot {
+.arkham-nav-link:focus-visible {
+  outline: 2px solid #e5252d;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* 3. Active Link Pulsing Red Dot */
+.nav-active-dot {
+  display: inline-block;
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #e3262e;
-  box-shadow: 0 0 8px #ff3840;
+  background: #e5252d;
+  box-shadow: 0 0 8px #e5252d;
+  animation: dot-pulse-ring 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
 }
 
-@media (max-width: 920px) {
-  .arkham-desktop-nav {
-    display: none !important;
+@keyframes dot-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(229, 37, 45, 0.8), 0 0 6px #e5252d;
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(229, 37, 45, 0), 0 0 8px rgba(229, 37, 45, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 37, 45, 0), 0 0 0 rgba(229, 37, 45, 0);
   }
 }
 
-/* Desktop Actions */
+/* 7. Right Desktop Actions & Dashboard Button */
 .arkham-desktop-actions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.arkham-auth-group {
+.arkham-nav-btn.dashboard-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-}
-
-.arkham-login-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #d1cfdd;
-  font-size: 12.5px;
-  font-weight: 500;
-  text-decoration: none;
-  padding: 8px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  gap: 8px;
+  padding: 8px 16px;
+  min-height: 44px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
-  transition: all 0.2s ease;
-}
-
-.arkham-login-link:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.arkham-register-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 16px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #b9afb2;
+  font-family: var(--font-inter), 'Inter', -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
   text-decoration: none;
-  background: #e3262e;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 6px;
-  box-shadow: 0 4px 18px rgba(227, 38, 46, 0.35);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  cursor: pointer;
+  transition: transform 250ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              border-color 250ms ease,
+              color 200ms ease,
+              background-color 200ms ease;
 }
 
-.arkham-register-cta:hover {
-  background: #ff3b43;
+.arkham-nav-btn.dashboard-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(227, 38, 46, 0.5);
+  border-color: rgba(229, 37, 45, 0.5);
+  color: #ffffff;
+  background-color: rgba(229, 37, 45, 0.06);
 }
 
-.arkham-nav-btn {
+.arkham-nav-btn.dashboard-btn:focus-visible {
+  outline: 2px solid #e5252d;
+  outline-offset: 3px;
+}
+
+.arkham-nav-btn.admin-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #d1cfdd;
-  font-size: 12.5px;
-  font-weight: 500;
-  text-decoration: none;
-  padding: 7px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px 12px;
+  min-height: 44px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.04);
-  transition: all 0.2s ease;
+  background: rgba(229, 37, 45, 0.08);
+  border: 1px solid rgba(229, 37, 45, 0.35);
+  color: #ff6067;
+  font-family: var(--font-inter), 'Inter', -apple-system, sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 250ms cubic-bezier(0.34, 1.4, 0.5, 1), border-color 200ms ease;
 }
 
-.arkham-nav-btn:hover {
-  border-color: rgba(227, 38, 46, 0.6);
+.arkham-nav-btn.admin-btn:hover {
+  transform: translateY(-2px);
+  border-color: #e5252d;
   color: #ffffff;
 }
 
-.arkham-nav-btn.is-active {
-  color: #ffffff;
-  border-color: #e3262e;
-  background: rgba(227, 38, 46, 0.12);
-}
-
-.arkham-admin-link {
-  color: #ff525a;
-  border-color: rgba(227, 38, 46, 0.35);
-}
-
-.accent-red {
-  color: #e3262e;
-}
-
-.arkham-unread-badge {
+.arkham-badge-pulse {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #e3262e;
-  color: #fff;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #e5252d;
+  color: #ffffff;
   font-size: 10px;
   font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 10px rgba(229, 37, 45, 0.7);
+  animation: badge-pulse-scale 3s ease-in-out infinite;
+  transform-origin: center center;
 }
 
+@keyframes badge-pulse-scale {
+  0%, 82%, 100% {
+    transform: scale(1);
+  }
+  91% {
+    transform: scale(1.25);
+  }
+}
+
+/* 8. Logout Button with Red Gradient & Diagonal Sheen */
 .arkham-logout-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 8px;
+  padding: 8px 18px;
+  min-height: 44px;
   border-radius: 6px;
-  color: #a4a1b3;
-  padding: 7px 11px;
-  font-size: 11.5px;
+  background: linear-gradient(135deg, #e5252d, #8f0510);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-family: var(--font-inter), 'Inter', -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(229, 37, 45, 0.35);
+  transition: transform 250ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              box-shadow 250ms ease,
+              border-color 200ms ease;
+}
+
+.arkham-logout-btn::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -70%;
+  width: 45%;
+  height: 220%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  transform: rotate(25deg);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 250ms ease;
 }
 
 .arkham-logout-btn:hover {
-  border-color: #e3262e;
-  color: #ff4d55;
-  background: rgba(227, 38, 46, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(229, 37, 45, 0.65), 0 0 14px rgba(229, 37, 45, 0.45);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
-@media (max-width: 920px) {
-  .arkham-desktop-actions {
-    display: none !important;
-  }
+.arkham-logout-btn:hover::after {
+  opacity: 1;
+  transform: rotate(25deg) translateX(460%);
 }
 
-/* Mobile Controls */
-.arkham-mobile-controls {
+.arkham-logout-btn:active {
+  transform: translateY(-2px) scale(0.96);
+}
+
+.arkham-logout-btn:focus-visible {
+  outline: 2px solid #e5252d;
+  outline-offset: 3px;
+}
+
+/* 9. Mobile Hamburger Button (under 900px) */
+.arkham-hamburger-btn {
   display: none;
-  align-items: center;
-  gap: 10px;
-}
-
-@media (max-width: 920px) {
-  .arkham-mobile-controls {
-    display: flex;
-  }
-}
-
-.arkham-mobile-quick-reg {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 14px;
-  background: #e3262e;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: 6px;
-  text-decoration: none;
-  box-shadow: 0 2px 12px rgba(227, 38, 46, 0.35);
-  white-space: nowrap;
-}
-
-.arkham-mobile-quick-dash {
-  position: relative;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(227, 38, 46, 0.4);
-  background: rgba(227, 38, 46, 0.1);
-  color: #ffffff;
-  border-radius: 8px;
-  text-decoration: none;
-}
-
-.arkham-mobile-badge {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background: #e3262e;
-  color: #fff;
-  font-size: 9px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 999px;
-}
-
-.arkham-hamburger-toggle {
   width: 44px;
   height: 44px;
   min-width: 44px;
   min-height: 44px;
-  display: grid;
-  place-items: center;
-  background: rgba(18, 16, 26, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 8px;
-  color: #ffffff;
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.2s ease;
-}
-
-.arkham-hamburger-toggle:hover,
-.arkham-hamburger-toggle.is-open {
-  border-color: #e3262e;
-  background: rgba(227, 38, 46, 0.18);
-  color: #ffffff;
-  box-shadow: 0 0 16px rgba(227, 38, 46, 0.3);
-}
-
-/* Mobile Drawer & Backdrop */
-.arkham-mobile-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  z-index: 99998 !important;
-}
-
-.arkham-mobile-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(340px, 86vw);
-  height: 100dvh;
-  background: #080812 !important;
-  border-left: 1px solid rgba(227, 38, 46, 0.4) !important;
-  box-shadow: -20px 0 60px rgba(0, 0, 0, 0.95) !important;
-  z-index: 99999 !important;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 20px 20px 24px;
-  box-sizing: border-box;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.arkham-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.arkham-drawer-close {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  min-height: 42px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-}
-
-.arkham-drawer-close:hover {
-  background: rgba(227, 38, 46, 0.15);
-  border-color: #e3262e;
-}
-
-.arkham-drawer-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 16px 0;
-  flex-grow: 1;
-}
-
-.arkham-drawer-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  min-height: 46px;
-  box-sizing: border-box;
-  color: #dedce6;
-  text-decoration: none;
-  font-size: 14.5px;
-  font-weight: 500;
-  border-radius: 8px;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.arkham-drawer-link:hover,
-.arkham-drawer-link:focus-visible {
-  background: rgba(255, 255, 255, 0.06);
-  color: #ffffff;
-}
-
-.arkham-drawer-link.is-active {
-  background: rgba(227, 38, 46, 0.14);
-  border-left: 3px solid #e3262e;
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.drawer-chevron {
-  color: #726f82;
-}
-
-.arkham-drawer-link.is-active .drawer-chevron {
-  color: #e3262e;
-}
-
-.arkham-drawer-account {
-  padding: 14px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 12px;
-}
-
-.arkham-drawer-user-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.user-info-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.user-avatar-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(227, 38, 46, 0.2);
-  border: 1px solid rgba(227, 38, 46, 0.6);
-  display: grid;
-  place-items: center;
-  color: #ff5960;
-  flex-shrink: 0;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.user-name {
-  font-size: 13px;
-  color: #ffffff;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-email {
-  font-size: 11px;
-  color: #8c899c;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.user-actions-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.drawer-action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 16px;
-  min-height: 44px;
-  border-radius: 8px;
-  font-size: 13.5px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.drawer-action-btn.primary {
-  background: #e3262e;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 4px 20px rgba(227, 38, 46, 0.3);
-}
-
-.drawer-action-btn.secondary {
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-}
-
-.drawer-action-btn.admin {
-  background: rgba(227, 38, 46, 0.1);
-  color: #ff5960;
-  border: 1px solid rgba(227, 38, 46, 0.35);
-}
-
-.drawer-action-btn.logout {
+  padding: 12px 10px;
   background: transparent;
-  color: #9f9dae;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  transition: border-color 200ms ease, background-color 200ms ease;
 }
 
-.drawer-action-btn.logout:hover {
-  color: #ff4750;
-  border-color: rgba(227, 38, 46, 0.5);
+.arkham-hamburger-btn:hover {
+  border-color: rgba(229, 37, 45, 0.5);
+  background-color: rgba(229, 37, 45, 0.08);
 }
 
-.user-badge {
+.arkham-hamburger-btn:focus-visible {
+  outline: 2px solid #e5252d;
+  outline-offset: 3px;
+}
+
+.hamburger-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
   background: #ffffff;
-  color: #e3262e;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
-  border-radius: 999px;
-  margin-left: auto;
+  border-radius: 2px;
+  transition: transform 320ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              opacity 200ms ease,
+              background-color 200ms ease;
+  transform-origin: center;
 }
 
-.arkham-drawer-guest-card {
+.arkham-hamburger-btn.is-open .top-bar {
+  transform: translateY(7px) rotate(45deg);
+  background: #e5252d;
+}
+
+.arkham-hamburger-btn.is-open .mid-bar {
+  opacity: 0;
+  transform: scaleX(0);
+}
+
+.arkham-hamburger-btn.is-open .bot-bar {
+  transform: translateY(-7px) rotate(-45deg);
+  background: #e5252d;
+}
+
+@media (max-width: 900px) {
+  .arkham-desktop-nav,
+  .arkham-desktop-actions {
+    display: none !important;
+  }
+  .arkham-hamburger-btn {
+    display: flex !important;
+  }
+}
+
+/* 9. Mobile Panel Unrolling via Clip-Path */
+.arkham-mobile-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(10, 6, 8, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(229, 37, 45, 0.25);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.75);
+  clip-path: inset(0 0 100% 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: clip-path 450ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              opacity 300ms ease;
+  z-index: 45;
+  max-height: calc(100vh - 74px);
+  overflow-y: auto;
+}
+
+.arkham-mobile-panel.is-open {
+  clip-path: inset(0 0 0 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-panel-inner {
+  padding-block: 20px 28px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
 }
 
-.arkham-drawer-footer {
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 11px;
-  color: #79768a;
+.mobile-panel-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.drawer-meta-line {
+.mobile-nav-link {
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.drawer-meta-contacts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.drawer-meta-contacts a {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: #aaa8ba;
+  justify-content: space-between;
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  color: #b9afb2;
+  font-family: var(--font-inter), 'Inter', -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
   text-decoration: none;
+  transition: color 200ms ease, background-color 200ms ease,
+              transform 350ms cubic-bezier(0.34, 1.4, 0.5, 1), opacity 350ms ease;
+  transform: translateY(12px);
+  opacity: 0;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.is-active {
+  color: #ffffff;
+  background: rgba(229, 37, 45, 0.08);
+}
+
+.mobile-nav-link.is-active {
+  font-weight: 600;
+}
+
+.arkham-mobile-panel.is-open .mobile-nav-link {
+  transform: translateY(0);
+  opacity: 1;
+  transition-delay: calc(var(--item-idx) * 45ms);
+}
+
+.mobile-panel-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  transform: translateY(12px);
+  opacity: 0;
+  transition: transform 350ms cubic-bezier(0.34, 1.4, 0.5, 1), opacity 350ms ease;
+}
+
+.arkham-mobile-panel.is-open .mobile-panel-actions {
+  transform: translateY(0);
+  opacity: 1;
+  transition-delay: calc(var(--item-idx) * 45ms);
+}
+
+.mobile-action-btn {
+  width: 100%;
+  justify-content: center;
+  min-height: 46px;
+}
+
+.mobile-action-btn.dashboard-btn {
+  justify-content: space-between;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .nav-anim-item,
+  .nav-sweep-glow,
+  .nav-active-dot,
+  .arkham-badge-pulse,
+  .arkham-logout-btn::after {
+    animation: none !important;
+  }
+  .arkham-master-header,
+  .arkham-brand-logo-img,
+  .nav-gliding-pill,
+  .arkham-nav-link,
+  .arkham-nav-btn,
+  .arkham-logout-btn,
+  .hamburger-bar,
+  .arkham-mobile-panel,
+  .mobile-nav-link,
+  .mobile-panel-actions {
+    transition: none !important;
+  }
 }
 
 /* ==========================================================================

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist, Geist_Mono, Cinzel, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { GlobalMouseAura } from '@/components/global-mouse-aura'
@@ -9,6 +9,8 @@ import PulsingHexagonBackground from '@/components/pulsing-hexagon-background'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const cinzel = Cinzel({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-cinzel" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: 'Arkham MUN | Diplomacy, reimagined',
@@ -39,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
       <body className="font-sans antialiased">
         <PulsingHexagonBackground />
         <div className="site-comic-texture" aria-hidden="true" />
