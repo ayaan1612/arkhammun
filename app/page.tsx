@@ -20,7 +20,7 @@ const committees = [
   ["IP", "Journalists, Caricaturists & Photographers to cover conference proceedings", "International Press"],
   ["Lok Sabha", "Indian Parliamentary Debate", "National"],
   ["WHO", "Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Tests, and Treatments for All Countries.", "Specialized"],
-  ["UNHCC", "Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.", "Specialized"],
+  ["UNEP", "Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.", "Specialized"],
   ]
 
 const schedule = [

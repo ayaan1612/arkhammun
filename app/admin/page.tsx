@@ -90,7 +90,7 @@ const defaultFormSections: FormSectionsConfig = {
   "IPL (Mega Auction)",
   "Lok Sabha (Indian Parliamentary Debate)",
   "WHO (Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Tests, and Treatments for All Countries.)",
-  "UNHCC (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
+  "UNEP (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
   ],
   },
   portfolioPreferences: {

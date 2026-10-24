@@ -20,7 +20,7 @@ export const arkham = {
     { acronym: 'IP', level: 'International Press', agenda: 'Journalists, Caricaturists & Photographers to cover conference proceedings' },
   { acronym: 'Lok Sabha', level: 'National', agenda: 'Indian Parliamentary Debate' },
   { acronym: 'WHO', level: 'Specialized', agenda: 'Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Tests, and Treatments for All Countries.' },
-  { acronym: 'UNHCC', level: 'Specialized', agenda: 'Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.' },
+  { acronym: 'UNEP', level: 'Specialized', agenda: 'Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.' },
   ],
   schedule: [
     ['24 OCT', 'Delegate registration', 'Conference foyer'],
