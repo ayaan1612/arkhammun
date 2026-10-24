@@ -15,6 +15,7 @@ export function ArkhamLoadingScreen() {
 
   return (
     <div className="arkham-loading" role="status" aria-live="polite" aria-label="Loading Arkham MUN">
+      <div className="loading-comic-texture" aria-hidden="true" />
       <div className="loading-orbit loading-orbit-one" />
       <div className="loading-orbit loading-orbit-two" />
       <div className="loading-core">

@@ -403,8 +403,9 @@
   .registration-section-heading { gap: 9px; }
 }
 
-/* Subtle cinematic manga/comic textured background overlay */
-.site-comic-texture {
+/* Subtle cinematic manga/comic textured background overlay across all pages & loading screen */
+.site-comic-texture,
+.loading-comic-texture {
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -415,9 +416,15 @@
   background-position: center center;
   background-size: cover;
   background-attachment: fixed;
-  opacity: 0.08;
-  mix-blend-mode: luminosity;
-  filter: contrast(1.15) brightness(0.9);
+  opacity: 0.16;
+  filter: contrast(1.18) brightness(0.85);
+  transition: opacity 0.3s ease;
+}
+
+.loading-comic-texture {
+  position: absolute;
+  z-index: 1;
+  background-attachment: scroll;
 }
 
 

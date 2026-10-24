@@ -167,3 +167,19 @@
     padding: 14px;
   }
 }
+
+
+/* Loading screen layering with atmospheric comic panel texture */
+.arkham-loading .loading-comic-texture {
+  z-index: 1;
+}
+.arkham-loading .loading-orbit {
+  z-index: 2;
+}
+.arkham-loading .loading-core {
+  z-index: 3;
+}
+.arkham-loading .loading-progress,
+.arkham-loading p {
+  z-index: 4;
+}
