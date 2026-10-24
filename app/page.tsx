@@ -10,17 +10,17 @@ import { useAuth } from "@/lib/auth-context"
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
 const committees = [
-  ["UNODC", "Human Rights Implications on the global war on Drugs", "Advanced"],
+  ["UNCSW", "Advancing Women's Protection, Leadership and Rights in Conflict Zones, with Special Emphasis on the Russia–Ukraine War.", "Specialized"],
+  ["UNGA", "Strengthening Nuclear Weapon-Free Zones, with a Focus on the Middle East and South Asia.", "General Assembly"],
+  ["Lok Sabha", "Indian parliamentary committee simulation.", "National"],
+  ["IPL — Mega Auction", "Simulated IPL Mega Auction committee.", "Specialized"],
+  ["IP — International Press", "Journalists, Caricaturists and Photographers to Cover Conference Proceedings.", "International Press"],
+  ["UNODC", "Human Rights Implications of the Global War on Drugs.", "Advanced"],
+  ["WHO", "Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Diagnostics and Treatments for All Countries.", "Specialized"],
+  ["UNEP", "Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.", "Specialized"],
   ["AIPPM", "Use of Central Agencies (ED/CBI): Law Enforcement Tool or Political Tool?", "National"],
   ["UNHRC", "Deliberating on safeguarding Political Leaders under International Human Rights Law", "Advanced"],
-  ["UNGA", "Strengthening Nuclear Weapon-Free Zones with focus on the Middle East & South Asia", "General Assembly"],
-  ["UNCSW", "Advancing women's protection, leadership & rights in conflict zones with special emphasis on the Russia-Ukraine war", "Specialized"],
-  ["IPL", "Mega Auction", "Specialized"],
-  ["IP", "Journalists, Caricaturists & Photographers to cover conference proceedings", "International Press"],
-  ["Lok Sabha", "Indian Parliamentary Debate", "National"],
-  ["WHO", "Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Tests, and Treatments for All Countries.", "Specialized"],
-  ["UNEP", "Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.", "Specialized"],
-  ]
+]
 
 const schedule = [
   ["24 OCT", "Delegate registration", "Conference foyer"],

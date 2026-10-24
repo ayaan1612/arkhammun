@@ -423,3 +423,20 @@
   .site-nav:has(.nav-links.is-open) + .hero-shell { padding-top: 28px; }
   .hero-shell h1 { font-size: 39px; }
 }
+
+/* Subtle cinematic manga/comic textured background overlay */
+.site-comic-texture {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  background-image: url('/comic-collage-bg.png');
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  background-attachment: fixed;
+  opacity: 0.08;
+  mix-blend-mode: luminosity;
+  filter: contrast(1.15) brightness(0.9);
+}

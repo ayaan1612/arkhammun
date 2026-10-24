@@ -42,6 +42,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         <PulsingHexagonBackground />
+        <div className="site-comic-texture" aria-hidden="true" />
         <ArkhamLoadingScreen />
         <AuthProvider>
           <GlobalMouseAura>{children}</GlobalMouseAura>

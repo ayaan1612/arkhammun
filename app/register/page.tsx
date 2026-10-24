@@ -30,13 +30,16 @@ import {
 import { useAuth } from "@/lib/auth-context"
 
 const committees = [
-  "UNCSW (Advancing women's protection, leadership and rights in conflict zone with special emphasis on women)",
-  "UNGA (Strengthening Nuclear Weapon-Free Zones with Focus on the Middle East and South Asia.)",
-  "AIPPM (Use of Central Agencies (ED/CBI): Law Enforcement or Political Tool?)",
+  "UNCSW (Advancing Women's Protection, Leadership and Rights in Conflict Zones, with Special Emphasis on the Russia–Ukraine War.)",
+  "UNGA (Strengthening Nuclear Weapon-Free Zones, with a Focus on the Middle East and South Asia.)",
+  "Lok Sabha (Indian parliamentary committee simulation.)",
+  "IPL — Mega Auction (Simulated IPL Mega Auction committee.)",
+  "IP — International Press (Journalists, Caricaturists and Photographers to Cover Conference Proceedings.)",
   "UNODC (Human Rights Implications of the Global War on Drugs.)",
-  "UNHRC (Deliberating on Safeguarding Political Leaders Under International Human Rights Law.)",
-  "IP",
-  "IPL (Mega Auction)",
+  "WHO (Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Diagnostics and Treatments for All Countries.)",
+  "UNEP (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
+  "AIPPM (Use of Central Agencies (ED/CBI): Law Enforcement Tool or Political Tool?)",
+  "UNHRC (Deliberating on safeguarding Political Leaders under International Human Rights Law.)",
 ]
 
 function TextField({
