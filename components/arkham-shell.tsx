@@ -1,9 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ArrowRight, Bell, Instagram, LogIn, LogOut, Mail, MapPin, Menu, Phone, Shield, User, X } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
+import {
+  ArrowRight,
+  ChevronRight,
+  Instagram,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Mail,
+  MapPin,
+  Menu,
+  Phone,
+  Shield,
+  User,
+  X,
+} from "lucide-react"
 import { arkham } from "@/lib/arkham-data"
 import { useAuth } from "@/lib/auth-context"
 import { entryPassApi } from "@/lib/entry-pass-api"
@@ -12,7 +27,41 @@ export function ArkhamHeader() {
   const { user, token, logout, isAdmin } = useAuth()
   const [unreadCount, setUnreadCount] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
+  const drawerRef = useRef<HTMLDivElement>(null)
+
+  // Handle scroll detection for sticky glass header
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 12)
+    }
+    handleScroll()
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const originalStyle = window.getComputedStyle(document.body).overflow
+      document.body.style.overflow = "hidden"
+      return () => {
+        document.body.style.overflow = originalStyle
+      }
+    }
+  }, [mobileMenuOpen])
+
+  // Handle ESC key to close drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileMenuOpen) {
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [mobileMenuOpen])
 
   // Fetch unread notification badge count when user is logged in
   useEffect(() => {
@@ -43,204 +92,87 @@ export function ArkhamHeader() {
     setMobileMenuOpen(false)
   }, [pathname])
 
+  const navLinks = [
+    { label: "Home", href: "/" },
+    { label: "Committees", href: "/committees" },
+    { label: "About", href: "/about" },
+    { label: "Schedule", href: "/schedule" },
+    { label: "Policies", href: "/policies" },
+    { label: "FAQ", href: "/faq" },
+    { label: "Contact", href: "/contact" },
+  ]
+
+  const isActiveLink = (href: string) => {
+    if (href === "/") return pathname === "/"
+    return pathname.startsWith(href)
+  }
+
   return (
-    <header className="arkham-header" style={{ position: "relative" }}>
-      <Link href="/" className="arkham-brand">
-        <img src={arkham.logo} alt="Arkham MUN emblem" />
-        <span>
-          <strong>ARKHAM</strong>
-          <small>MUN</small>
-        </span>
-      </Link>
-
-      {/* Desktop Navigation */}
-      <nav aria-label="Primary navigation" style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-        <Link href="/">Home</Link>
-        <Link href="/committees">Committees</Link>
-        <Link href="/about">About</Link>
-        <Link href="/schedule">Schedule</Link>
-        <Link href="/faq">FAQ</Link>
-        <Link href="/contact">Contact</Link>
-
-        {user ? (
-          <>
-            <Link
-              href="/dashboard"
-              style={{
-                position: "relative",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "6px",
-                color: pathname === "/dashboard" ? "#fff" : "#aaa8ba",
-                fontWeight: 600,
-              }}
-            >
-              <User size={13} style={{ color: "#e3262e" }} />
-              Dashboard
-              {unreadCount > 0 && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minWidth: "18px",
-                    height: "18px",
-                    padding: "0 4px",
-                    borderRadius: "999px",
-                    backgroundColor: "#e3262e",
-                    color: "#fff",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}
-                  title={`${unreadCount} unread notification(s)`}
-                >
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
-
-            {isAdmin && (
-              <Link
-                href="/admin"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  color: "#ff424b",
-                  fontWeight: 600,
-                }}
-              >
-                <Shield size={12} />
-                Admin
-              </Link>
-            )}
-
-            <button
-              onClick={logout}
-              title="Sign out of Arkham account"
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.18)",
-                borderRadius: "4px",
-                color: "#aaa8ba",
-                padding: "6px 12px",
-                fontSize: "11px",
-                cursor: "pointer",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "5px",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#e3262e"
-                e.currentTarget.style.color = "#fff"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"
-                e.currentTarget.style.color = "#aaa8ba"
-              }}
-            >
-              <LogOut size={12} />
-              Logout
-            </button>
-          </>
-        ) : (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
-            <Link href="/login" className="arkham-nav-cta">
-              <LogIn size={13} /> Login
-            </Link>
-            <Link href="/register" className="arkham-nav-cta">
-              Register <ArrowRight size={14} />
-            </Link>
-          </div>
-        )}
-      </nav>
-
-      {/* Mobile Menu Toggle Button */}
-      <button
-        className="arkham-mobile-menu"
-        aria-label={mobileMenuOpen ? "Close navigation" : "Open navigation"}
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        style={{
-          display: "none",
-          background: "none",
-          border: 0,
-          color: "#fff",
-          cursor: "pointer",
-          padding: "8px",
-        }}
-      >
-        {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-      </button>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            zIndex: 100,
-            backgroundColor: "#0a0a14",
-            border: "1px solid rgba(255,255,255,0.16)",
-            borderRadius: "0 0 8px 8px",
-            padding: "20px 24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px",
-            boxShadow: "0 20px 40px rgba(0,0,0,0.8)",
-          }}
+    <header
+      className={`arkham-master-header ${isScrolled ? "is-scrolled" : ""}`}
+      role="banner"
+    >
+      <div className="arkham-master-header-bar">
+        {/* Brand Logo and Text */}
+        <Link
+          href="/"
+          className="arkham-brand"
+          aria-label="Arkham MUN Home"
+          onClick={() => setMobileMenuOpen(false)}
         >
-          <Link href="/" style={{ color: "#aaa8ba", textDecoration: "none", fontSize: "14px" }}>
-            Home
-          </Link>
-          <Link href="/committees" style={{ color: "#aaa8ba", textDecoration: "none", fontSize: "14px" }}>
-            Committees
-          </Link>
-          <Link href="/about" style={{ color: "#aaa8ba", textDecoration: "none", fontSize: "14px" }}>
-            About
-          </Link>
-          <Link href="/schedule" style={{ color: "#aaa8ba", textDecoration: "none", fontSize: "14px" }}>
-            Schedule
-          </Link>
-          <Link href="/faq" style={{ color: "#aaa8ba", textDecoration: "none", fontSize: "14px" }}>
-            FAQ
-          </Link>
-          <Link href="/contact" style={{ color: "#aaa8ba", textDecoration: "none", fontSize: "14px" }}>
-            Contact
-          </Link>
+          <img
+            src={arkham.logo}
+            alt="Arkham MUN emblem"
+            width={40}
+            height={40}
+            className="arkham-brand-emblem"
+          />
+          <span className="arkham-brand-text">
+            <strong>ARKHAM</strong>
+            <small>MUN</small>
+          </span>
+        </Link>
 
+        {/* Desktop Primary Navigation */}
+        <nav
+          className="arkham-desktop-nav"
+          aria-label="Primary navigation"
+        >
+          {navLinks.map((link) => {
+            const active = isActiveLink(link.href)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`arkham-nav-item ${active ? "is-active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {link.label}
+                {active && <span className="active-dot" aria-hidden="true" />}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Desktop Actions Area */}
+        <div className="arkham-desktop-actions">
           {user ? (
             <>
               <Link
                 href="/dashboard"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  color: "#fff",
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  fontSize: "14px",
-                }}
+                className={`arkham-nav-btn arkham-dashboard-link ${
+                  pathname === "/dashboard" ? "is-active" : ""
+                }`}
+                title="Delegate Dashboard"
               >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                  <User size={14} style={{ color: "#e3262e" }} />
-                  My Dashboard ({user.name})
-                </span>
+                <User size={14} className="accent-red" />
+                <span>Dashboard</span>
                 {unreadCount > 0 && (
                   <span
-                    style={{
-                      backgroundColor: "#e3262e",
-                      color: "#fff",
-                      fontSize: "11px",
-                      padding: "2px 8px",
-                      borderRadius: "999px",
-                    }}
+                    className="arkham-unread-badge"
+                    title={`${unreadCount} unread notification(s)`}
                   >
-                    {unreadCount} unread
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </Link>
@@ -248,64 +180,254 @@ export function ArkhamHeader() {
               {isAdmin && (
                 <Link
                   href="/admin"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    color: "#ff424b",
-                    textDecoration: "none",
-                    fontSize: "14px",
-                  }}
+                  className="arkham-nav-btn arkham-admin-link"
+                  title="Admin Portal"
                 >
-                  <Shield size={14} />
-                  Admin Portal
+                  <Shield size={13} />
+                  <span>Admin</span>
                 </Link>
               )}
 
               <button
                 onClick={logout}
-                style={{
-                  marginTop: "6px",
-                  background: "transparent",
-                  border: "1px solid rgba(227,38,46,0.4)",
-                  borderRadius: "4px",
-                  color: "#ff424b",
-                  padding: "10px",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                }}
+                title="Sign out of Arkham account"
+                className="arkham-logout-btn"
+                aria-label="Sign out"
               >
-                <LogOut size={14} />
-                Logout ({user.email})
+                <LogOut size={13} />
+                <span>Logout</span>
               </button>
             </>
           ) : (
-            <div style={{ display: "grid", gap: "10px", marginTop: "8px" }}>
-              <Link
-                href="/login"
-                style={{
-                  textAlign: "center",
-                  padding: "10px",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: "4px",
-                  color: "#fff",
-                  textDecoration: "none",
-                  fontSize: "13px",
-                }}
-              >
-                Login
+            <div className="arkham-auth-group">
+              <Link href="/login" className="arkham-login-link">
+                <LogIn size={13} />
+                <span>Login</span>
               </Link>
-              <Link href="/register" className="arkham-nav-cta" style={{ textAlign: "center" }}>
-                Register <ArrowRight size={14} />
+              <Link href="/register" className="arkham-register-cta">
+                <span>Register</span>
+                <ArrowRight size={14} />
               </Link>
             </div>
           )}
         </div>
-      )}
+
+        {/* Mobile Header Controls */}
+        <div className="arkham-mobile-controls">
+          {/* Quick CTA on mobile */}
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="arkham-mobile-quick-dash"
+              aria-label="Go to Dashboard"
+              title="Dashboard"
+            >
+              <User size={15} />
+              {unreadCount > 0 && (
+                <span className="arkham-mobile-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
+              )}
+            </Link>
+          ) : (
+            <Link href="/register" className="arkham-mobile-quick-reg">
+              Register
+            </Link>
+          )}
+
+          {/* Accessible Menu Toggle */}
+          <button
+            className={`arkham-hamburger-toggle ${mobileMenuOpen ? "is-open" : ""}`}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close main navigation menu" : "Open main navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="arkham-mobile-drawer"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Drawer and Backdrop */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="arkham-mobile-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Mobile Drawer Panel */}
+            <motion.div
+              ref={drawerRef}
+              id="arkham-mobile-drawer"
+              className="arkham-mobile-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Site navigation"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 240 }}
+            >
+              {/* Drawer Top Bar */}
+              <div className="arkham-drawer-header">
+                <Link
+                  href="/"
+                  className="arkham-brand"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <img
+                    src={arkham.logo}
+                    alt="Arkham MUN emblem"
+                    width={34}
+                    height={34}
+                    className="arkham-brand-emblem"
+                  />
+                  <span className="arkham-brand-text">
+                    <strong>ARKHAM</strong>
+                    <small>MUN</small>
+                  </span>
+                </Link>
+                <button
+                  className="arkham-drawer-close"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close navigation menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Drawer Navigation Links */}
+              <nav className="arkham-drawer-nav" aria-label="Mobile main navigation">
+                {navLinks.map((link, idx) => {
+                  const active = isActiveLink(link.href)
+                  return (
+                    <motion.div
+                      key={link.href}
+                      initial={{ opacity: 0, x: 15 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.04 * idx, duration: 0.22 }}
+                    >
+                      <Link
+                        href={link.href}
+                        className={`arkham-drawer-link ${active ? "is-active" : ""}`}
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <span>{link.label}</span>
+                        <ChevronRight size={15} className="drawer-chevron" />
+                      </Link>
+                    </motion.div>
+                  )
+                })}
+              </nav>
+
+              {/* Drawer Account / CTA Block */}
+              <div className="arkham-drawer-account">
+                {user ? (
+                  <div className="arkham-drawer-user-card">
+                    <div className="user-info-row">
+                      <div className="user-avatar-circle">
+                        <User size={16} />
+                      </div>
+                      <div className="user-details">
+                        <strong className="user-name">{user.name}</strong>
+                        <small className="user-email">{user.email}</small>
+                      </div>
+                    </div>
+
+                    <div className="user-actions-stack">
+                      <Link
+                        href="/dashboard"
+                        className="drawer-action-btn primary"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <LayoutDashboard size={15} />
+                        <span>Delegate Dashboard</span>
+                        {unreadCount > 0 && (
+                          <span className="user-badge">{unreadCount}</span>
+                        )}
+                      </Link>
+
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          className="drawer-action-btn admin"
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <Shield size={15} />
+                          <span>Admin Portal</span>
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false)
+                          logout()
+                        }}
+                        className="drawer-action-btn logout"
+                      >
+                        <LogOut size={15} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="arkham-drawer-guest-card">
+                    <Link
+                      href="/register"
+                      className="drawer-action-btn primary"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <span>Register for Arkham MUN</span>
+                      <ArrowRight size={15} />
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="drawer-action-btn secondary"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <LogIn size={15} />
+                      <span>Delegate Login</span>
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Drawer Footer Details */}
+              <div className="arkham-drawer-footer">
+                <div className="drawer-meta-line">
+                  <MapPin size={13} />
+                  <span>Central Delhi, India · 24—25 October</span>
+                </div>
+                <div className="drawer-meta-contacts">
+                  <a href={`tel:${arkham.phone}`}>
+                    <Phone size={12} />
+                    <span>{arkham.phone}</span>
+                  </a>
+                  <a href={`mailto:${arkham.email}`}>
+                    <Mail size={12} />
+                    <span>{arkham.email}</span>
+                  </a>
+                  <a
+                    href="https://instagram.com/arkhammun"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Instagram size={12} />
+                    <span>@arkhammun</span>
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </header>
   )
 }
@@ -315,8 +437,14 @@ export function ArkhamFooter() {
     <footer className="arkham-footer">
       <div>
         <Link href="/" className="arkham-brand">
-          <img src={arkham.logo} alt="Arkham MUN emblem" />
-          <span>
+          <img
+            src={arkham.logo}
+            alt="Arkham MUN emblem"
+            width={44}
+            height={44}
+            className="arkham-brand-emblem"
+          />
+          <span className="arkham-brand-text">
             <strong>ARKHAM MUN</strong>
             <small>SEE YOU AT THE DAIS.</small>
           </span>
@@ -329,6 +457,7 @@ export function ArkhamFooter() {
           <Link href="/about">About Arkham</Link>
           <Link href="/committees">Committees</Link>
           <Link href="/schedule">Schedule</Link>
+          <Link href="/policies">Policies</Link>
           <Link href="/faq">FAQs</Link>
           <Link href="/dashboard">Delegate Dashboard</Link>
           <Link href="/admin">Admin Portal</Link>

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LayoutDashboard, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { useAuth } from "@/lib/auth-context"
+import { ArkhamHeader } from "@/components/arkham-shell"
 
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
@@ -32,7 +33,6 @@ const schedule = [
 
 export default function Home() {
   const { user } = useAuth()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
 
@@ -47,19 +47,9 @@ export default function Home() {
   }, [isCommitteePaused])
 
   return (
-    <main className="mun-site relative min-h-screen overflow-hidden bg-transparent text-white">
+    <main className="mun-site relative min-h-screen overflow-x-clip bg-transparent text-white">
       <div className="site-wash" aria-hidden="true" />
-      <nav className="site-nav" aria-label="Primary navigation">
-        <Link href="/" className="brand-mark" aria-label="Arkham MUN home"><img src={logoUrl} alt="Arkham MUN bat and laurel emblem" /><span><strong>ARKHAM</strong><small>MUN</small></span></Link>
-        <button className="menu-toggle" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu" aria-expanded={menuOpen}>{menuOpen ? <X size={20} /> : <Menu size={20} />}</button>
-        <div className={`nav-links ${menuOpen ? "is-open" : ""}`}>
-          <a href="/about" onClick={() => setMenuOpen(false)}>About</a><a href="/committees" onClick={() => setMenuOpen(false)}>Committees</a><a href="/policies" onClick={() => setMenuOpen(false)}>Policies</a><a href="/faq" onClick={() => setMenuOpen(false)}>FAQ</a><a href="/contact" onClick={() => setMenuOpen(false)}>Contact</a>{user ? (
-            <Link className="nav-cta home-action-button" href="/dashboard" onClick={() => setMenuOpen(false)} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LayoutDashboard size={14} /> Dashboard</Link>
-          ) : (
-            <Link className="nav-cta home-action-button" href="/login" onClick={() => setMenuOpen(false)} style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LogIn size={14} /> Login</Link>
-          )}<Link className="nav-cta home-action-button" href="/register">Register <ArrowRight size={15} /></Link>
-        </div>
-      </nav>
+      <ArkhamHeader />
 
       <section id="top" className="hero-shell">
         <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
