@@ -32,7 +32,7 @@ export default function SchedulePage() {
         </PageIntro>
 
         {/* Day 1 Schedule */}
-        <section className="page-section" style={{ maxWidth: "880px", margin: "0 auto", paddingBottom: "50px" }}>
+        <section className="page-section" style={{ paddingBottom: "50px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
             <span style={{ backgroundColor: "#e3262e", color: "#fff", padding: "4px 10px", borderRadius: "4px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em" }}>
               DAY 01
@@ -76,7 +76,7 @@ export default function SchedulePage() {
         </section>
 
         {/* Day 2 Schedule */}
-        <section className="page-section" style={{ maxWidth: "880px", margin: "0 auto", borderTop: "1px solid rgba(160,150,205,.16)" }}>
+        <section className="page-section" style={{ borderTop: "1px solid rgba(160,150,205,.16)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px" }}>
             <span style={{ backgroundColor: "#22c55e", color: "#000", padding: "4px 10px", borderRadius: "4px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em" }}>
               DAY 02
@@ -120,7 +120,7 @@ export default function SchedulePage() {
         </section>
 
         {/* Delegate Punctuality & Security Protocol */}
-        <section className="page-section" style={{ borderTop: "1px solid rgba(160,150,205,.16)", maxWidth: "880px", margin: "0 auto" }}>
+        <section className="page-section" style={{ borderTop: "1px solid rgba(160,150,205,.16)" }}>
           <div style={{ padding: "26px", backgroundColor: "#0c0b16", border: "1px solid rgba(227,38,46,0.25)", borderRadius: "8px" }}>
             <span className="section-kicker" style={{ color: "#e3262e" }}>IMPORTANT NOTICE</span>
             <h3 style={{ margin: "8px 0 10px", fontSize: "19px", color: "#fff" }}>

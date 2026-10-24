@@ -57,7 +57,7 @@ export default function DemoPage() {
 
   return (
     <ArkhamShell>
-      <div className="mx-auto w-full max-w-5xl px-4 py-16 text-white sm:px-6 lg:px-8">
+      <div className="container-x py-16 text-white">
         {/* Header */}
         <div className="mb-12 text-center">
           <span className="text-xs font-bold uppercase tracking-widest text-[#e3262e]">

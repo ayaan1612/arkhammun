@@ -119,7 +119,7 @@ export function ArkhamHeader() {
       className={`arkham-master-header ${isScrolled ? "is-scrolled" : ""}`}
       role="banner"
     >
-      <div className="arkham-master-header-bar">
+      <div className="arkham-master-header-bar container-x">
         {/* Brand Logo and Text */}
         <Link
           href="/"
@@ -446,7 +446,7 @@ export function ArkhamHeader() {
 
 export function ArkhamFooter() {
   return (
-    <footer className="arkham-footer">
+    <footer className="arkham-footer container-x">
       <div>
         <Link href="/" className="arkham-brand">
           <img
@@ -525,7 +525,7 @@ export function PageIntro({
   children: React.ReactNode
 }) {
   return (
-    <section className="page-intro">
+    <section className="page-intro container-x">
       <span className="section-kicker">{eyebrow}</span>
       <h1>{title}</h1>
       <p>{children}</p>

@@ -62,7 +62,7 @@ export default function FaqPage() {
           A comprehensive guide to Arkham MUN rules, delegate registration, committee logistics, and conference protocols.
         </PageIntro>
 
-        <section className="page-section faq-list" style={{ maxWidth: "860px", margin: "0 auto" }}>
+        <section className="page-section faq-list">
           {questions.map(([question, answer], idx) => (
             <details
               key={question}
