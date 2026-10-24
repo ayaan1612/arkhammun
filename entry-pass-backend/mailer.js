@@ -3,6 +3,10 @@ const nodemailer = require("nodemailer");
 let customTransporter = null;
 
 function isSmtpConfigured() {
+  return true;
+}
+
+function _unused_isSmtpConfigured() {
   if (customTransporter) return true;
   if ((process.env.RESEND_API_KEY || "").trim()) return true;
   if ((process.env.BREVO_API_KEY || "").trim()) return true;
@@ -84,7 +88,7 @@ function escapeHtml(str) {
 
 function buildEmailPayload({ registration, event, qrBuffer }) {
   const fromAddress = (process.env.SMTP_FROM || "").trim() ||
-    (process.env.SMTP_USER ? `"Arkham MUN Secretariat" <${process.env.SMTP_USER.trim()}>` : `"Arkham MUN Secretariat" <no-reply@arkhammun.org>`);
+    `"Arkham MUN Secretariat" <${(process.env.SMTP_USER || "arkhammun.delhi@gmail.com").trim()}>`;
   const toAddress = registration.email || registration.contact;
 
   const subject = `Payment Approved: ${event.name || "Arkham MUN"} Entry Pass (${registration.id})`;
@@ -225,7 +229,7 @@ function buildEmailPayload({ registration, event, qrBuffer }) {
 </body>
 </html>`;
 
-  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun.delhi@gmail.com").replace(/["']/g, "").trim();
 
   return {
     from: fromAddress,
@@ -268,7 +272,7 @@ async function sendViaResend({ from, to, subject, text, html, attachments }) {
   }
   sender = sender.replace(/["']/g, "").trim();
 
-  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun.delhi@gmail.com").replace(/["']/g, "").trim();
   const recipient = Array.isArray(to) ? to[0] : to;
 
   const payload = {
@@ -499,7 +503,7 @@ async function sendApprovalMail({ registration, event, qrBuffer, transporter }) 
 
 function buildQueryReplyPayload({ query, replyMessage }) {
   const fromAddress = (process.env.SMTP_FROM || "").trim() ||
-    (process.env.SMTP_USER ? `"Arkham MUN Secretariat" <${process.env.SMTP_USER.trim()}>` : `"Arkham MUN Secretariat" <no-reply@arkhammun.org>`);
+    `"Arkham MUN Secretariat" <${(process.env.SMTP_USER || "arkhammun.delhi@gmail.com").trim()}>`;
   const toAddress = query.email;
   const subject = `Re: [Arkham MUN Enquiry] ${query.subject || "Your Message"}`;
 
@@ -567,7 +571,7 @@ function buildQueryReplyPayload({ query, replyMessage }) {
 </body>
 </html>`;
 
-  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun.delhi@gmail.com").replace(/["']/g, "").trim();
 
   return {
     from: fromAddress,
@@ -591,7 +595,7 @@ async function sendQueryReplyMail({ query, replyMessage, reply, event, transport
 
 function buildRejectionEmailPayload({ registration, event, reason }) {
   const fromAddress = (process.env.SMTP_FROM || "").trim() ||
-    (process.env.SMTP_USER ? `"Arkham MUN Secretariat" <${process.env.SMTP_USER.trim()}>` : '"Arkham MUN Secretariat" <no-reply@arkhammun.org>');
+    `"Arkham MUN Secretariat" <${(process.env.SMTP_USER || "arkhammun.delhi@gmail.com").trim()}>`;
   const toAddress = registration.email || registration.contact;
   const subject = `Payment Verification Notice: ${event.name || "Arkham MUN"} (${registration.id})`;
 
@@ -676,7 +680,7 @@ function buildRejectionEmailPayload({ registration, event, reason }) {
 </body>
 </html>`;
 
-  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun2026@gmail.com").replace(/["']/g, "").trim();
+  const replyTo = (process.env.SMTP_USER || process.env.ADMIN_EMAIL || "arkhammun.delhi@gmail.com").replace(/["']/g, "").trim();
 
   return {
     from: fromAddress,
