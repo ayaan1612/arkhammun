@@ -620,7 +620,7 @@ function buildRejectionEmailPayload({ registration, event, reason }) {
     "",
     "Warm regards,",
     "Arkham MUN Secretariat",
-    "hello@arkhammun.org",
+    "arkhammun2026@gmail.com",
   ].filter((line) => line !== null).join("\n");
 
   const htmlBody = `<!doctype html>

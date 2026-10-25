@@ -6,7 +6,7 @@ export const arkham = {
   paymentUpi: '9718884945@ptsbi',
   venueNote: 'In Central Delhi',
   logo: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg',
-  email: 'hello@arkhammun.org',
+  email: 'arkhammun2026@gmail.com',
   phone: '9810110713',
   instagram: '@arkhammun',
   committees: [

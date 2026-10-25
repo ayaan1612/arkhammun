@@ -144,6 +144,7 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
   const hexBgRef = useRef<HTMLDivElement | null>(null)
 
   // Animation runtime measurements & state (stored in refs to avoid React renders)
+  const initialGeoRef = useRef<{ cx: number; cy: number; r0: number } | null>(null)
   const geoRef = useRef({
     cx: 0,
     cy: 0,
@@ -178,12 +179,20 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
     const pinRect = pin.getBoundingClientRect()
     const moonRect = moon.getBoundingClientRect()
 
-    // Center coordinates of the moon relative to the sticky pin element
-    const cx = moonRect.left - pinRect.left + moonRect.width / 2
-    const cy = moonRect.top - pinRect.top + moonRect.height / 2
+    const unscaledW = moon.offsetWidth || 320
+    const r0 = Math.max(30, unscaledW * 0.39)
 
-    // Radius of the emblem circle (approximately 0.39 x moon wrapper width)
-    const r0 = Math.max(30, moonRect.width * 0.39)
+    let cx = moonRect.left - pinRect.left + moonRect.width / 2
+    let cy = moonRect.top - pinRect.top + moonRect.height / 2
+
+    const currentScroll = window.scrollY || window.pageYOffset || 0
+
+    if (initialGeoRef.current && currentScroll > 15) {
+      cx = initialGeoRef.current.cx
+      cy = initialGeoRef.current.cy
+    } else {
+      initialGeoRef.current = { cx, cy, r0 }
+    }
 
     // Farthest viewport corner from moon center + 30px buffer
     const dTL = Math.hypot(cx, cy)
@@ -194,9 +203,8 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
 
     // Wrapper top coordinate in document
     const wrapperRect = wrapper.getBoundingClientRect()
-    const currentScroll = window.scrollY || window.pageYOffset || 0
     const wrapperTop = wrapperRect.top + currentScroll
-    const wrapperHeight = wrapperRect.height
+    const wrapperHeight = wrapperRect.height || (3.2 * vpH)
     const scrollDistance = Math.max(1, wrapperHeight - vpH)
 
     geoRef.current = {
@@ -346,6 +354,7 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
       if (!running) return
 
       const anim = animRef.current
+      if (geoRef.current.scrollDistance <= 1 || geoRef.current.r0 <= 0) measure()
       const geo = geoRef.current
 
       // Lerp smooth scrollY or use target directly if toggled off
@@ -394,7 +403,7 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
         nextEl.style.opacity = nextOpacity.toFixed(3)
         nextEl.style.transformOrigin = `${cx.toFixed(1)}px ${cy.toFixed(1)}px`
         nextEl.style.transform = `scale(${nextScale.toFixed(4)})`
-        nextEl.style.pointerEvents = p > 0.32 ? 'auto' : 'none'
+        nextEl.style.pointerEvents = p >= 0.88 ? 'auto' : 'none'
         nextEl.style.visibility = p > 0.18 ? 'visible' : 'hidden'
       }
 

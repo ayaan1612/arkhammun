@@ -31,7 +31,8 @@ function LoginForm() {
   const { login, loginWithGoogle, loginAdmin, user, isLoading: authLoading } = useAuth()
   const { go, activeTransition } = useTransitionNav()
 
-  const [userType, setUserType] = useState<UserType>(paramRole)
+  const initialRole: UserType = redirectTarget.includes("/admin") || paramRole === "admin" ? "admin" : "delegate"
+  const [userType, setUserType] = useState<UserType>(initialRole)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [adminKey, setAdminKey] = useState("")
@@ -314,7 +315,7 @@ function LoginForm() {
               </span>
               <input
                 type="email"
-                placeholder={userType === "admin" ? "admin@arkhammun.org" : "delegate@example.com"}
+                placeholder={userType === "admin" ? "arkhammun2026@gmail.com" : "delegate@example.com"}
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value)

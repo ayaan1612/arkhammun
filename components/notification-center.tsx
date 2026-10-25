@@ -557,7 +557,7 @@ export function NotificationSystem() {
                       <div className={styles.eventDetailCopy}>
                         <strong>Secretariat Desk & Assistance</strong>
                         <p>
-                          Helpline: <strong>9810110713</strong> · Email: <strong>hello@arkhammun.org</strong> · Instagram: <strong>@arkhammun</strong>
+                          Helpline: <strong>9810110713</strong> · Email: <strong>arkhammun2026@gmail.com</strong> · Instagram: <strong>@arkhammun</strong>
                         </p>
                       </div>
                     </div>

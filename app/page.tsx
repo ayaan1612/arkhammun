@@ -7,7 +7,7 @@ import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { useAuth } from "@/lib/auth-context"
 import { ArkhamHeader } from "@/components/arkham-shell"
-import { HeroLogo } from "@/components/HeroLogo"
+import { MoonPortalHero } from "@/components/MoonPortalHero"
 
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
@@ -59,49 +59,49 @@ export default function Home() {
       <div className="site-wash" aria-hidden="true" />
       <ArkhamHeader />
 
-      <section id="top" className="hero-shell container-x">
-        <div className="hero-copy">
-          <div className="eyebrow"><span className="live-dot" /> 10—11 April 2027 · Central Delhi</div>
-          <h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1>
-          <p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p>
-          <div className="hero-actions">
-            <LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton>
-            <a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a>
+      <MoonPortalHero
+        emblemSrc={logoUrl}
+        cta={
+          <div className="flex flex-wrap items-center gap-4">
+            <LiquidButton href="/register" className="home-action-button" size="xl">
+              Register now <ArrowRight size={17} />
+            </LiquidButton>
+            <a
+              className="text-link inline-flex items-center gap-1.5 px-4 py-2.5 text-[14px] text-[#b9afb2] hover:text-white transition-colors cursor-pointer"
+              href="#about"
+              onClick={(e) => {
+                e.preventDefault()
+                window.scrollTo({
+                  top: window.innerHeight * 2.2,
+                  behavior: "smooth",
+                })
+              }}
+            >
+              Explore Arkham <ChevronDown size={16} />
+            </a>
           </div>
-        </div>
-        <HeroLogo logoUrl={logoUrl} />
-        <div className="hero-meta">
-          <div className="hero-meta-item">
-            <span>DATE</span>
-            <p>10—11 APRIL 2027</p>
+        }
+        next={
+          <div id="about" className="container-x w-full py-8 md:py-16 text-white max-w-[1400px] mx-auto flex flex-col justify-center">
+            <div className="section-kicker">01 / The conference</div>
+            <div className="two-column">
+              <div>
+                <h2>Diplomacy,<br /><em>reimagined.</em></h2>
+              </div>
+              <div className="section-copy">
+                <p>Arkham MUN is designed with one clear intention: to give delegates an experience that goes beyond the ordinary. Young leaders should not merely read about diplomacy, but engage with it meaningfully.</p>
+                <p className="muted">Across thoughtfully curated committees, delegates step into the shoes of world representatives, addressing real global challenges through research, negotiation and collaboration. Come ready to argue. Leave ready to lead.</p>
+              </div>
+            </div>
+            <div className="stats-row mt-8">
+              <div><strong>08</strong><span>committees</span></div>
+              <div><strong>02</strong><span>days of dialogue</span></div>
+              <div><strong>₹2300</strong><span>school delegation</span></div>
+              <div><strong>∞</strong><span>possibilities</span></div>
+            </div>
           </div>
-          <div className="hero-meta-item">
-            <span>VENUE</span>
-            <p>IN CENTRAL DELHI</p>
-          </div>
-        </div>
-        <a href="#about" className="scroll-cue" aria-label="Scroll to explore">
-          <span>SCROLL TO EXPLORE</span>
-          <div className="scroll-cue-line" />
-        </a>
-      </section>
-
-      <section id="about" className="content-section about-section container-x">
-        <div className="section-kicker">01 / The conference</div>
-        <div className="two-column">
-          <div><h2>Diplomacy,<br /><em>reimagined.</em></h2></div>
-          <div className="section-copy">
-            <p>Arkham MUN is designed with one clear intention: to give delegates an experience that goes beyond the ordinary. Young leaders should not merely read about diplomacy, but engage with it meaningfully.</p>
-            <p className="muted">Across thoughtfully curated committees, delegates step into the shoes of world representatives, addressing real global challenges through research, negotiation and collaboration. Come ready to argue. Leave ready to lead.</p>
-          </div>
-        </div>
-        <div className="stats-row">
-          <div><strong>08</strong><span>committees</span></div>
-          <div><strong>02</strong><span>days of dialogue</span></div>
-          <div><strong>₹2300</strong><span>school delegation</span></div>
-          <div><strong>∞</strong><span>possibilities</span></div>
-        </div>
-      </section>
+        }
+      />
 
       <section id="committees" className="content-section committee-section container-x">
         <div className="section-heading">
@@ -257,7 +257,7 @@ export default function Home() {
           <div>
             <span>GET IN TOUCH</span>
             <a href="tel:9810110713"><Users size={15} /> 9810110713</a>
-            <a href="mailto:hello@arkhammun.org"><Mail size={15} /> hello@arkhammun.org</a>
+            <a href="mailto:arkhammun2026@gmail.com"><Mail size={15} /> arkhammun2026@gmail.com</a>
             <a href="https://instagram.com" target="_blank" rel="noreferrer"><Instagram size={15} /> @arkhammun</a>
           </div>
           <div>
@@ -267,6 +267,7 @@ export default function Home() {
           </div>
           <div>
             <span>SECRETARIAT</span>
+            <Link href="/admin" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><ShieldCheck size={15} /> Admin Portal</Link>
             {user ? (
               <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}><LayoutDashboard size={15} /> Dashboard Portal</Link>
             ) : (

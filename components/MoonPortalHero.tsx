@@ -347,7 +347,7 @@ export function MoonPortalHero({
         {/* ------------------------------------------------------------------- */}
         <section
           ref={refs.nextSectionRef}
-          className="moon-portal-next-section absolute inset-0 z-[3] w-full h-full overflow-y-auto will-change-[clip-path,transform,opacity]"
+          className="moon-portal-next-section absolute inset-0 z-[3] w-full h-full overflow-hidden will-change-[clip-path,transform,opacity] flex items-center justify-center bg-[#0a0608]"
           style={{
             clipPath: 'circle(0px at 50% 50%)',
             WebkitClipPath: 'circle(0px at 50% 50%)',
@@ -387,7 +387,8 @@ export function MoonPortalHero({
         {/* ------------------------------------------------------------------- */}
         <div
           ref={refs.scrollCueRef}
-          className="moon-portal-scroll-cue absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none z-[6] select-none"
+          className="moon-portal-scroll-cue absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-auto cursor-pointer z-[6] select-none hover:opacity-100 transition-opacity"
+          onClick={() => window.scrollTo({ top: window.innerHeight * 2.2, behavior: "smooth" })}
           aria-hidden="true"
         >
           <span className="text-[10px] font-bold tracking-[0.28em] text-[#b9afb2] uppercase font-['Cinzel',serif]">
