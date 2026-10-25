@@ -61,18 +61,131 @@ export default function Home() {
       <ArkhamHeader />
 
       <section id="top" className="hero-shell container-x">
-        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
+        <div className="hero-copy">
+          <div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div>
+          <h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1>
+          <p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p>
+          <div className="hero-actions">
+            <LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton>
+            <a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a>
+          </div>
+        </div>
         <div className="hero-emblem" aria-hidden="true"><div className="emblem-ring" /><img src={logoUrl} alt="" /></div>
-        <div className="hero-meta"><div><span>DATE</span><p>24—25<br /><b>OCTOBER</b></p></div><div className="meta-line" /><div><span>VENUE</span><p>IN<br /><b>CENTRAL DELHI</b></p></div><div className="meta-line" /><div><span>DEADLINE</span><p>01<br /><b>OCTOBER</b></p></div></div><div className="scroll-cue"><span /> Scroll to explore</div>
+        <div className="hero-meta">
+          <div><span>DATE</span><p>24—25<br /><b>OCTOBER</b></p></div>
+          <div className="meta-line" />
+          <div><span>VENUE</span><p>IN<br /><b>CENTRAL DELHI</b></p></div>
+          <div className="meta-line" />
+          <div><span>DEADLINE</span><p>01<br /><b>OCTOBER</b></p></div>
+        </div>
+        <div className="scroll-cue"><span /> Scroll to explore</div>
       </section>
 
-      <section id="about" className="content-section about-section container-x"><div className="section-kicker">01 / The conference</div><div className="two-column"><div><h2>Diplomacy,<br /><em>reimagined.</em></h2></div><div className="section-copy"><p>Arkham MUN is designed with one clear intention: to give delegates an experience that goes beyond the ordinary. Young leaders should not merely read about diplomacy, but engage with it meaningfully.</p><p className="muted">Across thoughtfully curated committees, delegates step into the shoes of world representatives, addressing real global challenges through research, negotiation and collaboration. Come ready to argue. Leave ready to lead.</p></div></div><div className="stats-row"><div><strong>10</strong><span>committees</span></div><div><strong>02</strong><span>days of dialogue</span></div><div><strong>₹2300</strong><span>school delegation</span></div><div><strong>∞</strong><span>possibilities</span></div></div></section>
+      <section id="about" className="content-section about-section container-x">
+        <div className="section-kicker">01 / The conference</div>
+        <div className="two-column">
+          <div><h2>Diplomacy,<br /><em>reimagined.</em></h2></div>
+          <div className="section-copy">
+            <p>Arkham MUN is designed with one clear intention: to give delegates an experience that goes beyond the ordinary. Young leaders should not merely read about diplomacy, but engage with it meaningfully.</p>
+            <p className="muted">Across thoughtfully curated committees, delegates step into the shoes of world representatives, addressing real global challenges through research, negotiation and collaboration. Come ready to argue. Leave ready to lead.</p>
+          </div>
+        </div>
+        <div className="stats-row">
+          <div><strong>10</strong><span>committees</span></div>
+          <div><strong>02</strong><span>days of dialogue</span></div>
+          <div><strong>₹2300</strong><span>school delegation</span></div>
+          <div><strong>∞</strong><span>possibilities</span></div>
+        </div>
+      </section>
 
-      <section id="committees" className="content-section committee-section container-x"><div className="section-heading"><div><div className="section-kicker">02 / The rooms</div><h2>Choose your<br /><em>arena.</em></h2></div><p>Every committee has its own tempo, stakes and story. Find the room that makes you want to speak.</p></div><div className="committee-feature" onMouseEnter={() => setIsCommitteePaused(true)} onMouseLeave={() => setIsCommitteePaused(false)}><div className="committee-rail" aria-label="Choose a committee">{committees.map((committee, index) => <motion.button key={committee[0]} className={index === activeCommittee ? "committee-chip is-active" : "committee-chip"} onClick={() => setActiveCommittee(index)} animate={{ y: (index - activeCommittee) * 72, opacity: index === activeCommittee ? 1 : Math.max(.25, 1 - Math.abs(index - activeCommittee) * .22), scale: index === activeCommittee ? 1 : .92 }} transition={{ type: "spring", stiffness: 110, damping: 18 }} aria-label={`Show ${committee[0]}`}><span>{String(index + 1).padStart(2, "0")}</span><strong>{committee[0]}</strong><small>{committee[2]}</small></motion.button>)}</div><div className="committee-spotlight"><button className="slider-arrow slider-arrow-left" onClick={() => moveCommittee(-1)} aria-label="Previous committee"><ChevronLeft /></button><AnimatePresence mode="wait"><motion.article key={committees[activeCommittee][0]} className="spotlight-card" initial={{ opacity: 0, x: 70, rotate: 2 }} animate={{ opacity: 1, x: 0, rotate: 0 }} exit={{ opacity: 0, x: -70, rotate: -2 }} transition={{ type: "spring", stiffness: 210, damping: 24 }}><div className="spotlight-glow" /><div className="card-top"><span>0{activeCommittee + 1} / 10</span><span>Arkham MUN</span></div><div className="spotlight-copy"><small>{committees[activeCommittee][2]}</small><h3>{committees[activeCommittee][0]}</h3><p>{committees[activeCommittee][1]}</p></div><div className="card-bottom"><span>Tap to explore</span><ArrowRight /></div></motion.article></AnimatePresence><button className="slider-arrow slider-arrow-right" onClick={() => moveCommittee(1)} aria-label="Next committee"><ChevronRight /></button></div></div><div className="slider-footer"><div className="slider-dots">{committees.map((committee, index) => <button key={committee[0]} className={index === activeCommittee ? "is-active" : ""} onClick={() => setActiveCommittee(index)} aria-label={"Show " + committee[0]} />)}</div><span>{activeCommittee + 1} / {committees.length}</span></div></section>
+      <section id="committees" className="content-section committee-section container-x">
+        <div className="section-heading">
+          <div>
+            <div className="section-kicker">02 / The rooms</div>
+            <h2>Choose your<br /><em>arena.</em></h2>
+          </div>
+          <p>Every committee has its own tempo, stakes and story. Find the room that makes you want to speak.</p>
+        </div>
+        <div className="committee-feature" onMouseEnter={() => setIsCommitteePaused(true)} onMouseLeave={() => setIsCommitteePaused(false)}>
+          <div className="committee-rail" aria-label="Choose a committee">
+            {committees.map((committee, index) => (
+              <motion.button
+                key={committee[0]}
+                className={index === activeCommittee ? "committee-chip is-active" : "committee-chip"}
+                onClick={() => setActiveCommittee(index)}
+                animate={{
+                  y: (index - activeCommittee) * 72,
+                  opacity: index === activeCommittee ? 1 : Math.max(.25, 1 - Math.abs(index - activeCommittee) * .22),
+                  scale: index === activeCommittee ? 1 : .92
+                }}
+                transition={{ type: "spring", stiffness: 110, damping: 18 }}
+                aria-label={`Show ${committee[0]}`}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <strong>{committee[0]}</strong>
+                <small>{committee[2]}</small>
+              </motion.button>
+            ))}
+          </div>
+          <div className="committee-spotlight">
+            <button className="slider-arrow slider-arrow-left" onClick={() => moveCommittee(-1)} aria-label="Previous committee"><ChevronLeft /></button>
+            <AnimatePresence mode="wait">
+              <motion.article
+                key={committees[activeCommittee][0]}
+                className="spotlight-card"
+                initial={{ opacity: 0, x: 70, rotate: 2 }}
+                animate={{ opacity: 1, x: 0, rotate: 0 }}
+                exit={{ opacity: 0, x: -70, rotate: -2 }}
+                transition={{ type: "spring", stiffness: 210, damping: 24 }}
+              >
+                <div className="spotlight-glow" />
+                <div className="card-top"><span>0{activeCommittee + 1} / 10</span><span>Arkham MUN</span></div>
+                <div className="spotlight-copy">
+                  <small>{committees[activeCommittee][2]}</small>
+                  <h3>{committees[activeCommittee][0]}</h3>
+                  <p>{committees[activeCommittee][1]}</p>
+                </div>
+                <div className="card-bottom"><span>Tap to explore</span><ArrowRight /></div>
+              </motion.article>
+            </AnimatePresence>
+            <button className="slider-arrow slider-arrow-right" onClick={() => moveCommittee(1)} aria-label="Next committee"><ChevronRight /></button>
+          </div>
+        </div>
+        <div className="slider-footer">
+          <div className="slider-dots">
+            {committees.map((committee, index) => (
+              <button
+                key={committee[0]}
+                className={index === activeCommittee ? "is-active" : ""}
+                onClick={() => setActiveCommittee(index)}
+                aria-label={"Show " + committee[0]}
+              />
+            ))}
+          </div>
+          <span>{activeCommittee + 1} / {committees.length}</span>
+        </div>
+      </section>
 
-      <section className="content-section advisor-section container-x"><div className="section-kicker">03 / A note from chief advisor</div><div className="two-column"><div><h2>Words have<br /><em>weight.</em></h2><p className="quote">“Diplomacy is the art of letting somebody else have your way.”<span>— David Frost</span></p></div><div className="section-copy advisor-copy"><p>Model United Nations is a reflection of the world itself, turbulent yet hopeful, divided yet capable of dialogue. It teaches us that nations are not merely defined by borders, but by voices willing to negotiate beyond them.</p><p>As the Chief Advisor, it gives me immense pride to witness students evolve into articulate diplomats, strategic negotiators and conscientious global citizens. True leadership lies not in speaking the loudest, but in understanding the quietest argument in the room.</p><p>Step into committee rooms with courage in your voice, grace in disagreement and conviction in your ideas. May your resolutions carry wisdom and your speeches carry purpose.</p><strong>Manya Munjal</strong><small>Chief Advisor · Arkham MUN</small></div></div></section>
+      <section className="content-section advisor-section container-x">
+        <div className="section-kicker">03 / A note from chief advisor</div>
+        <div className="two-column">
+          <div>
+            <h2>Words have<br /><em>weight.</em></h2>
+            <p className="quote">“Diplomacy is the art of letting somebody else have your way.”<span>— David Frost</span></p>
+          </div>
+          <div className="section-copy advisor-copy">
+            <p>Model United Nations is a reflection of the world itself, turbulent yet hopeful, divided yet capable of dialogue. It teaches us that nations are not merely defined by borders, but by voices willing to negotiate beyond them.</p>
+            <p>As the Chief Advisor, it gives me immense pride to witness students evolve into articulate diplomats, strategic negotiators and conscientious global citizens. True leadership lies not in speaking the loudest, but in understanding the quietest argument in the room.</p>
+            <p>Step into committee rooms with courage in your voice, grace in disagreement and conviction in your ideas. May your resolutions carry wisdom and your speeches carry purpose.</p>
+            <div className="advisor-signoff">
+              <strong>Manya Munjal</strong>
+              <small>Chief Advisor · Arkham MUN</small>
+            </div>
+          </div>
+        </div>
+      </section>
 
-            <section className="content-section experience-section container-x">
+      <section className="content-section experience-section container-x">
         <div className="section-heading">
           <div>
             <div className="section-kicker">04 / The experience</div>
@@ -80,28 +193,58 @@ export default function Home() {
           </div>
           <p>Carefully engineered committee dynamics that challenge assumptions and prioritize substantive debate over theatrics.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "18px" }}>
-          <div style={{ padding: "26px", backgroundColor: "rgba(13, 12, 24, 0.7)", border: "1px solid rgba(227, 38, 46, 0.25)", borderRadius: "8px" }}>
-            <span style={{ color: "#e3262e", fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>01 / RESEARCH</span>
-            <h3 style={{ margin: "10px 0 8px", fontSize: "19px", color: "#fff" }}>Empirical Policy Focus</h3>
-            <p style={{ margin: 0, color: "#aaa8ba", fontSize: "13.5px", lineHeight: 1.6 }}>Agendas constructed around real-world treaties, sovereign mandates, and international jurisprudence rather than generic talking points.</p>
+        <div className="experience-grid">
+          <div className="experience-card">
+            <span className="experience-card-kicker">01 / RESEARCH</span>
+            <h3>Empirical Policy Focus</h3>
+            <p>Agendas constructed around real-world treaties, sovereign mandates, and international jurisprudence rather than generic talking points.</p>
           </div>
-          <div style={{ padding: "26px", backgroundColor: "rgba(13, 12, 24, 0.7)", border: "1px solid rgba(227, 38, 46, 0.25)", borderRadius: "8px" }}>
-            <span style={{ color: "#e3262e", fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>02 / CRISIS</span>
-            <h3 style={{ margin: "10px 0 8px", fontSize: "19px", color: "#fff" }}>Dynamic In-Session Freezes</h3>
-            <p style={{ margin: 0, color: "#aaa8ba", fontSize: "13.5px", lineHeight: 1.6 }}>Real-time geopolitical updates, press conferences, and emergency directives that test diplomatic composure and rapid alliance formulation.</p>
+          <div className="experience-card">
+            <span className="experience-card-kicker">02 / CRISIS</span>
+            <h3>Dynamic In-Session Freezes</h3>
+            <p>Real-time geopolitical updates, press conferences, and emergency directives that test diplomatic composure and rapid alliance formulation.</p>
           </div>
-          <div style={{ padding: "26px", backgroundColor: "rgba(13, 12, 24, 0.7)", border: "1px solid rgba(227, 38, 46, 0.25)", borderRadius: "8px" }}>
-            <span style={{ color: "#e3262e", fontSize: "11px", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase" }}>03 / INTEGRITY</span>
-            <h3 style={{ margin: "10px 0 8px", fontSize: "19px", color: "#fff" }}>Unbiased Adjudications</h3>
-            <p style={{ margin: 0, color: "#aaa8ba", fontSize: "13.5px", lineHeight: 1.6 }}>Executive boards vetted for domain expertise who grade delegates on substantive consensus-building and constructive resolution drafting.</p>
+          <div className="experience-card">
+            <span className="experience-card-kicker">03 / INTEGRITY</span>
+            <h3>Unbiased Adjudications</h3>
+            <p>Executive boards vetted for domain expertise who grade delegates on substantive consensus-building and constructive resolution drafting.</p>
           </div>
         </div>
       </section>
 
-<section id="schedule" className="content-section schedule-section container-x"><div className="section-kicker">05 / The rhythm</div><div className="schedule-layout"><div><h2>Two days.<br /><em>Many voices.</em></h2><p className="section-copy">From your first moderated caucus to the final vote, every moment is designed to keep the conversation moving.</p></div><div className="timeline">{schedule.map(([date, title, place]) => <div className="timeline-row" key={title}><time>{date}</time><div><strong>{title}</strong><span>{place}</span></div><Clock3 size={16} /></div>)}</div></div></section>
+      <section id="schedule" className="content-section schedule-section container-x">
+        <div className="section-kicker">05 / The rhythm</div>
+        <div className="schedule-layout">
+          <div>
+            <h2>Two days.<br /><em>Many voices.</em></h2>
+            <p className="section-copy">From your first moderated caucus to the final vote, every moment is designed to keep the conversation moving.</p>
+          </div>
+          <div className="timeline">
+            {schedule.map(([date, title, place]) => (
+              <div className="timeline-row" key={title}>
+                <time>{date}</time>
+                <div><strong>{title}</strong><span>{place}</span></div>
+                <Clock3 size={16} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      <section id="registration" className="content-section registration-section container-x"><div className="section-kicker">06 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div><div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div><LiquidButton href="/register" className="home-action-button" size="xl">Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
+      <section id="registration" className="content-section registration-section container-x">
+        <div className="section-kicker">06 / Registration protocol</div>
+        <div className="two-column registration-grid">
+          <div>
+            <h2>Take your<br /><em>seat.</em></h2>
+            <p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p>
+          </div>
+          <div className="fee-card">
+            <div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div>
+            <div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div>
+            <LiquidButton href="/register" className="home-action-button" size="xl">Begin registration <ArrowRight size={17} /></LiquidButton>
+          </div>
+        </div>
+      </section>
 
       <footer id="contact" className="site-footer container-x">
         <div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div>
