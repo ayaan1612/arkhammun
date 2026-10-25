@@ -420,39 +420,7 @@ export function ArkhamHeader() {
             <span className="arkham-btn-sheen" aria-hidden="true" />
           </Link>
 
-          {/* Optional Logout button when user is logged in */}
-          {user && (
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                const rect = e.currentTarget.getBoundingClientRect()
-                triggerTransition('logout', {
-                  originRect: rect,
-                  onLogout: () => logout()
-                })
-              }}
-              onPointerDown={triggerRipple}
-              title="Sign out of Arkham account"
-              className={`arkham-nav-btn nav-anim-item arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-              style={{ "--stagger-i": isAdmin ? 11 : 10, minHeight: "44px", padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: "6px" } as React.CSSProperties}
-              aria-label="Logout"
-              data-transition="logout"
-              disabled={isLogoutLoading || isTransitioning}
-            >
-              {isLogoutLoading ? (
-                <>
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Signing out…</span>
-                </>
-              ) : (
-                <>
-                  <LogOut size={13} className="btn-icon" />
-                  <span>Logout</span>
-                </>
-              )}
-              <span className="arkham-btn-sheen" aria-hidden="true" />
-            </button>
-          )}
+          
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -612,38 +580,7 @@ export function ArkhamHeader() {
                   <span className="arkham-btn-sheen" aria-hidden="true" />
                 </Link>
 
-                {/* Optional Logout button when user is logged in */}
-                {user && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setMobileMenuOpen(false)
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      triggerTransition('logout', {
-                        originRect: rect,
-                        onLogout: () => logout()
-                      })
-                    }}
-                    onPointerDown={triggerRipple}
-                    className={`arkham-nav-btn mobile-action-btn arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-                    data-transition="logout"
-                    disabled={isLogoutLoading || isTransitioning}
-                    style={{ borderColor: "rgba(227, 38, 46, 0.4)", color: "#ff6b72" }}
-                  >
-                    {isLogoutLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        <span>Signing out…</span>
-                      </span>
-                    ) : (
-                      <>
-                        <LogOut size={15} className="btn-icon" />
-                        <span>Logout</span>
-                      </>
-                    )}
-                    <span className="arkham-btn-sheen" aria-hidden="true" />
-                  </button>
-                )}
+                
               </div>
             </div>
           </div>,

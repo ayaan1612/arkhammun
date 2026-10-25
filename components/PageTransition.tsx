@@ -72,6 +72,13 @@ function updateStore(partial: Partial<TransitionStoreState>) {
   emitChange()
 }
 
+// Global auth logout function registered from AuthProvider
+let globalAuthLogout: (() => void) | null = null
+
+export function registerAuthLogout(fn: () => void) {
+  globalAuthLogout = fn
+}
+
 // Global router ref so transitions can navigate from module-level go()
 let moduleRouter: any = null
 let modulePathname = ''
@@ -299,9 +306,28 @@ export async function go(options: GoOptions): Promise<boolean> {
         sessionStorage.setItem('arkham:tx', 'logout-reveal')
       } catch {}
 
+      // Always remove auth token from storage
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('arkham_auth_token')
+          sessionStorage.removeItem('arkham_auth_token')
+        } catch {}
+      }
+
       // Await sign-out action
       if (finalAction) {
-        await finalAction()
+        try {
+          await finalAction()
+        } catch (e) {
+          console.warn('Logout action failed:', e)
+        }
+      }
+
+      // Invoke registered AuthProvider logout to reset React auth state
+      if (globalAuthLogout) {
+        try {
+          globalAuthLogout()
+        } catch {}
       }
 
       // Navigate to login
@@ -1160,6 +1186,7 @@ export function PageTransitionOverlay() {
   // -------------------------------------------------------------------------
   useEffect(() => {
     const handleDelegatedClick = (e: MouseEvent) => {
+      if (e.defaultPrevented) return
       const target = (e.target as HTMLElement).closest('[data-transition]') as HTMLElement | null
       if (!target) return
 
@@ -1182,9 +1209,9 @@ export function PageTransitionOverlay() {
       })
     }
 
-    document.addEventListener('click', handleDelegatedClick, true)
+    document.addEventListener('click', handleDelegatedClick, false)
     return () => {
-      document.removeEventListener('click', handleDelegatedClick, true)
+      document.removeEventListener('click', handleDelegatedClick, false)
     }
   }, [])
 

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { UserProfile, entryPassApi } from "./entry-pass-api"
-import { go } from "@/components/PageTransition"
+import { go, registerAuthLogout } from "@/components/PageTransition"
 
 type AuthContextType = {
   user: UserProfile | null
@@ -52,6 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth()
   }, [])
 
+  useEffect(() => {
+    registerAuthLogout(logout)
+  }, [])
+
   async function login(email?: string, password?: string, adminKey?: string, role?: "user" | "admin"): Promise<UserProfile> {
     const res = await entryPassApi.login({ email, password, adminKey, role })
     localStorage.setItem(TOKEN_KEY, res.token)
@@ -87,6 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   function logout() {
     if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_KEY)
+      sessionStorage.removeItem(TOKEN_KEY)
     }
     setToken(null)
     setUser(null)
