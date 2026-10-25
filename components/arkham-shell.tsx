@@ -213,7 +213,15 @@ export function ArkhamHeader() {
           className="arkham-brand nav-anim-item"
           style={{ "--stagger-i": 0 } as React.CSSProperties}
           aria-label="Arkham MUN Home"
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={(e) => {
+            setMobileMenuOpen(false)
+            if (pathname === "/") {
+              e.preventDefault()
+              const topEl = document.getElementById("top")
+              if (topEl) topEl.scrollIntoView({ behavior: "smooth" })
+              else window.scrollTo({ top: 0, behavior: "smooth" })
+            }
+          }}
         >
           <div className="arkham-brand-logo-wrapper">
             <img
@@ -413,7 +421,18 @@ export function ArkhamFooter() {
   return (
     <footer className="arkham-footer container-x">
       <div>
-        <Link href="/" className="arkham-brand">
+        <Link
+          href="/"
+          className="arkham-brand"
+          onClick={(e) => {
+            if (typeof window !== "undefined" && window.location.pathname === "/") {
+              e.preventDefault()
+              const topEl = document.getElementById("top")
+              if (topEl) topEl.scrollIntoView({ behavior: "smooth" })
+              else window.scrollTo({ top: 0, behavior: "smooth" })
+            }
+          }}
+        >
           <img
             src={arkham.logo}
             alt="Arkham MUN emblem"

@@ -360,6 +360,18 @@ h2 em {
   animation: none !important;
 }
 
+/* Sway wrapper: PART C 9s gentle loop drifting 14px down/up + 4px sideways */
+.hero-logo-sway-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
 /* Glow layer behind the logo (inset -28%, radial red gradient) */
 .hero-logo-glow {
   position: absolute;
@@ -374,7 +386,6 @@ h2 em {
   filter: blur(14px);
   pointer-events: none;
   z-index: 0;
-  will-change: transform;
 }
 
 /* Rings SVG (viewBox -100 -100 200 200) */
@@ -386,7 +397,6 @@ h2 em {
   pointer-events: none;
   z-index: 2;
   overflow: visible;
-  will-change: transform;
   --spin-dashed: 30s;
   --spin-ticks: 22s;
   --spin-scan: 3.2s;
@@ -496,7 +506,6 @@ h2 em {
   align-items: center;
   justify-content: center;
   transform-style: preserve-3d;
-  will-change: transform, filter;
 }
 
 .hero-logo-layer {
@@ -513,7 +522,6 @@ h2 em {
   position: relative;
   z-index: 1;
   filter: saturate(1.1) contrast(1.08) drop-shadow(0 0 20px rgba(227, 38, 46, 0.4));
-  will-change: transform;
 }
 
 .layer-glitch-red {
@@ -522,7 +530,6 @@ h2 em {
   opacity: 0;
   filter: drop-shadow(0 0 8px #e5252d) saturate(3.5) hue-rotate(-20deg);
   pointer-events: none;
-  will-change: transform, clip-path, opacity;
 }
 
 .layer-glitch-white {
@@ -531,7 +538,6 @@ h2 em {
   opacity: 0;
   filter: brightness(2.4) contrast(1.5);
   pointer-events: none;
-  will-change: transform, clip-path, opacity;
 }
 
 /* 3D tilt moving white highlight */
@@ -620,6 +626,10 @@ h2 em {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hero-logo-sway-wrapper {
+    animation: none !important;
+    transform: none !important;
+  }
   .hero-logo-intro-wrapper {
     animation: none !important;
     transform: none !important;
