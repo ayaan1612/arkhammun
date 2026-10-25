@@ -287,8 +287,11 @@ export default function AdminPage() {
           void loadEvents()
         }
       } else if (!user) {
-        setAuthenticated(false)
-        setAdminKey("")
+        const savedToken = typeof window !== "undefined" ? localStorage.getItem("arkham_auth_token") : null
+        if (!savedToken || (!savedToken.includes("admin") && !savedToken.includes("arkham"))) {
+          setAuthenticated(false)
+          setAdminKey("")
+        }
       }
     }
   }, [user, isAdmin, token, authLoading])

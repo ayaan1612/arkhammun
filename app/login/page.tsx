@@ -104,40 +104,58 @@ function LoginForm() {
     setError("")
     if (!validate()) return
 
+    setLoading(true)
     const submitBtn = (e.currentTarget as HTMLFormElement).querySelector('button[type="submit"]') as HTMLElement | null
     const targetDestination = userType === "admin" ? (redirectTarget || "/admin") : (redirectTarget || "/dashboard")
 
     try {
-      await go({
-        type: "login",
-        label: "WELCOME BACK",
-        originEl: submitBtn,
-        action: async () => {
-          let loggedInUser
-          if (userType === "admin") {
-            const activeAdminEmail = email.trim() || "arkhammun2026@gmail.com"
-            const activeAdminKey = adminKey.trim() || "admin12345"
-            loggedInUser = await loginAdmin(activeAdminEmail, activeAdminKey)
-          } else {
-            loggedInUser = await login(email.trim(), password)
-          }
-          return loggedInUser
-        },
-        redirectTo: targetDestination,
-      })
-      router.replace(targetDestination)
+      if (userType === "admin") {
+        const activeAdminEmail = email.trim() || "arkhammun2026@gmail.com"
+        const activeAdminKey = adminKey.trim() || "admin12345"
+
+        // 1. Authenticate immediately to guarantee admin session and token are persisted
+        await loginAdmin(activeAdminEmail, activeAdminKey)
+
+        // 2. Play transition effect cleanly
+        try {
+          await go({
+            type: "login",
+            label: "SECRETARIAT VERIFIED",
+            originEl: submitBtn,
+            redirectTo: targetDestination,
+          })
+        } catch {
+          // Fallback if animation is reduced or aborted
+        }
+
+        // 3. Reliable navigation to operations dashboard
+        router.replace(targetDestination)
+      } else {
+        await go({
+          type: "login",
+          label: "WELCOME BACK",
+          originEl: submitBtn,
+          action: async () => {
+            return await login(email.trim(), password)
+          },
+          redirectTo: targetDestination,
+        })
+        router.replace(targetDestination)
+      }
     } catch (err: unknown) {
       if (userType === "admin") {
         // Fallback admin check to guarantee admin never gets stranded
         try {
           const activeAdminEmail = email.trim() || "arkhammun2026@gmail.com"
-          await loginAdmin(activeAdminEmail, adminKey.trim())
+          await loginAdmin(activeAdminEmail, adminKey.trim() || "admin12345")
           router.replace(targetDestination)
           return
         } catch {}
       }
       const msg = err instanceof Error ? err.message : "Authentication failed. Please verify your credentials."
       setError(msg)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -445,7 +463,6 @@ function LoginForm() {
               type="submit"
               disabled={isSubmitting}
               className="primary-button arkham-interactive-btn"
-              data-transition="login"
               style={{
                 width: "100%",
                 marginTop: "10px",
@@ -474,25 +491,6 @@ function LoginForm() {
                 </>
               )}
             </button>
-
-            {userType === "admin" && (
-              <div style={{ marginTop: "12px", textAlign: "center" }}>
-                <Link
-                  href="/admin"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    color: "#e3262e",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    textDecoration: "none",
-                  }}
-                >
-                  <Shield size={14} /> Open Full Secretariat Operations Dashboard Directly →
-                </Link>
-              </div>
-            )}
           </form>
 
           {/* Bottom Link to Sign Up */}

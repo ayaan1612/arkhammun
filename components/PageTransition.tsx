@@ -1189,6 +1189,11 @@ export function PageTransitionOverlay() {
       const target = (e.target as HTMLElement).closest('[data-transition]') as HTMLElement | null
       if (!target) return
 
+      // Do NOT intercept submit buttons or buttons inside forms without explicit data-href
+      // Forms handle their own submit validation and transitions in React onSubmit.
+      if (target.tagName === 'BUTTON' && (target as HTMLButtonElement).type === 'submit') return
+      if (target.closest('form') && !target.getAttribute('data-href')) return
+
       // If the button has an internal React onClick or is a TransitionButton, it will handle itself
       // This is a safety catch for any standard HTML button / link with data-transition attribute
       if (target.dataset.delegatedHandled === 'true') return
