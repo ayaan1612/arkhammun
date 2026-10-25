@@ -654,11 +654,11 @@ export default function DashboardPage() {
                   const eventTitle =
                     typeof reg.eventId === "object" && reg.eventId?.title
                       ? reg.eventId.title
-                      : "Arkham MUN 2026"
+                      : "Arkham MUN 2027"
                   const eventDate =
                     typeof reg.eventId === "object" && reg.eventId?.date
                       ? reg.eventId.date
-                      : "October 24-25, 2026"
+                      : "April 10-11, 2027"
                   const eventVenue =
                     typeof reg.eventId === "object" && reg.eventId?.venue
                       ? reg.eventId.venue

@@ -350,7 +350,7 @@ export function NotificationSystem() {
                               <div className={styles.qrPassTitle}>ARKHAM MUN OFFICIAL ENTRY PASS</div>
                               <div className={styles.qrPassMeta}>
                                 <span>
-                                  <Calendar size={13} /> {reg.event?.date || "24–25 October 2026"}
+                                  <Calendar size={13} /> {reg.event?.date || "10–11 April 2027"}
                                 </span>
                                 <span>
                                   <Clock size={13} /> {reg.event?.time || "9:00 AM – 5:00 PM (Reporting: 8:30 AM)"}
@@ -532,7 +532,7 @@ export function NotificationSystem() {
                       <Calendar className={styles.eventDetailIcon} size={18} />
                       <div className={styles.eventDetailCopy}>
                         <strong>Conference Dates</strong>
-                        <p>{data?.announcements?.conferenceDates || "24–25 October 2026"}</p>
+                        <p>{data?.announcements?.conferenceDates || "10–11 April 2027"}</p>
                       </div>
                     </div>
 

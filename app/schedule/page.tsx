@@ -38,7 +38,7 @@ export default function SchedulePage() {
               DAY 01
             </span>
             <h2 style={{ margin: 0, fontSize: "24px", color: "#fff", fontWeight: 600 }}>
-              Friday, 24 October · Opening &amp; Foundational Debate
+              Saturday, 10 April 2027 · Opening &amp; Foundational Debate
             </h2>
           </div>
 
@@ -82,7 +82,7 @@ export default function SchedulePage() {
               DAY 02
             </span>
             <h2 style={{ margin: 0, fontSize: "24px", color: "#fff", fontWeight: 600 }}>
-              Saturday, 25 October · Resolution Formulation &amp; Awards
+              Sunday, 11 April 2027 · Resolution Formulation &amp; Awards
             </h2>
           </div>
 

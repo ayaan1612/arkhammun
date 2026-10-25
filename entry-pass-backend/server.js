@@ -243,7 +243,7 @@ async function getDefaultEventDetails() {
   return {
     id: "default-event",
     name: process.env.EVENT_NAME || "Arkham MUN",
-    date: process.env.EVENT_DATE || "24–25 October 2026",
+    date: process.env.EVENT_DATE || "10–11 April 2027",
     time: process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
     venue: process.env.EVENT_VENUE || "Arkham Assembly Hall & International Dais, New Delhi",
     amount: entryFee,
@@ -687,10 +687,10 @@ app.get("/api/events", async (req, res) => {
     let events = await Event.find().sort({ createdAt: -1 });
     if (!events || events.length === 0) {
       const defaultEvent = await Event.create({
-        title: "Arkham MUN 2026",
+        title: "Arkham MUN 2027",
         description:
           "Arkham Model United Nations — diplomacy, debate and ideas that move nations. Join international delegates and future leaders.",
-        date: "October 24-25, 2026",
+        date: "April 10-11, 2027",
         venue: "Arkham Assembly Hall & International Dais, New Delhi",
         time: "09:00 AM - 05:00 PM",
         entryFee: entryFee,
@@ -1964,8 +1964,8 @@ app.post("/api/admin/payment-qr", requireAdmin, upload.single("paymentQr"), asyn
     let currentEvent = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
     if (!currentEvent) {
       currentEvent = await Event.create({
-        title: "Arkham MUN 2026",
-        date: "October 24-25, 2026",
+        title: "Arkham MUN 2027",
+        date: "April 10-11, 2027",
         venue: "Central Delhi, India",
       });
     }
@@ -2009,8 +2009,8 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
     let currentEvent = await Event.findOne({ registrationOpen: true }).sort({ createdAt: -1 });
     if (!currentEvent) {
       currentEvent = await Event.create({
-        title: "Arkham MUN 2026",
-        date: "October 24-25, 2026",
+        title: "Arkham MUN 2027",
+        date: "April 10-11, 2027",
         venue: "Central Delhi, India",
       });
     }

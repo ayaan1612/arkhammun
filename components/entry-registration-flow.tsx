@@ -21,7 +21,7 @@ const statusLabels: Record<RegistrationStatus, string> = {
 const DEFAULT_EVENT: PublicEvent = {
   event: {
     name: "Arkham MUN",
-    date: "24–25 October 2026",
+    date: "10–11 April 2027",
     time: "9:00 AM – 5:00 PM",
     venue: "Central Delhi, India",
   },

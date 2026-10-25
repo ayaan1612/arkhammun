@@ -473,7 +473,7 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
       }
 
       // -----------------------------------------------------------------------
-      // 7. Info Row Items (Date, Venue, Deadline)
+      // 7. Info Row Items (Date, Venue)
       // -----------------------------------------------------------------------
       const infoOpacity = clamp(1 - p * 2.4, 0, 1)
       infoItemsRef.current.forEach((item, idx) => {

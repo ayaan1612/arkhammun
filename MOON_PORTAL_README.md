@@ -16,7 +16,7 @@ A scroll-driven "moon portal" hero transition built with **React + TypeScript + 
   - Eyebrow with pulsating live dot
   - Three-line headline: `"Question."`, `"Negotiate."`, `"Shape tomorrow."` (each line independent)
   - Lead paragraph and CTA buttons
-  - Bottom meta items (`DATE`, `VENUE`, `DEADLINE`)
+  - Bottom meta items (`DATE`, `VENUE`)
   - Blood moon emblem with rotating dashed ring and speed-reactive scanning arc
   - Hexagonal patterned background
 - **Next Section Layer (`z-3`)**:

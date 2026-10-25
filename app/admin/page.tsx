@@ -92,8 +92,6 @@ const defaultFormSections: FormSectionsConfig = {
       "UNODC (Human Rights Implications of the Global War on Drugs.)",
       "WHO (Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Diagnostics and Treatments for All Countries.)",
       "UNEP (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
-      "AIPPM (Use of Central Agencies (ED/CBI): Law Enforcement Tool or Political Tool?)",
-      "UNHRC (Deliberating on safeguarding Political Leaders under International Human Rights Law.)",
     ],
   },
   portfolioPreferences: {
@@ -2080,7 +2078,7 @@ export default function AdminPage() {
                           color: "#fff",
                           borderRadius: 4,
                         }}
-                        placeholder="e.g. 24–25 October 2026"
+                        placeholder="e.g. 10–11 April 2027"
                       />
                     </label>
 

@@ -20,16 +20,14 @@ const committees = [
   ["UNODC", "Human Rights Implications of the Global War on Drugs.", "Advanced"],
   ["WHO", "Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Diagnostics and Treatments for All Countries.", "Specialized"],
   ["UNEP", "Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.", "Specialized"],
-  ["AIPPM", "Use of Central Agencies (ED/CBI): Law Enforcement Tool or Political Tool?", "National"],
-  ["UNHRC", "Deliberating on safeguarding Political Leaders under International Human Rights Law", "Advanced"],
 ]
 
 const schedule = [
-  ["24 OCT", "Delegate registration", "Conference foyer"],
-  ["24 OCT", "Inaugural ceremony", "Main hall"],
-  ["24 OCT", "Committee session I", "Council rooms"],
-  ["25 OCT", "Committee session II", "Council rooms"],
-  ["25 OCT", "Closing ceremony", "Main hall"],
+  ["10 APR", "Delegate registration", "Conference foyer"],
+  ["10 APR", "Inaugural ceremony", "Main hall"],
+  ["10 APR", "Committee session I", "Council rooms"],
+  ["11 APR", "Committee session II", "Council rooms"],
+  ["11 APR", "Closing ceremony", "Main hall"],
 ]
 
 export default function Home() {
@@ -63,7 +61,7 @@ export default function Home() {
 
       <section id="top" className="hero-shell container-x">
         <div className="hero-copy">
-          <div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div>
+          <div className="eyebrow"><span className="live-dot" /> 10—11 April 2027 · Central Delhi</div>
           <h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1>
           <p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p>
           <div className="hero-actions">
@@ -75,15 +73,11 @@ export default function Home() {
         <div className="hero-meta">
           <div className="hero-meta-item">
             <span>DATE</span>
-            <p>24—25 OCTOBER</p>
+            <p>10—11 APRIL 2027</p>
           </div>
           <div className="hero-meta-item">
             <span>VENUE</span>
             <p>IN CENTRAL DELHI</p>
-          </div>
-          <div className="hero-meta-item">
-            <span>DEADLINE</span>
-            <p>01 OCTOBER</p>
           </div>
         </div>
         <a href="#about" className="scroll-cue" aria-label="Scroll to explore">
@@ -102,7 +96,7 @@ export default function Home() {
           </div>
         </div>
         <div className="stats-row">
-          <div><strong>10</strong><span>committees</span></div>
+          <div><strong>08</strong><span>committees</span></div>
           <div><strong>02</strong><span>days of dialogue</span></div>
           <div><strong>₹2300</strong><span>school delegation</span></div>
           <div><strong>∞</strong><span>possibilities</span></div>
@@ -150,7 +144,7 @@ export default function Home() {
                 transition={{ type: "spring", stiffness: 210, damping: 24 }}
               >
                 <div className="spotlight-glow" />
-                <div className="card-top"><span>0{activeCommittee + 1} / 10</span><span>Arkham MUN</span></div>
+                <div className="card-top"><span>0{activeCommittee + 1} / 0{committees.length}</span><span>Arkham MUN</span></div>
                 <div className="spotlight-copy">
                   <small>{committees[activeCommittee][2]}</small>
                   <h3>{committees[activeCommittee][0]}</h3>
@@ -247,11 +241,11 @@ export default function Home() {
         <div className="two-column registration-grid">
           <div>
             <h2>Take your<br /><em>seat.</em></h2>
-            <p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p>
+            <p className="section-copy">Complete your registration online. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p>
           </div>
           <div className="fee-card">
             <div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div>
-            <div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div>
+            <div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment</small></div>
             <LiquidButton href="/register" className="home-action-button" size="xl">Begin registration <ArrowRight size={17} /></LiquidButton>
           </div>
         </div>
@@ -269,7 +263,7 @@ export default function Home() {
           <div>
             <span>THE CONFERENCE</span>
             <p><MapPin size={15} /> In Central Delhi</p>
-            <p><CalendarDays size={15} /> 24—25 October</p>
+            <p><CalendarDays size={15} /> 10—11 April 2027</p>
           </div>
           <div>
             <span>SECRETARIAT</span>

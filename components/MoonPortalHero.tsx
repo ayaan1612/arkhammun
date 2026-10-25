@@ -41,7 +41,7 @@ export interface MoonPortalHeroProps extends UseMoonPortalOptions {
   cta?: React.ReactNode
 
   /**
-   * Meta information row items (Date, Venue, Deadline).
+   * Meta information row items (Date, Venue).
    */
   metaItems?: { label: string; value: string }[]
 
@@ -62,15 +62,14 @@ export function MoonPortalHero({
   eyebrow = (
     <div className="flex items-center gap-2 text-[12px] font-bold tracking-[0.24em] text-[#e3262e] uppercase">
       <span className="inline-block w-2 h-2 rounded-full bg-[#e3262e] shadow-[0_0_8px_#e3262e] animate-pulse" />
-      <span>24—25 October · Central Delhi</span>
+      <span>10—11 April 2027 · Central Delhi</span>
     </div>
   ),
   lead = 'Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.',
   cta,
   metaItems = [
-    { label: 'DATE', value: '24—25 OCTOBER' },
+    { label: 'DATE', value: '10—11 APRIL 2027' },
     { label: 'VENUE', value: 'IN CENTRAL DELHI' },
-    { label: 'DEADLINE', value: '01 OCTOBER' },
   ],
   wrapperHeightMultiplier = 3.2,
   lerpFactor = 0.1,

@@ -220,7 +220,7 @@ export default function ContactPage() {
             <div style={{ padding: "24px", backgroundColor: "#0c0b16", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px" }}>
               <span className="section-kicker" style={{ color: "#e3262e" }}>DAY-OF-EVENT</span>
               <h3 style={{ margin: "8px 0 6px", fontSize: "17px", color: "#fff" }}>On-Ground Secretariat Desk</h3>
-              <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px", lineHeight: 1.6 }}>An on-site delegate affairs desk will be active throughout 24—25 October at the central conference foyer for real-time assistance.</p>
+              <p style={{ margin: 0, color: "#8d8a9e", fontSize: "13px", lineHeight: 1.6 }}>An on-site delegate affairs desk will be active throughout 10—11 April 2027 at the central conference foyer for real-time assistance.</p>
             </div>
           </div>
         </section>

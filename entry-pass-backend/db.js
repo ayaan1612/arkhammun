@@ -41,8 +41,6 @@ const defaultFormSections = {
       "UNODC (Human Rights Implications of the Global War on Drugs.)",
       "WHO (Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Diagnostics and Treatments for All Countries.)",
       "UNEP (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
-      "AIPPM (Use of Central Agencies (ED/CBI): Law Enforcement Tool or Political Tool?)",
-      "UNHRC (Deliberating on safeguarding Political Leaders under International Human Rights Law.)",
     ],
   },
   portfolioPreferences: {
@@ -188,10 +186,10 @@ const memoryStore = {
 const defaultMemoryEventId = new mongoose.Types.ObjectId();
 memoryStore.events.push({
   _id: defaultMemoryEventId,
-  title: "Arkham MUN 2026",
+  title: "Arkham MUN 2027",
   description:
     "Arkham Model United Nations — diplomacy, debate and ideas that move nations. Join international delegates and future leaders.",
-  date: "October 24-25, 2026",
+  date: "April 10-11, 2027",
   venue: "Arkham Assembly Hall & International Dais, New Delhi",
   time: "09:00 AM - 05:00 PM",
   entryFee: Number(process.env.ENTRY_FEE) || 2200,
@@ -672,10 +670,10 @@ async function seedDefaults() {
     const eventCount = await RealEvent.countDocuments();
     if (eventCount === 0) {
       await RealEvent.create({
-        title: "Arkham MUN 2026",
+        title: "Arkham MUN 2027",
         description:
           "Arkham Model United Nations — diplomacy, debate and ideas that move nations. Join international delegates and future leaders.",
-        date: "October 24-25, 2026",
+        date: "April 10-11, 2027",
         venue: "Arkham Assembly Hall & International Dais, New Delhi",
         time: "09:00 AM - 05:00 PM",
         entryFee: Number(process.env.ENTRY_FEE) || 2200,

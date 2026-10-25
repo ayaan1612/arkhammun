@@ -13,8 +13,8 @@ const questions = [
     `Institutional school delegations are priced at ${arkham.fees.school} per student delegate. Individual delegate registrations are priced at ${arkham.fees.individual}. Online payments are processed seamlessly via UPI at ${arkham.paymentUpi} with instant screenshot verification on our portal.`
   ],
   [
-    'When is registration due and can late allocations be requested?',
-    `The priority registration deadline is ${arkham.deadline}. Late applications may be accepted subject to committee capacity and portfolio availability at the discretion of the Secretariat.`
+    'When does registration close and how are allocations handled?',
+    'Registration remains open until committee capacity is reached. Allocations are processed on a rolling basis, so early registration is encouraged to secure your preferred committee and country assignments.'
   ],
   [
     'Where is the conference venue located?',
@@ -34,7 +34,7 @@ const questions = [
   ],
   [
     'Are meals, high tea, and refreshments provided during the conference?',
-    'Yes. All registered delegates receive access to morning refreshments, executive networking lunch, and evening high tea across both conference days (24—25 October), fully covered within the registration fee.'
+    'Yes. All registered delegates receive access to morning refreshments, executive networking lunch, and evening high tea across both conference days (10—11 April 2027), fully covered within the registration fee.'
   ],
   [
     'What documents and materials must I bring on Day 1?',
