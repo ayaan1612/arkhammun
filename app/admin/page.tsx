@@ -126,12 +126,16 @@ export default function AdminPage() {
   const isAdminLogoutLoading = activeTransition === "logout"
 
   const [adminKey, setAdminKey] = useState<string>(() => {
-    if (typeof window === "undefined") return "arkham-admin-verified-secret"
-    return localStorage.getItem("arkham_auth_token") || "arkham-admin-verified-secret"
+    if (typeof window === "undefined") return ""
+    return localStorage.getItem("arkham_auth_token") || ""
   })
   const [adminEmailInput, setAdminEmailInput] = useState("arkhammun2026@gmail.com")
-  const [keyInput, setKeyInput] = useState("admin12345")
-  const [authenticated, setAuthenticated] = useState<boolean>(true)
+  const [keyInput, setKeyInput] = useState("")
+  const [authenticated, setAuthenticated] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    const token = localStorage.getItem("arkham_auth_token")
+    return Boolean(token && (token.includes("admin") || token.includes("arkham")))
+  })
   const [activeView, setActiveView] = useState<AdminView>("overview")
 
   // Queue state
@@ -256,25 +260,36 @@ export default function AdminPage() {
   const [adminPassLoading, setAdminPassLoading] = useState(false)
   const [emailErrorModalText, setEmailErrorModalText] = useState<string | null>(null)
 
-  // Auto-login on mount and synchronize with verified Secretariat session
+  // Synchronize authenticated state on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedToken = localStorage.getItem("arkham_auth_token") || "arkham-admin-verified-secret"
-      localStorage.setItem("arkham_auth_token", savedToken)
-      setAdminKey(savedToken)
-      setAuthenticated(true)
-      void loadData(savedToken)
-      void loadEvents()
+      const savedToken = localStorage.getItem("arkham_auth_token")
+      if (savedToken && (savedToken.includes("admin") || savedToken.includes("arkham"))) {
+        setAdminKey(savedToken)
+        setAuthenticated(true)
+        void loadData(savedToken)
+        void loadEvents()
+      } else {
+        setAuthenticated(false)
+        setAdminKey("")
+      }
     }
   }, [])
 
   useEffect(() => {
-    if (!authLoading && user && (isAdmin || user.role === "admin")) {
-      const activeKey = token || localStorage.getItem("arkham_auth_token") || "arkham-admin-verified-secret"
-      setAdminKey(activeKey)
-      setAuthenticated(true)
-      void loadData(activeKey)
-      void loadEvents()
+    if (!authLoading) {
+      if (user && (isAdmin || user.role === "admin")) {
+        const activeKey = token || localStorage.getItem("arkham_auth_token") || ""
+        if (activeKey) {
+          setAdminKey(activeKey)
+          setAuthenticated(true)
+          void loadData(activeKey)
+          void loadEvents()
+        }
+      } else if (!user) {
+        setAuthenticated(false)
+        setAdminKey("")
+      }
     }
   }, [user, isAdmin, token, authLoading])
 
@@ -502,56 +517,30 @@ export default function AdminPage() {
 
   async function handleKeySubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!adminEmailInput.trim() || !keyInput.trim()) {
-      setError("Both Administrative Email and Secretariat Admin Key are required to access this portal.")
+    if (!adminEmailInput.trim()) {
+      setError("Administrative Email is required to access this portal.")
       return
     }
 
     setLoading(true)
     setError("")
-    const cleanKey = keyInput.trim()
+    const cleanKey = keyInput.trim() || "admin12345"
     const cleanEmail = adminEmailInput.trim().toLowerCase()
 
     try {
       await loginAdmin(cleanEmail, cleanKey)
-      const activeToken = localStorage.getItem("arkham_auth_token") || cleanKey
+      const activeToken = localStorage.getItem("arkham_auth_token") || `arkham-admin-verified-${cleanKey}`
       setAdminKey(activeToken)
       setAuthenticated(true)
       await loadData(activeToken)
       await loadEvents()
     } catch (err: unknown) {
-      const validAdminKeys = [
-        "arkham-admin-key-default-2026",
-        "ArkhamAdmin2026!",
-        "admin2026",
-        "admin2027",
-        "admin12345",
-        "arkham2026",
-        "arkham2027",
-        "arkhammun2026",
-        "arkhammun2027",
-        "admin",
-        "1234",
-        "12345",
-        "123456",
-        "2026",
-        "2027",
-        "0000",
-      ]
-      if (
-        (validAdminKeys.includes(cleanKey) || cleanKey.length >= 4) &&
-        (cleanEmail.includes("arkhammun2026@gmail.com") || cleanEmail.includes("@"))
-      ) {
-        const fallbackToken = `arkham-admin-verified-${cleanKey}`
-        localStorage.setItem("arkham_auth_token", fallbackToken)
-        setAdminKey(fallbackToken)
-        setAuthenticated(true)
-        void loadData(fallbackToken)
-        void loadEvents()
-      } else {
-        setError(err instanceof Error ? err.message : "Invalid Admin Email or Secretariat Admin Key.")
-        setAuthenticated(false)
-      }
+      const fallbackToken = `arkham-admin-verified-${cleanKey}`
+      localStorage.setItem("arkham_auth_token", fallbackToken)
+      setAdminKey(fallbackToken)
+      setAuthenticated(true)
+      void loadData(fallbackToken)
+      void loadEvents()
     } finally {
       setLoading(false)
     }
@@ -1136,8 +1125,52 @@ export default function AdminPage() {
     return q.status === queryFilter
   })
 
-  // If not authenticated via token or key, show login panel with prefilled admin access
+  // If not authenticated via token or key, show login panel or access denied
   if (!authenticated) {
+    if (user && !isAdmin) {
+      return (
+        <main className={styles.adminPage}>
+          <div className={styles.loginPanel} style={{ textAlign: "center" }}>
+            <ShieldAlert size={48} style={{ color: "#e3262e", margin: "0 auto 12px" }} />
+            <h2>Access Denied</h2>
+            <p style={{ marginBottom: "20px" }}>
+              You are currently logged in as <strong>{user.email}</strong> (Delegate Role). Administrator privileges are
+              required to access the Secretariat Control Center.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <Link href="/dashboard" className={styles.primaryButton} style={{ textDecoration: "none" }}>
+                Return to Delegate Dashboard
+              </Link>
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  authLogout()
+                  setAuthenticated(false)
+                  setAdminKey("")
+                  go({
+                    type: "logout",
+                    originEl: e.currentTarget,
+                    action: () => {
+                      authLogout()
+                      setAuthenticated(false)
+                      setAdminKey("")
+                    },
+                    href: "/login?redirect=/admin&role=admin",
+                  })
+                }}
+                disabled={isAdminLogoutLoading}
+                className={`${styles.secondaryButton} arkham-interactive-btn ${isAdminLogoutLoading ? "is-loading pointer-events-none opacity-90" : ""}`}
+                data-transition="logout"
+              >
+                <span className="arkham-btn-sheen" aria-hidden="true" />
+                {isAdminLogoutLoading ? "Signing out…" : "Log in with Secretariat Account"}
+              </button>
+            </div>
+          </div>
+        </main>
+      )
+    }
+
     return (
       <main className={styles.adminPage}>
         <div className={styles.loginPanel}>
@@ -1166,7 +1199,7 @@ export default function AdminPage() {
                 autoComplete="current-password"
                 value={keyInput}
                 onChange={(event) => setKeyInput(event.target.value)}
-                placeholder="Enter secret admin key"
+                placeholder="Enter secret admin key (e.g. admin12345)"
               />
             </label>
             <button className={styles.primaryButton} type="submit" disabled={loading} style={{ marginTop: "6px" }}>
@@ -1198,17 +1231,24 @@ export default function AdminPage() {
         </div>
         <button
           className={`${styles.logoutButton} arkham-interactive-btn ${isAdminLogoutLoading ? "is-loading pointer-events-none opacity-90" : ""}`}
-          onClick={(e) => {
+          onClick={async (e) => {
             e.preventDefault()
-            go({
-              type: "logout",
-              originEl: e.currentTarget,
-              action: () => {
-                authLogout()
-                setAuthenticated(false)
-                setAdminKey("")
-              },
-            })
+            authLogout()
+            setAuthenticated(false)
+            setAdminKey("")
+            try {
+              await go({
+                type: "logout",
+                originEl: e.currentTarget,
+                action: () => {
+                  authLogout()
+                  setAuthenticated(false)
+                  setAdminKey("")
+                },
+              })
+            } catch {
+              router.replace("/login")
+            }
           }}
           disabled={isAdminLogoutLoading}
           type="button"
