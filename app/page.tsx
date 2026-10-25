@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { useAuth } from "@/lib/auth-context"
 import { ArkhamHeader } from "@/components/arkham-shell"
+import { HeroLogo } from "@/components/HeroLogo"
 
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
@@ -70,10 +71,7 @@ export default function Home() {
             <a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a>
           </div>
         </div>
-        <div className="hero-emblem" aria-hidden="true">
-          <div className="emblem-ring" />
-          <img src={logoUrl} alt="Arkham MUN emblem" />
-        </div>
+        <HeroLogo logoUrl={logoUrl} />
         <div className="hero-meta">
           <div className="hero-meta-item">
             <span>DATE</span>
