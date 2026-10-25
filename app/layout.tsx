@@ -6,6 +6,7 @@ import { ArkhamLoadingScreen } from '@/components/arkham-loading-screen'
 import { AuthProvider } from '@/lib/auth-context'
 import PulsingHexagonBackground from '@/components/pulsing-hexagon-background'
 import { BatCursor } from '@/components/BatCursor'
+import { PageTransition } from '@/components/PageTransition'
 
 export const metadata: Metadata = {
   title: 'Arkham MUN | Diplomacy, reimagined',
@@ -51,7 +52,9 @@ export default function RootLayout({
         <ArkhamLoadingScreen />
         <BatCursor />
         <AuthProvider>
-          <GlobalMouseAura>{children}</GlobalMouseAura>
+          <PageTransition>
+            <GlobalMouseAura>{children}</GlobalMouseAura>
+          </PageTransition>
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </AuthProvider>
       </body>

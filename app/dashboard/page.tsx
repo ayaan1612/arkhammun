@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
+  ArrowLeft,
   ArrowRight,
   Bell,
   Calendar,
@@ -28,6 +29,7 @@ import {
   X,
 } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
+import { useTransitionNav } from "@/components/PageTransition"
 import { useAuth } from "@/lib/auth-context"
 import {
   ContactQuery,
@@ -41,6 +43,7 @@ import {
 export default function DashboardPage() {
   const router = useRouter()
   const { user, token, logout, isLoading: authLoading, isAdmin } = useAuth()
+  const { triggerTransition, prefetch } = useTransitionNav()
 
   const [events, setEvents] = useState<DbEvent[]>([])
   const [registrations, setRegistrations] = useState<UserRegistration[]>([])
@@ -185,6 +188,7 @@ export default function DashboardPage() {
       <div className="page-section" style={{ paddingTop: "30px" }}>
         {/* Top Header / Profile Bar */}
         <div
+          className="dashboard-reveal-item"
           style={{
             display: "flex",
             alignItems: "center",
@@ -240,6 +244,25 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                triggerTransition('dashboard-back', {
+                  originRect: e.currentTarget.getBoundingClientRect(),
+                  targetUrl: '/'
+                })
+              }}
+              onMouseEnter={() => prefetch('/')}
+              onFocus={() => prefetch('/')}
+              className="secondary-button arkham-interactive-btn"
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", fontSize: "12px" }}
+              title="Return to Home"
+            >
+              <ArrowLeft size={13} className="btn-icon" />
+              <span>Back to Home</span>
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+            </button>
+
             <button
               onClick={() => {
                 setRefreshing(true)
