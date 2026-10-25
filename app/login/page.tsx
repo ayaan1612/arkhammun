@@ -33,7 +33,7 @@ function LoginForm() {
 
   const initialRole: UserType = redirectTarget.includes("/admin") || paramRole === "admin" ? "admin" : "delegate"
   const [userType, setUserType] = useState<UserType>(initialRole)
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(initialRole === "admin" ? "arkhammun2026@gmail.com" : "")
   const [password, setPassword] = useState("")
   const [adminKey, setAdminKey] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -64,13 +64,8 @@ function LoginForm() {
     const errors: { email?: string; password?: string; adminKey?: string } = {}
 
     if (userType === "admin") {
-      if (!email.trim()) {
-        errors.email = "Administrative email is required."
-      } else if (!email.includes("@")) {
-        errors.email = "Please enter a valid administrative email."
-      }
       if (!adminKey.trim()) {
-        errors.adminKey = "Secretariat Admin Key is required."
+        errors.adminKey = "Secretariat Admin Key or PIN is required."
       }
       setValidationErrors(errors)
       return Object.keys(errors).length === 0
@@ -122,7 +117,8 @@ function LoginForm() {
         action: async () => {
           let loggedInUser
           if (userType === "admin") {
-            loggedInUser = await loginAdmin(email.trim(), adminKey.trim())
+            const activeAdminEmail = email.trim() || "arkhammun2026@gmail.com"
+            loggedInUser = await loginAdmin(activeAdminEmail, adminKey.trim())
           } else {
             loggedInUser = await login(email.trim(), password)
           }
@@ -213,6 +209,7 @@ function LoginForm() {
               tabIndex={0}
               onClick={() => {
                 setUserType("admin")
+                if (!email) setEmail("arkhammun2026@gmail.com")
                 setError("")
               }}
               onKeyDown={(e) => {
@@ -402,11 +399,11 @@ function LoginForm() {
               <label style={{ display: "grid", gap: "6px", color: "#e8e4f3", fontSize: "12px" }}>
                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <KeyRound size={13} style={{ color: "#e3262e" }} />
-                  SECRETARIAT ADMIN KEY
+                  SECRETARIAT ADMIN KEY / PIN
                 </span>
                 <input
                   type="password"
-                  placeholder="Enter Secretariat Admin Secret Key"
+                  placeholder="Enter Secretariat Admin PIN or Key"
                   value={adminKey}
                   onChange={(e) => {
                     setAdminKey(e.target.value)

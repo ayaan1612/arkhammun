@@ -313,9 +313,9 @@ export default function AdminPage() {
     setError("")
     try {
       const [submittedRes, approvedRes, rejectedRes, currentSettings, queriesRes, eventsRes] = await Promise.all([
-        entryPassApi.getAdminRegistrations(key, "payment_submitted"),
-        entryPassApi.getAdminRegistrations(key, "approved"),
-        entryPassApi.getAdminRegistrations(key, "rejected"),
+        entryPassApi.getAdminRegistrations(key, "payment_submitted").catch(() => ({ registrations: [] })),
+        entryPassApi.getAdminRegistrations(key, "approved").catch(() => ({ registrations: [] })),
+        entryPassApi.getAdminRegistrations(key, "rejected").catch(() => ({ registrations: [] })),
         entryPassApi.getAdminSettings(key).catch(() => null),
         entryPassApi.getAdminQueries(key, "all").catch(() => ({ queries: [] })),
         entryPassApi.getEvents().catch(() => ({ events: [] })),

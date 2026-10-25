@@ -285,39 +285,42 @@ export class EntryPassApiError extends Error {
 }
 
 export function getApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+      if (process.env.NEXT_PUBLIC_API_URL && !process.env.NEXT_PUBLIC_API_URL.includes("localhost")) {
+        return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
+      }
+      return ""
+    }
+  }
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "")
   }
-  if (typeof window !== "undefined") {
-    // If running in browser and no external API URL specified, relative calls work
-    // or fallback to localhost port 3001
-    return ""
-  }
-  return "http://localhost:3001"
+  return ""
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   let response: Response
   const baseUrl = getApiBaseUrl()
-  const primaryUrl = `${baseUrl}${endpoint}`
+  const primaryUrl = baseUrl ? `${baseUrl}${endpoint}` : endpoint
 
   try {
     response = await fetch(primaryUrl, options)
   } catch {
-    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-    if (isLocal && baseUrl !== "http://localhost:3001") {
-      try {
-        response = await fetch(`http://localhost:3001${endpoint}`, options)
-      } catch {
-        throw new Error("Could not reach backend service at http://localhost:3001. Ensure the local backend is running.")
-      }
-    } else {
-      const isVercel = typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
-      if (isVercel) {
-        throw new Error("Could not connect to backend. Please ensure NEXT_PUBLIC_API_URL is configured in your Vercel project settings.")
-      }
-      throw new Error("Could not reach the backend service. Check network connection and API URL.")
+    try {
+      response = await fetch(endpoint, options)
+    } catch {
+      throw new Error("Could not reach service. Please verify your connection.")
     }
+  }
+
+  if (!response.ok && baseUrl && (response.status === 404 || response.status >= 500)) {
+    try {
+      const rel = await fetch(endpoint, options)
+      if (rel.ok) {
+        response = rel
+      }
+    } catch {}
   }
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>
