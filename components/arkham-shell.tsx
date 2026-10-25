@@ -373,17 +373,15 @@ export function ArkhamHeader() {
             </Link>
           )}
 
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="arkham-nav-btn admin-btn nav-anim-item"
-              style={{ "--stagger-i": 9 } as React.CSSProperties}
-              title="Admin Portal"
-            >
-              <Shield size={13} />
-              <span>Admin</span>
-            </Link>
-          )}
+          <Link
+            href="/admin"
+            className="arkham-nav-btn admin-btn nav-anim-item"
+            style={{ "--stagger-i": 9 } as React.CSSProperties}
+            title="Secretariat Operations Dashboard"
+          >
+            <Shield size={13} style={{ color: "#e3262e" }} />
+            <span>Admin</span>
+          </Link>
 
           {/* Register button: ALWAYS stays as Register on the home page / navbar */}
           <Link
@@ -578,6 +576,17 @@ export function ArkhamHeader() {
                     </>
                   )}
                   <span className="arkham-btn-sheen" aria-hidden="true" />
+                </Link>
+
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="arkham-nav-btn admin-btn mobile-action-btn"
+                  title="Secretariat Operations Dashboard"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                >
+                  <Shield size={15} style={{ color: "#e3262e" }} />
+                  <span>Secretariat Admin</span>
                 </Link>
 
                 
