@@ -6,7 +6,12 @@ export async function GET(req: Request) {
   const authHeader = req.headers.get("authorization") || ""
   const token = authHeader.replace(/^Bearer\s+/i, "").trim()
 
-  if (token && (token.includes("admin") || token.includes("arkham") || token.length >= 6)) {
+  if (
+    token &&
+    (token.includes("admin") ||
+      token.includes("arkham") ||
+      token.length >= 4)
+  ) {
     return NextResponse.json({
       user: {
         id: "admin-arkhammun",

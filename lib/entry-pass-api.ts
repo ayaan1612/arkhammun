@@ -302,25 +302,30 @@ export function getApiBaseUrl(): string {
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   let response: Response
   const baseUrl = getApiBaseUrl()
-  const primaryUrl = baseUrl ? `${baseUrl}${endpoint}` : endpoint
+  
+  // Prefer internal Next.js route handlers for admin and metadata endpoints
+  const isDirectNextRoute =
+    endpoint.startsWith("/api/admin/") ||
+    endpoint === "/api/auth/me" ||
+    endpoint === "/api/events"
+  const primaryUrl = isDirectNextRoute || !baseUrl ? endpoint : `${baseUrl}${endpoint}`
 
   try {
     response = await fetch(primaryUrl, options)
+    if (!response.ok && isDirectNextRoute && baseUrl && response.status === 404) {
+      const alt = await fetch(`${baseUrl}${endpoint}`, options)
+      if (alt.ok) response = alt
+    } else if (!response.ok && !isDirectNextRoute && baseUrl && (response.status === 404 || response.status >= 500)) {
+      const rel = await fetch(endpoint, options)
+      if (rel.ok) response = rel
+    }
   } catch {
+    const fallbackUrl = primaryUrl === endpoint && baseUrl ? `${baseUrl}${endpoint}` : endpoint
     try {
-      response = await fetch(endpoint, options)
+      response = await fetch(fallbackUrl, options)
     } catch {
       throw new Error("Could not reach service. Please verify your connection.")
     }
-  }
-
-  if (!response.ok && baseUrl && (response.status === 404 || response.status >= 500)) {
-    try {
-      const rel = await fetch(endpoint, options)
-      if (rel.ok) {
-        response = rel
-      }
-    } catch {}
   }
 
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>

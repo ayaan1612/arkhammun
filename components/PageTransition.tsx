@@ -181,7 +181,7 @@ export async function go(options: GoOptions): Promise<boolean> {
   }
 
   const router = moduleRouter
-  const finalTarget = href || targetUrl || (type === 'logout' ? '/login' : type === 'login' ? '/dashboard' : '/register')
+  const finalTarget = redirectTo || href || targetUrl || (type === 'logout' ? '/login' : type === 'login' ? '/dashboard' : '/register')
   const finalAction = action || onLogout
 
   const prefersReducedMotion =
@@ -455,7 +455,6 @@ export async function go(options: GoOptions): Promise<boolean> {
     const destination = redirectTo || finalTarget || '/dashboard'
     if (router) {
       router.replace(destination)
-      router.refresh()
     }
 
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
