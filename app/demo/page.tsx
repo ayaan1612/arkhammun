@@ -6,16 +6,12 @@ import { ArkhamShell } from "@/components/arkham-shell"
 import { LiquidMetalButton } from "@/components/ui/liquid-metal-button"
 import { LimelightNav, NavItem } from "@/components/ui/limelight-nav"
 import {
-  ArrowRight,
-  Bookmark,
-  Calendar,
   Compass,
+  Calendar,
   FileText,
   Home,
   MessageSquare,
-  ShieldAlert,
   Sparkles,
-  Users,
 } from "lucide-react"
 
 export default function DemoPage() {
@@ -83,62 +79,29 @@ export default function DemoPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4 justify-items-center">
-            {/* 1. Black Variant - Text Mode */}
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 justify-items-center max-w-lg mx-auto">
+            {/* 1. Text Mode */}
             <div className="flex flex-col items-center gap-3">
               <span className="text-xs font-semibold text-[#8d8a9e] uppercase tracking-wider">
-                Black · Text
+                Text Mode
               </span>
               <LiquidMetalButton
-                variant="black"
-                viewMode="text"
-                label="Explore Dais"
-                icon={<ArrowRight className="w-3.5 h-3.5" />}
-                onClick={() => setLastAction("Clicked: Black Variant (Text)")}
+                label="Get Started"
+                onClick={() => setLastAction("Clicked: LiquidMetalButton (Text Mode)")}
               />
-              <span className="text-[11px] text-[#636075]">Black pill · Red metal</span>
+              <span className="text-[11px] text-[#636075]">142×46px · Liquid metal</span>
             </div>
 
-            {/* 2. Black Variant - Icon Mode */}
+            {/* 2. Icon Mode */}
             <div className="flex flex-col items-center gap-3">
               <span className="text-xs font-semibold text-[#8d8a9e] uppercase tracking-wider">
-                Black · Icon
+                Icon Mode
               </span>
               <LiquidMetalButton
-                variant="black"
                 viewMode="icon"
-                onClick={() => setLastAction("Clicked: Black Variant (Icon)")}
+                onClick={() => setLastAction("Clicked: LiquidMetalButton (Icon Mode)")}
               />
               <span className="text-[11px] text-[#636075]">46×46px · Sparkles</span>
-            </div>
-
-            {/* 3. Red Variant - Text Mode */}
-            <div className="flex flex-col items-center gap-3">
-              <span className="text-xs font-semibold text-[#8d8a9e] uppercase tracking-wider">
-                Red · Text
-              </span>
-              <LiquidMetalButton
-                variant="red"
-                viewMode="text"
-                label="Register Now"
-                href="/register"
-                icon={<ArrowRight className="w-3.5 h-3.5 text-white" />}
-                onClick={() => setLastAction("Clicked: Red Variant (Text / Register)")}
-              />
-              <span className="text-[11px] text-[#636075]">Red pill · Chrome metal</span>
-            </div>
-
-            {/* 4. Red Variant - Icon Mode */}
-            <div className="flex flex-col items-center gap-3">
-              <span className="text-xs font-semibold text-[#8d8a9e] uppercase tracking-wider">
-                Red · Icon
-              </span>
-              <LiquidMetalButton
-                variant="red"
-                viewMode="icon"
-                onClick={() => setLastAction("Clicked: Red Variant (Icon)")}
-              />
-              <span className="text-[11px] text-[#636075]">46×46px · Chrome ring</span>
             </div>
           </div>
         </section>

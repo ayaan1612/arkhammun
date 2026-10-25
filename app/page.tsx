@@ -5,7 +5,6 @@ import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
 import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LayoutDashboard, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
-import { LiquidMetalButton } from "@/components/ui/liquid-metal-button"
 import { useAuth } from "@/lib/auth-context"
 import { ArkhamHeader } from "@/components/arkham-shell"
 
@@ -62,7 +61,7 @@ export default function Home() {
       <ArkhamHeader />
 
       <section id="top" className="hero-shell container-x">
-        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidMetalButton variant="red" viewMode="text" label="Register now" href="/register" icon={<ArrowRight size={15} className="text-white" />} className="w-[160px] h-[48px] shadow-[0_0_30px_rgba(227,38,46,0.45)]" /><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
+        <div className="hero-copy"><div className="eyebrow"><span className="live-dot" /> 24—25 October · Central Delhi</div><h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1><p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p><div className="hero-actions"><LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton><a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a></div></div>
         <div className="hero-emblem" aria-hidden="true"><div className="emblem-ring" /><img src={logoUrl} alt="" /></div>
         <div className="hero-meta"><div><span>DATE</span><p>24—25<br /><b>OCTOBER</b></p></div><div className="meta-line" /><div><span>VENUE</span><p>IN<br /><b>CENTRAL DELHI</b></p></div><div className="meta-line" /><div><span>DEADLINE</span><p>01<br /><b>OCTOBER</b></p></div></div><div className="scroll-cue"><span /> Scroll to explore</div>
       </section>
@@ -102,7 +101,7 @@ export default function Home() {
 
 <section id="schedule" className="content-section schedule-section container-x"><div className="section-kicker">05 / The rhythm</div><div className="schedule-layout"><div><h2>Two days.<br /><em>Many voices.</em></h2><p className="section-copy">From your first moderated caucus to the final vote, every moment is designed to keep the conversation moving.</p></div><div className="timeline">{schedule.map(([date, title, place]) => <div className="timeline-row" key={title}><time>{date}</time><div><strong>{title}</strong><span>{place}</span></div><Clock3 size={16} /></div>)}</div></div></section>
 
-      <section id="registration" className="content-section registration-section container-x"><div className="section-kicker">06 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div><div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div><LiquidMetalButton variant="red" viewMode="text" label="Begin registration" href="/register" icon={<ArrowRight size={15} className="text-white" />} className="w-[185px] h-[48px] shadow-[0_0_30px_rgba(227,38,46,0.45)]" /></div></div></section>
+      <section id="registration" className="content-section registration-section container-x"><div className="section-kicker">06 / Registration protocol</div><div className="two-column registration-grid"><div><h2>Take your<br /><em>seat.</em></h2><p className="section-copy">Complete your registration online before 1 October. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p></div><div className="fee-card"><div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div><div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment · Deadline: 1st October</small></div><LiquidButton href="/register" className="home-action-button" size="xl">Begin registration <ArrowRight size={17} /></LiquidButton></div></div></section>
 
       <footer id="contact" className="site-footer container-x">
         <div className="footer-brand"><img src={logoUrl} alt="Arkham MUN emblem" /><strong>ARKHAM MUN</strong><p>See you at the dais.</p></div>
