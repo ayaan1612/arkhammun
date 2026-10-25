@@ -6,7 +6,7 @@ import { ArkhamLoadingScreen } from '@/components/arkham-loading-screen'
 import { AuthProvider } from '@/lib/auth-context'
 import PulsingHexagonBackground from '@/components/pulsing-hexagon-background'
 import { BatCursor } from '@/components/BatCursor'
-import { PageTransition } from '@/components/PageTransition'
+import { PageTransitionOverlay, PageTransitionContentWrapper } from '@/components/PageTransition'
 
 export const metadata: Metadata = {
   title: 'Arkham MUN | Diplomacy, reimagined',
@@ -37,8 +37,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" style={{ background: '#0a0608' }}>
       <head>
+        <meta name="theme-color" content="#0a0608" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(sessionStorage.getItem('arkham:tx')==='logout-reveal'){document.documentElement.classList.add('tx-cover');}}catch(e){}})();`,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -46,15 +52,17 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" style={{ background: '#0a0608' }}>
         <PulsingHexagonBackground />
         <div className="site-comic-texture" aria-hidden="true" />
         <ArkhamLoadingScreen />
         <BatCursor />
+        {/* Overlay mounted OUTSIDE AuthProvider and page tree so it never unmounts on auth or route changes */}
+        <PageTransitionOverlay />
         <AuthProvider>
-          <PageTransition>
+          <PageTransitionContentWrapper>
             <GlobalMouseAura>{children}</GlobalMouseAura>
-          </PageTransition>
+          </PageTransitionContentWrapper>
           {process.env.NODE_ENV === 'production' && <Analytics />}
         </AuthProvider>
       </body>

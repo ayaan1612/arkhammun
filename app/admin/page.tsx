@@ -9,6 +9,7 @@ import {
   Calendar,
   Camera,
   Check,
+  CheckCircle2,
   CircleAlert,
   Clock3,
   Edit3,
@@ -44,6 +45,7 @@ import {
   ContactQuery,
   DbEvent,
   EntryPassApiError,
+  EntryQrResponse,
   EventDetails,
   FormSectionsConfig,
   RegistrationStatus,
@@ -51,6 +53,7 @@ import {
   entryPassApi,
 } from "@/lib/entry-pass-api"
 import { useAuth } from "@/lib/auth-context"
+import { useTransitionNav } from "@/components/PageTransition"
 import styles from "./admin.module.css"
 
 type AdminView =
@@ -120,6 +123,8 @@ const defaultFormSections: FormSectionsConfig = {
 export default function AdminPage() {
   const router = useRouter()
   const { user, token, isAdmin, isLoading: authLoading, logout: authLogout, loginAdmin } = useAuth()
+  const { go, activeTransition } = useTransitionNav()
+  const isAdminLogoutLoading = activeTransition === "logout"
 
   const [adminKey, setAdminKey] = useState("")
   const [adminEmailInput, setAdminEmailInput] = useState("")
@@ -520,7 +525,7 @@ export default function AdminPage() {
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to send approval email.")
     } finally {
-      setRetryingId(null)
+      setRetryingId("")
     }
   }
 
@@ -1054,13 +1059,21 @@ export default function AdminPage() {
               Return to Delegate Dashboard
             </Link>
             <button
-              onClick={() => {
-                authLogout()
-                router.push("/login?redirect=/admin")
+              onClick={(e) => {
+                e.preventDefault()
+                go({
+                  type: "logout",
+                  originEl: e.currentTarget,
+                  action: () => authLogout(),
+                  href: "/login?redirect=/admin",
+                })
               }}
-              className={styles.secondaryButton}
+              disabled={isAdminLogoutLoading}
+              className={`${styles.secondaryButton} arkham-interactive-btn ${isAdminLogoutLoading ? "is-loading pointer-events-none opacity-90" : ""}`}
+              data-transition="logout"
             >
-              Log in with Admin Account
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+              {isAdminLogoutLoading ? "Signing out…" : "Log in with Admin Account"}
             </button>
           </div>
         </div>
@@ -1129,16 +1142,34 @@ export default function AdminPage() {
           <h1>Arkham MUN Operations</h1>
         </div>
         <button
-          className={styles.logoutButton}
-          onClick={() => {
-            authLogout()
-            setAuthenticated(false)
-            setAdminKey("")
-            router.push("/login")
+          className={`${styles.logoutButton} arkham-interactive-btn ${isAdminLogoutLoading ? "is-loading pointer-events-none opacity-90" : ""}`}
+          onClick={(e) => {
+            e.preventDefault()
+            go({
+              type: "logout",
+              originEl: e.currentTarget,
+              action: () => {
+                authLogout()
+                setAuthenticated(false)
+                setAdminKey("")
+              },
+            })
           }}
+          disabled={isAdminLogoutLoading}
           type="button"
+          data-transition="logout"
         >
-          <LogOut size={14} /> Log out
+          <span className="arkham-btn-sheen" aria-hidden="true" />
+          {isAdminLogoutLoading ? (
+            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <span>Signing out…</span>
+            </span>
+          ) : (
+            <>
+              <LogOut size={14} className="btn-icon" /> Log out
+            </>
+          )}
         </button>
       </header>
 
@@ -1752,7 +1783,7 @@ export default function AdminPage() {
                         Verified Payment Proof (Click to enlarge):
                       </span>
                       <img
-                        src={reg.screenshotBlobUrl || reg.screenshot_url}
+                        src={reg.screenshotBlobUrl || reg.screenshot_url || ""}
                         alt="Verified payment screenshot"
                         onClick={() => setScreenshotModalUrl(reg.screenshotBlobUrl || reg.screenshot_url || null)}
                         style={{

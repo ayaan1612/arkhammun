@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { useAuth } from "@/lib/auth-context"
+import { useTransitionNav } from "@/components/PageTransition"
 import { GoogleAuthButton } from "@/components/google-auth-button"
 
 function SignupForm() {
@@ -24,6 +25,7 @@ function SignupForm() {
   const paramRole = searchParams.get("role") || ""
 
   const { signup, loginWithGoogle, user, isLoading: authLoading } = useAuth()
+  const { go, activeTransition } = useTransitionNav()
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -33,6 +35,8 @@ function SignupForm() {
 
   // Status
   const [loading, setLoading] = useState(false)
+  const isRegisterTransitioning = activeTransition === "register"
+  const isSubmitting = loading || isRegisterTransitioning
   const [error, setError] = useState("")
   const [validationErrors, setValidationErrors] = useState<{
     name?: string
@@ -97,18 +101,19 @@ function SignupForm() {
 
   async function handleGoogleSuccess(credential: string) {
     setError("")
-    setLoading(true)
     try {
-      const loggedInUser = await loginWithGoogle(credential)
-      if (loggedInUser.role === "admin") {
-        router.push(redirectTarget || "/admin")
-      } else {
-        router.push(redirectTarget || "/dashboard")
-      }
+      await go({
+        type: "register",
+        label: "WELCOME, DELEGATE",
+        loadingText: "Creating account…",
+        action: async () => {
+          const loggedInUser = await loginWithGoogle(credential)
+          return loggedInUser
+        },
+        redirectTo: redirectTarget || "/dashboard",
+      })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Google registration failed. Please try again.")
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -117,26 +122,29 @@ function SignupForm() {
     setError("")
     if (!validate()) return
 
-    setLoading(true)
-    try {
-      const createdUser = await signup(
-        name.trim(),
-        email.trim(),
-        password,
-        undefined,
-        "user"
-      )
+    const submitBtn = (e.currentTarget as HTMLFormElement).querySelector('button[type="submit"]') as HTMLElement | null
 
-      if (createdUser.role === "admin") {
-        router.push(redirectTarget || "/admin")
-      } else {
-        router.push(redirectTarget || "/dashboard")
-      }
+    try {
+      await go({
+        type: "register",
+        label: "CREATING ACCOUNT",
+        loadingText: "Creating account…",
+        originEl: submitBtn,
+        action: async () => {
+          const createdUser = await signup(
+            name.trim(),
+            email.trim(),
+            password,
+            undefined,
+            "user"
+          )
+          return createdUser
+        },
+        redirectTo: redirectTarget || "/dashboard",
+      })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed. Please verify your details."
       setError(msg)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -219,7 +227,7 @@ function SignupForm() {
 
           {/* GOOGLE SIGN UP BUTTON */}
           <div style={{ marginBottom: "20px" }}>
-            <GoogleAuthButton onSuccess={handleGoogleSuccess} disabled={loading} text="signup_with" />
+            <GoogleAuthButton onSuccess={handleGoogleSuccess} disabled={isSubmitting} text="signup_with" />
 
             <div
               style={{
@@ -274,7 +282,7 @@ function SignupForm() {
                   setName(e.target.value)
                   if (validationErrors.name) setValidationErrors({ ...validationErrors, name: undefined })
                 }}
-                disabled={loading}
+                disabled={isSubmitting}
                 autoComplete="name"
                 style={{
                   width: "100%",
@@ -306,7 +314,7 @@ function SignupForm() {
                   setEmail(e.target.value)
                   if (validationErrors.email) setValidationErrors({ ...validationErrors, email: undefined })
                 }}
-                disabled={loading}
+                disabled={isSubmitting}
                 autoComplete="email"
                 style={{
                   width: "100%",
@@ -339,7 +347,7 @@ function SignupForm() {
                     setPassword(e.target.value)
                     if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
                   }}
-                  disabled={loading}
+                  disabled={isSubmitting}
                   autoComplete="new-password"
                   style={{
                     width: "100%",
@@ -394,7 +402,7 @@ function SignupForm() {
                   if (validationErrors.confirmPassword)
                     setValidationErrors({ ...validationErrors, confirmPassword: undefined })
                 }}
-                disabled={loading}
+                disabled={isSubmitting}
                 autoComplete="new-password"
                 style={{
                   width: "100%",
@@ -416,8 +424,9 @@ function SignupForm() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="primary-button"
+              disabled={isSubmitting}
+              className="primary-button arkham-interactive-btn"
+              data-transition="register"
               style={{
                 width: "100%",
                 marginTop: "10px",
@@ -426,17 +435,19 @@ function SignupForm() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "8px",
-                opacity: loading ? 0.75 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
+                opacity: isSubmitting ? 0.75 : 1,
+                cursor: isSubmitting ? "not-allowed" : "pointer",
+                pointerEvents: isSubmitting ? "none" : undefined,
               }}
             >
-              {loading ? (
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+              {isSubmitting ? (
                 <>
                   <LoaderCircle size={16} className="animate-spin" /> CREATING ACCOUNT...
                 </>
               ) : (
                 <>
-                  CREATE DELEGATE ACCOUNT <ArrowRight size={14} />
+                  PROCEED TO ACCESS PASS <ArrowRight size={14} className="btn-icon" />
                 </>
               )}
             </button>

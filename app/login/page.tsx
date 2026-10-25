@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { ArkhamShell, PageIntro } from "@/components/arkham-shell"
 import { useAuth } from "@/lib/auth-context"
+import { useTransitionNav } from "@/components/PageTransition"
 import { GoogleAuthButton } from "@/components/google-auth-button"
 
 type UserType = "delegate" | "admin"
@@ -28,6 +29,7 @@ function LoginForm() {
   const paramRole = (searchParams.get("role") as UserType) || "delegate"
 
   const { login, loginWithGoogle, loginAdmin, user, isLoading: authLoading } = useAuth()
+  const { go, activeTransition } = useTransitionNav()
 
   const [userType, setUserType] = useState<UserType>(paramRole)
   const [email, setEmail] = useState("")
@@ -37,6 +39,8 @@ function LoginForm() {
 
   // Status
   const [loading, setLoading] = useState(false)
+  const isLoginTransitioning = activeTransition === "login"
+  const isSubmitting = loading || isLoginTransitioning
   const [error, setError] = useState("")
   const [validationErrors, setValidationErrors] = useState<{
     email?: string
@@ -87,18 +91,18 @@ function LoginForm() {
 
   async function handleGoogleSuccess(credential: string) {
     setError("")
-    setLoading(true)
     try {
-      const loggedInUser = await loginWithGoogle(credential)
-      if (loggedInUser.role === "admin") {
-        router.push(redirectTarget || "/admin")
-      } else {
-        router.push(redirectTarget || "/dashboard")
-      }
+      await go({
+        type: "login",
+        label: "WELCOME BACK",
+        action: async () => {
+          const loggedInUser = await loginWithGoogle(credential)
+          return loggedInUser
+        },
+        redirectTo: redirectTarget || "/dashboard",
+      })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Google authentication failed. Please try again.")
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -107,25 +111,27 @@ function LoginForm() {
     setError("")
     if (!validate()) return
 
-    setLoading(true)
-    try {
-      let loggedInUser
-      if (userType === "admin") {
-        loggedInUser = await loginAdmin(email.trim(), adminKey.trim())
-      } else {
-        loggedInUser = await login(email.trim(), password)
-      }
+    const submitBtn = (e.currentTarget as HTMLFormElement).querySelector('button[type="submit"]') as HTMLElement | null
 
-      if (loggedInUser.role === "admin") {
-        router.push(redirectTarget || "/admin")
-      } else {
-        router.push(redirectTarget || "/dashboard")
-      }
+    try {
+      await go({
+        type: "login",
+        label: "WELCOME BACK",
+        originEl: submitBtn,
+        action: async () => {
+          let loggedInUser
+          if (userType === "admin") {
+            loggedInUser = await loginAdmin(email.trim(), adminKey.trim())
+          } else {
+            loggedInUser = await login(email.trim(), password)
+          }
+          return loggedInUser
+        },
+        redirectTo: userType === "admin" ? (redirectTarget || "/admin") : (redirectTarget || "/dashboard"),
+      })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed. Please verify your credentials."
       setError(msg)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -276,7 +282,7 @@ function LoginForm() {
           {/* DELEGATE GOOGLE SIGN-IN OPTION */}
           {userType === "delegate" && (
             <div style={{ marginBottom: "20px" }}>
-              <GoogleAuthButton onSuccess={handleGoogleSuccess} disabled={loading} text="signin_with" />
+              <GoogleAuthButton onSuccess={handleGoogleSuccess} disabled={isSubmitting} text="signin_with" />
 
               <div
                 style={{
@@ -314,7 +320,7 @@ function LoginForm() {
                   setEmail(e.target.value)
                   if (validationErrors.email) setValidationErrors({ ...validationErrors, email: undefined })
                 }}
-                disabled={loading}
+                disabled={isSubmitting}
                 autoComplete="email"
                 style={{
                   width: "100%",
@@ -348,7 +354,7 @@ function LoginForm() {
                       setPassword(e.target.value)
                       if (validationErrors.password) setValidationErrors({ ...validationErrors, password: undefined })
                     }}
-                    disabled={loading}
+                    disabled={isSubmitting}
                     autoComplete="current-password"
                     style={{
                       width: "100%",
@@ -405,7 +411,7 @@ function LoginForm() {
                     setAdminKey(e.target.value)
                     if (validationErrors.adminKey) setValidationErrors({ ...validationErrors, adminKey: undefined })
                   }}
-                  disabled={loading}
+                  disabled={isSubmitting}
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
@@ -427,8 +433,9 @@ function LoginForm() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading}
-              className="primary-button"
+              disabled={isSubmitting}
+              className="primary-button arkham-interactive-btn"
+              data-transition="login"
               style={{
                 width: "100%",
                 marginTop: "10px",
@@ -437,21 +444,23 @@ function LoginForm() {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: "8px",
-                opacity: loading ? 0.75 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
+                opacity: isSubmitting ? 0.75 : 1,
+                cursor: isSubmitting ? "not-allowed" : "pointer",
+                pointerEvents: isSubmitting ? "none" : undefined,
               }}
             >
-              {loading ? (
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+              {isSubmitting ? (
                 <>
-                  <LoaderCircle size={16} className="animate-spin" /> VERIFYING ACCESS...
+                  <LoaderCircle size={16} className="animate-spin" /> SIGNING IN...
                 </>
               ) : userType === "admin" ? (
                 <>
-                  ENTER SECRETARIAT DAIS <ArrowRight size={14} />
+                  ENTER SECRETARIAT DAIS <ArrowRight size={14} className="btn-icon" />
                 </>
               ) : (
                 <>
-                  SIGN IN TO DELEGATE PORTAL <ArrowRight size={14} />
+                  ENTER THE ASSEMBLY <ArrowRight size={14} className="btn-icon" />
                 </>
               )}
             </button>

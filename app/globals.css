@@ -11,6 +11,12 @@
 .global-mouse-aura::after { content: ""; position: fixed; left: var(--mouse-x); top: var(--mouse-y); width: 18px; height: 18px; z-index: 1000; pointer-events: none; border: 1px solid rgba(255,255,255,.7); border-radius: 999px; transform: translate(-50%,-50%); box-shadow: 0 0 0 5px rgba(227,38,46,.08), 0 0 22px rgba(227,38,46,.65); opacity: 0; transition: opacity .35s ease, width .25s ease, height .25s ease; }
 .global-mouse-aura:hover::after { opacity: .9; width: 22px; height: 22px; }
 
+/* Permanent Dark Base */
+html, body {
+  background: #0a0608 !important;
+  color-scheme: dark;
+}
+
 /* ==========================================================================
    CUSTOM BAT CURSOR
    ========================================================================== */
@@ -99,7 +105,7 @@ html.cursor-bat .global-mouse-aura::after {
 @media (pointer: coarse), (prefers-reduced-motion: reduce) { .global-mouse-aura::before, .global-mouse-aura::after { display: none; } }
 
 :root {
-  --background: oklch(1 0 0);
+  --background: #0a0608;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -2986,8 +2992,9 @@ html[data-preloader-active="true"].reveal-hero .scroll-cue {
   }
 }
 
-/* Page dissolving for Logout */
-.page-dissolving {
+/* Page dissolving for Logout - applied to inner page wrapper */
+#page-transition-content.page-dissolving,
+html.page-dissolving #page-transition-content {
   opacity: 0 !important;
   filter: blur(8px) grayscale(100%) !important;
   transform: scale(0.97) !important;
@@ -3170,4 +3177,63 @@ html[data-transition="from-dashboard"]::view-transition-new(root) {
     transform: translateY(0);
     filter: blur(0);
   }
+}
+
+/* Hard Reload Survival Cover */
+html.tx-cover,
+html.tx-cover body {
+  background: #0a0608 !important;
+  overflow: hidden !important;
+}
+html.tx-cover::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 999998;
+  background: #050205;
+}
+html.tx-cover::after {
+  content: "SIGNED OUT";
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 999999;
+  font-family: 'Cinzel', serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(227, 38, 46, 0.8);
+}
+
+/* Form shake on authentication error */
+@keyframes form-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-8px);
+  }
+  40%, 80% {
+    transform: translateX(8px);
+  }
+}
+.form-shake {
+  animation: form-shake 400ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both !important;
+}
+
+/* Page Transition Failure Toast */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.page-trans-toast {
+  animation: toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { UserProfile, entryPassApi } from "./entry-pass-api"
+import { go } from "@/components/PageTransition"
 
 type AuthContextType = {
   user: UserProfile | null
@@ -97,7 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { user: profile } = await entryPassApi.getMe(token)
       setUser(profile)
     } catch {
-      logout()
+      // Run automatic logout transition for expired session
+      go({
+        type: "logout",
+        sessionExpired: true,
+        label: "SESSION ENDED",
+        action: () => logout(),
+      })
     }
   }
 

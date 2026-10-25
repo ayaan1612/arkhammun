@@ -43,7 +43,8 @@ import {
 export default function DashboardPage() {
   const router = useRouter()
   const { user, token, logout, isLoading: authLoading, isAdmin } = useAuth()
-  const { triggerTransition, prefetch } = useTransitionNav()
+  const { go, triggerTransition, activeTransition, prefetch } = useTransitionNav()
+  const isLogoutLoading = activeTransition === "logout"
 
   const [events, setEvents] = useState<DbEvent[]>([])
   const [registrations, setRegistrations] = useState<UserRegistration[]>([])
@@ -344,12 +345,31 @@ export default function DashboardPage() {
             )}
 
             <button
-              onClick={logout}
-              className="secondary-button"
+              onClick={(e) => {
+                e.preventDefault()
+                go({
+                  type: "logout",
+                  originEl: e.currentTarget,
+                  action: () => logout(),
+                })
+              }}
+              disabled={isLogoutLoading}
+              className={`secondary-button arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none opacity-90" : ""}`}
               style={{ padding: "8px 14px", fontSize: "12px" }}
               title="Sign Out"
+              data-transition="logout"
             >
-              <LogOut size={13} /> Sign Out
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+              {isLogoutLoading ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Signing out…</span>
+                </span>
+              ) : (
+                <>
+                  <LogOut size={13} className="btn-icon" /> Sign Out
+                </>
+              )}
             </button>
           </div>
         </div>

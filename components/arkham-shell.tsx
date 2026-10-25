@@ -401,6 +401,7 @@ export function ArkhamHeader() {
               className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
               style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
               aria-label="Logout"
+              data-transition="logout"
               disabled={isLogoutLoading || isTransitioning}
             >
               {isLogoutLoading ? (
@@ -435,7 +436,7 @@ export function ArkhamHeader() {
               className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
               style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
               aria-label="Register"
-              disabled={isRegisterLoading || isTransitioning}
+              aria-disabled={isRegisterLoading || isTransitioning}
             >
               {isRegisterLoading ? (
                 <>
@@ -590,6 +591,7 @@ export function ArkhamHeader() {
                     }}
                     onPointerDown={triggerRipple}
                     className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                    data-transition="logout"
                     disabled={isLogoutLoading || isTransitioning}
                   >
                     {isLogoutLoading ? (
@@ -621,7 +623,7 @@ export function ArkhamHeader() {
                     onMouseEnter={() => prefetch('/register')}
                     onFocus={() => prefetch('/register')}
                     className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-                    disabled={isRegisterLoading || isTransitioning}
+                    aria-disabled={isRegisterLoading || isTransitioning}
                   >
                     {isRegisterLoading ? (
                       <span className="flex items-center gap-2">
