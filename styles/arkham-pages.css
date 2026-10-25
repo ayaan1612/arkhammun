@@ -206,3 +206,48 @@
 .arkham-loading p {
   z-index: 4;
 }
+
+
+/* ==========================================================================
+   ARKHAM PAGES MOBILE & TABLET SYSTEM (under 1024px)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  .arkham-page {
+    background-attachment: scroll !important;
+  }
+  .arkham-header,
+  .page-intro,
+  .page-section,
+  .arkham-footer,
+  .photo-story {
+    width: 100% !important;
+    padding-inline: clamp(16px, 5vw, 24px) !important;
+    box-sizing: border-box !important;
+  }
+  .page-intro,
+  .page-section {
+    padding-block: clamp(48px, 10vw, 96px) !important;
+  }
+  .page-intro h1,
+  .page-section h2,
+  .about-story h2,
+  .contact-card h2,
+  .contact-form h2 {
+    font-size: clamp(2.25rem, 9vw, 3.5rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.02em !important;
+  }
+  .page-intro p,
+  .page-section p,
+  .about-story p,
+  .contact-card p,
+  .directory-card p {
+    margin: 0 0 1.1em 0 !important;
+    font-size: 16px !important;
+    line-height: 1.7 !important;
+    text-wrap: pretty !important;
+    overflow-wrap: anywhere !important;
+    hyphens: auto !important;
+    color: rgba(244, 241, 241, 0.78) !important;
+  }
+}

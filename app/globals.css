@@ -232,10 +232,11 @@ html.cursor-bat .global-mouse-aura::after {
   box-sizing: border-box;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .container-x {
-    padding-inline: clamp(18px, 5vw, 28px);
-    max-width: 100%;
+    padding-inline: clamp(16px, 5vw, 24px) !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 }
 
@@ -1364,7 +1365,7 @@ header.arkham-master-header,
 }
 
 /* ==========================================================================
-   GLOBAL RESPONSIVE FOUNDATIONS (320px to 1920px)
+   MOBILE & TABLET RESPONSIVE SYSTEM (under 1024px)
    ========================================================================== */
 
 /* Prevent iOS input auto-zoom by ensuring minimum 16px font-size */
@@ -1376,9 +1377,18 @@ header.arkham-master-header,
   }
 }
 
-/* Universal fluid container sizing */
+/* 7. No horizontal scrolling: clip overflow, 100dvh, scroll background on mobile */
+html,
+body {
+  overflow-x: clip !important;
+  max-width: 100vw;
+  width: 100%;
+}
+
 .mun-site {
-  overflow-x: clip;
+  overflow-x: clip !important;
+  max-width: 100%;
+  width: 100%;
 }
 
 /* 04 / Experience Section desktop & shared defaults */
@@ -1425,8 +1435,8 @@ header.arkham-master-header,
 }
 
 .advisor-signoff {
-  margin-top: 24px;
-  padding-top: 18px;
+  margin-top: 28px;
+  padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 .advisor-signoff strong {
@@ -1434,177 +1444,369 @@ header.arkham-master-header,
   color: #ffffff;
   font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 .advisor-signoff small {
   display: block;
-  color: #e3262e;
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  margin-top: 4px;
+  color: #ff4a50;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  margin-top: 6px;
   text-transform: uppercase;
+  font-weight: 500;
 }
 
-/* Tablet & Mobile Breakpoints (max-width: 900px) */
-@media (max-width: 900px) {
-  .hero-shell {
-    padding: 70px 0 60px;
-    min-height: auto;
+/* ==========================================================================
+   COMPLETE TABLET & MOBILE OVERRIDES (under 1024px)
+   ========================================================================== */
+@media (max-width: 1024px) {
+  /* 1. Shared container across all sections, navbar and footer */
+  .container-x,
+  .site-nav,
+  .arkham-master-header-bar,
+  .mobile-panel-inner,
+  .site-footer,
+  .page-intro,
+  .page-section {
+    padding-inline: clamp(16px, 5vw, 24px) !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
-  .two-column,
-  .section-heading,
-  .schedule-layout {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-  .stats-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
-  }
-  .committee-feature {
-    grid-template-columns: 1fr;
-    padding: 16px;
-    min-height: auto;
-  }
-  .experience-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    margin-top: 24px;
-  }
-  .experience-card {
-    padding: 24px 20px;
-  }
-}
 
-/* Mobile & Tablet Overrides (max-width: 768px) */
-@media (max-width: 768px) {
-  /* Prevent fixed background attachment distortion on mobile */
-  .site-comic-texture {
+  /* 3. Section spacing: vertical padding clamp(48px, 10vw, 96px) top and bottom */
+  .content-section,
+  .hero-shell,
+  .register-banner,
+  .page-intro,
+  .page-section {
+    padding-block: clamp(48px, 10vw, 96px) !important;
+    padding-top: clamp(48px, 10vw, 96px) !important;
+    padding-bottom: clamp(48px, 10vw, 96px) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Thin divider line aligns with the container edges */
+  .content-section::after {
+    left: clamp(16px, 5vw, 24px) !important;
+    right: clamp(16px, 5vw, 24px) !important;
+  }
+
+  /* 7. Prevent background-attachment fixed on mobile */
+  .site-comic-texture,
+  .loading-comic-texture,
+  .arkham-page {
     background-attachment: scroll !important;
     opacity: 0.04 !important;
   }
 
-  /* Reset aggressive negative tracking & line-height collision on headings */
+  /* Remove any conflicting 100vw/negative margin wrappers */
+  .committee-slider,
+  .committee-feature,
+  .policy-slider {
+    margin-inline: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 4. Headings: clamp(2.25rem, 9vw, 3.5rem), line-height: 1.05, letter-spacing: -0.02em */
   h1, h2,
   .hero-shell h1,
   .content-section h2,
   .section-heading h2,
-  .register-banner h2 {
-    letter-spacing: -0.015em !important;
-    line-height: 1.15 !important;
+  .register-banner h2,
+  .page-intro h1,
+  .page-section h2 {
+    font-size: clamp(2.25rem, 9vw, 3.5rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: -0.02em !important;
+    font-weight: 500 !important;
     word-break: normal !important;
     overflow-wrap: break-word !important;
   }
 
-  .hero-shell h1 {
-    font-size: clamp(32px, 8.5vw, 48px) !important;
-    line-height: 1.12 !important;
-    margin: 16px 0 !important;
+  .hero-shell h1 em,
+  .content-section h2 em,
+  .section-heading h2 em,
+  .advisor-section h2 em {
+    color: #e3262e !important;
+    font-family: Georgia, serif !important;
+    font-weight: 400 !important;
+    font-style: italic !important;
   }
 
-  .content-section h2,
-  .section-heading h2,
-  .register-banner h2 {
-    font-size: clamp(28px, 7vw, 38px) !important;
-    line-height: 1.15 !important;
-    margin: 12px 0 0 !important;
-  }
-
-  /* Section body text readability */
+  /* 2. Paragraphs: margin-bottom: 1.1em, 16px, line-height: 1.7, pretty wrap, contrast color */
+  p,
+  .section-copy p,
+  .advisor-copy p,
   .hero-intro,
-  .section-copy,
   .section-heading p,
-  .advisor-copy p {
-    font-size: 15px !important;
-    line-height: 1.75 !important;
-    color: #b5b1c5 !important;
+  .page-intro p,
+  .about-story p {
+    margin: 0 0 1.1em 0 !important;
+    font-size: 16px !important;
+    line-height: 1.7 !important;
+    text-wrap: pretty !important;
+    overflow-wrap: anywhere !important;
+    hyphens: auto !important;
+    color: rgba(244, 241, 241, 0.78) !important;
     max-width: 100% !important;
   }
 
-  /* 03 / Chief Advisor Mobile Polish */
+  .advisor-copy p:last-of-type,
+  .section-copy p:last-of-type {
+    margin-bottom: 0 !important;
+  }
+
+  /* 3 & 4 & 5 & 6. Chief Advisor Section Reference Specs */
   .advisor-section .two-column {
     display: flex !important;
     flex-direction: column !important;
-    gap: 24px !important;
+    gap: 28px !important; /* 24-32px */
+    width: 100% !important;
   }
 
+  .advisor-section h2 {
+    margin: 0 0 24px 0 !important; /* 24-32px */
+  }
+
+  /* 5. Quote */
   .advisor-section .quote {
+    font-family: Georgia, serif !important;
+    font-style: italic !important;
+    font-size: clamp(1.5rem, 6vw, 2rem) !important;
+    line-height: 1.3 !important;
+    color: #ffffff !important;
     max-width: 100% !important;
-    font: italic 18px/1.55 Georgia, serif !important;
-    margin: 18px 0 0 !important;
-    padding-left: 16px !important;
+    padding-left: 18px !important;
     border-left: 2px solid #e3262e !important;
-    color: #f0edf8 !important;
+    margin: 24px 0 0 0 !important; /* 24-32px */
   }
 
   .advisor-section .quote span {
     display: block !important;
-    margin-top: 10px !important;
-    font: 11px/1.4 var(--font-inter), Arial, sans-serif !important;
-    letter-spacing: 0.14em !important;
-    color: #928ea3 !important;
+    margin-top: 14px !important;
+    font-family: var(--font-inter), Arial, sans-serif !important;
+    font-style: normal !important;
+    font-size: 13px !important;
+    letter-spacing: 0.18em !important;
+    text-transform: uppercase !important;
+    color: rgba(244, 241, 241, 0.65) !important;
   }
 
   .advisor-copy {
     display: flex !important;
     flex-direction: column !important;
-    gap: 14px !important;
+    gap: 0 !important;
+    width: 100% !important;
   }
 
+  /* 6. Signature */
   .advisor-signoff {
-    margin-top: 8px !important;
-    padding-top: 16px !important;
+    margin-top: 28px !important; /* 24-32px */
+    padding-top: 20px !important;
     border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
   }
 
   .advisor-signoff strong {
+    display: block !important;
     font-size: 16px !important;
+    font-weight: 600 !important;
     color: #ffffff !important;
+    letter-spacing: 0.01em !important;
+    margin: 0 !important;
   }
 
   .advisor-signoff small {
-    font-size: 10.5px !important;
-    color: #e3262e !important;
+    display: block !important;
+    font-size: 12px !important;
+    letter-spacing: 0.16em !important;
+    color: #ff4a50 !important;
+    text-transform: uppercase !important;
+    margin-top: 6px !important; /* 6px space above */
+    font-weight: 500 !important;
   }
 
-  /* Committee Spotlight mobile sizing */
-  .spotlight-card {
+  /* 8. Committees Section ("Choose your arena"): Stack list above card, arrows below card */
+  .committee-feature {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding: clamp(16px, 4vw, 24px) !important;
     min-height: auto !important;
-    padding: 22px 18px !important;
+    border-radius: 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .committee-rail {
+    min-height: 200px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .committee-chip {
+    padding: 12px 16px !important;
+    min-height: 48px !important;
+  }
+
+  /* Move prev/next arrows below the detail card so they NEVER cover text */
+  .committee-spotlight {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto !important;
+    gap: 16px !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+  }
+
+  .committee-spotlight .spotlight-card {
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+    width: 100% !important;
+    min-height: auto !important;
+    padding: clamp(20px, 4.5vw, 32px) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
   }
 
   .spotlight-copy h3 {
-    font-size: clamp(24px, 6.5vw, 32px) !important;
-    line-height: 1.15 !important;
-    letter-spacing: -0.01em !important;
+    font-size: clamp(24px, 6.5vw, 36px) !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.015em !important;
     word-break: normal !important;
-    margin: 10px 0 12px !important;
+    overflow-wrap: break-word !important;
+    margin: 12px 0 14px !important;
   }
 
   .spotlight-copy p {
-    font-size: 13.5px !important;
+    font-size: 15px !important;
     line-height: 1.65 !important;
+    color: rgba(244, 241, 241, 0.78) !important;
+    text-wrap: pretty !important;
   }
 
-  .spotlight-card::before {
-    inset: 8px !important;
+  /* Prev arrow: row 2, left side */
+  .committee-spotlight .slider-arrow-left {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    justify-self: end !important;
+    position: static !important;
+    transform: none !important;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    margin: 0 8px 0 0 !important;
+    display: grid !important;
+    place-items: center !important;
   }
-}
 
-/* Smartphone Specific Polish (max-width: 640px) */
-@media (max-width: 640px) {
+  /* Next arrow: row 2, right side */
+  .committee-spotlight .slider-arrow-right {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    justify-self: start !important;
+    position: static !important;
+    transform: none !important;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    margin: 0 0 0 8px !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  .slider-arrow-left:hover,
+  .slider-arrow-right:hover {
+    transform: none !important;
+  }
+
+  /* 9. Touch targets: all buttons and arrows at least 44px */
+  .slider-arrow,
+  .arkham-hamburger-btn,
+  .primary-button,
+  .nav-cta,
+  .home-action-button,
+  .mobile-action-btn,
+  .mobile-nav-link {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* General Two-Column Layouts (About, Schedule, Registration) */
+  .two-column,
+  .section-heading,
+  .schedule-layout,
+  .registration-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+
+  .section-heading {
+    margin-bottom: 24px !important;
+  }
+
+  .section-heading p {
+    text-align: left !important;
+    justify-self: start !important;
+    max-width: 100% !important;
+  }
+
+  .stats-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 20px 14px !important;
+    margin-top: 36px !important;
+  }
+
+  /* Experience grid */
+  .experience-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    margin-top: 24px !important;
+  }
+  .experience-card {
+    padding: 24px 20px !important;
+  }
+
+  /* Schedule layout */
+  .timeline-row {
+    grid-template-columns: 60px 1fr 18px !important;
+    gap: 12px !important;
+    padding: 14px 0 !important;
+  }
+
+  /* Fee cards */
+  .fee-card {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    padding: 24px 20px !important;
+  }
+
+  /* Site Footer */
+  .site-footer {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    padding-block: clamp(48px, 10vw, 72px) !important;
+  }
+
+  .footer-details {
+    flex-direction: column !important;
+    gap: 24px !important;
+  }
+
+  /* Hero Section */
   .hero-shell {
-    padding: 48px 0 44px !important;
+    min-height: auto !important;
   }
-  .hero-shell .eyebrow {
-    font-size: 9.5px !important;
-    letter-spacing: 0.16em !important;
-    margin-bottom: 12px !important;
+  .hero-emblem {
+    display: none !important;
   }
-  .hero-intro {
-    font-size: 14.5px !important;
-    line-height: 1.7 !important;
-    margin-top: 14px !important;
+  .scroll-cue {
+    display: none !important;
   }
   .hero-actions {
     flex-direction: column !important;
@@ -1617,8 +1819,6 @@ header.arkham-master-header,
     width: 100% !important;
     justify-content: center !important;
   }
-
-  /* Mobile Hero Meta: structured row card instead of cramped 3-column wrap */
   .hero-meta {
     display: flex !important;
     flex-direction: column !important;
@@ -1657,80 +1857,5 @@ header.arkham-master-header,
     line-height: 1.35 !important;
     letter-spacing: 0.06em !important;
     text-align: right !important;
-  }
-  .hero-meta b {
-    color: #fff !important;
-    font-weight: 600 !important;
-  }
-
-  .stats-row {
-    margin-top: 40px !important;
-    gap: 20px 14px !important;
-  }
-  .stats-row strong {
-    font-size: clamp(24px, 7vw, 34px) !important;
-  }
-
-  .content-section {
-    padding: 56px 0 !important;
-  }
-
-  .schedule-layout {
-    gap: 24px !important;
-    margin-top: 24px !important;
-  }
-  .timeline-row {
-    grid-template-columns: 60px 1fr 18px !important;
-    gap: 12px !important;
-    padding: 14px 0 !important;
-  }
-  .timeline-row time {
-    font-size: 11.5px !important;
-  }
-  .timeline-row strong {
-    font-size: 13.5px !important;
-  }
-  .timeline-row span {
-    font-size: 11px !important;
-  }
-
-  .fee-card {
-    grid-template-columns: 1fr !important;
-    gap: 18px !important;
-    padding: 22px 18px !important;
-  }
-  .fee-card strong {
-    font-size: 32px !important;
-  }
-
-  .site-footer {
-    grid-template-columns: 1fr !important;
-    gap: 28px !important;
-    padding: 40px 18px 28px !important;
-  }
-  .footer-details {
-    flex-direction: column !important;
-    gap: 20px !important;
-  }
-}
-
-/* Extra small devices (max-width: 360px) */
-@media (max-width: 360px) {
-  .hero-shell h1 {
-    font-size: 29px !important;
-  }
-  .content-section h2,
-  .section-heading h2,
-  .register-banner h2 {
-    font-size: 26px !important;
-  }
-  .stats-row strong {
-    font-size: 22px !important;
-  }
-  .spotlight-card {
-    padding: 16px 14px !important;
-  }
-  .spotlight-copy h3 {
-    font-size: 22px !important;
   }
 }
