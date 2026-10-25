@@ -385,8 +385,43 @@ export function ArkhamHeader() {
             </Link>
           )}
 
-          {user ? (
-            /* Logged in: Logout */
+          {/* Register button: ALWAYS stays as Register on the home page / navbar */}
+          <Link
+            href="/register"
+            onClick={(e) => {
+              e.preventDefault()
+              const rect = e.currentTarget.getBoundingClientRect()
+              triggerTransition('register', {
+                originRect: rect,
+                targetUrl: '/register'
+              })
+            }}
+            onPointerDown={triggerRipple}
+            onMouseEnter={() => prefetch('/register')}
+            onFocus={() => prefetch('/register')}
+            title="Register for Arkham MUN"
+            className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+            style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
+            aria-label="Register"
+            aria-disabled={isRegisterLoading || isTransitioning}
+            data-transition="register"
+          >
+            {isRegisterLoading ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <span>Opening…</span>
+              </>
+            ) : (
+              <>
+                <UserPlus size={13} className="btn-icon" />
+                <span>Register</span>
+              </>
+            )}
+            <span className="arkham-btn-sheen" aria-hidden="true" />
+          </Link>
+
+          {/* Optional Logout button when user is logged in */}
+          {user && (
             <button
               onClick={(e) => {
                 e.preventDefault()
@@ -398,8 +433,8 @@ export function ArkhamHeader() {
               }}
               onPointerDown={triggerRipple}
               title="Sign out of Arkham account"
-              className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-              style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
+              className={`arkham-nav-btn nav-anim-item arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+              style={{ "--stagger-i": isAdmin ? 11 : 10, minHeight: "44px", padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: "6px" } as React.CSSProperties}
               aria-label="Logout"
               data-transition="logout"
               disabled={isLogoutLoading || isTransitioning}
@@ -417,40 +452,6 @@ export function ArkhamHeader() {
               )}
               <span className="arkham-btn-sheen" aria-hidden="true" />
             </button>
-          ) : (
-            /* Not logged in: Register */
-            <Link
-              href="/register"
-              onClick={(e) => {
-                e.preventDefault()
-                const rect = e.currentTarget.getBoundingClientRect()
-                triggerTransition('register', {
-                  originRect: rect,
-                  targetUrl: '/register'
-                })
-              }}
-              onPointerDown={triggerRipple}
-              onMouseEnter={() => prefetch('/register')}
-              onFocus={() => prefetch('/register')}
-              title="Register for Arkham MUN"
-              className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-              style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
-              aria-label="Register"
-              aria-disabled={isRegisterLoading || isTransitioning}
-            >
-              {isRegisterLoading ? (
-                <>
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Opening…</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus size={13} className="btn-icon" />
-                  <span>Register</span>
-                </>
-              )}
-              <span className="arkham-btn-sheen" aria-hidden="true" />
-            </Link>
           )}
         </div>
 
@@ -578,7 +579,41 @@ export function ArkhamHeader() {
                   </Link>
                 )}
 
-                {user ? (
+                {/* Register button: ALWAYS stays as Register on the home page / mobile drawer */}
+                <Link
+                  href="/register"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setMobileMenuOpen(false)
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    triggerTransition('register', {
+                      originRect: rect,
+                      targetUrl: '/register'
+                    })
+                  }}
+                  onPointerDown={triggerRipple}
+                  onMouseEnter={() => prefetch('/register')}
+                  onFocus={() => prefetch('/register')}
+                  className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                  aria-disabled={isRegisterLoading || isTransitioning}
+                  data-transition="register"
+                >
+                  {isRegisterLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <span>Opening…</span>
+                    </span>
+                  ) : (
+                    <>
+                      <UserPlus size={15} className="btn-icon" />
+                      <span>Register</span>
+                    </>
+                  )}
+                  <span className="arkham-btn-sheen" aria-hidden="true" />
+                </Link>
+
+                {/* Optional Logout button when user is logged in */}
+                {user && (
                   <button
                     onClick={(e) => {
                       e.preventDefault()
@@ -590,9 +625,10 @@ export function ArkhamHeader() {
                       })
                     }}
                     onPointerDown={triggerRipple}
-                    className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                    className={`arkham-nav-btn mobile-action-btn arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
                     data-transition="logout"
                     disabled={isLogoutLoading || isTransitioning}
+                    style={{ borderColor: "rgba(227, 38, 46, 0.4)", color: "#ff6b72" }}
                   >
                     {isLogoutLoading ? (
                       <span className="flex items-center gap-2">
@@ -607,37 +643,6 @@ export function ArkhamHeader() {
                     )}
                     <span className="arkham-btn-sheen" aria-hidden="true" />
                   </button>
-                ) : (
-                  <Link
-                    href="/register"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setMobileMenuOpen(false)
-                      const rect = e.currentTarget.getBoundingClientRect()
-                      triggerTransition('register', {
-                        originRect: rect,
-                        targetUrl: '/register'
-                      })
-                    }}
-                    onPointerDown={triggerRipple}
-                    onMouseEnter={() => prefetch('/register')}
-                    onFocus={() => prefetch('/register')}
-                    className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-                    aria-disabled={isRegisterLoading || isTransitioning}
-                  >
-                    {isRegisterLoading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        <span>Opening…</span>
-                      </span>
-                    ) : (
-                      <>
-                        <UserPlus size={15} className="btn-icon" />
-                        <span>Register</span>
-                      </>
-                    )}
-                    <span className="arkham-btn-sheen" aria-hidden="true" />
-                  </Link>
                 )}
               </div>
             </div>
