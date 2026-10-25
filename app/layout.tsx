@@ -1,16 +1,10 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono, Cinzel, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { GlobalMouseAura } from '@/components/global-mouse-aura'
 import { ArkhamLoadingScreen } from '@/components/arkham-loading-screen'
 import { AuthProvider } from '@/lib/auth-context'
 import PulsingHexagonBackground from '@/components/pulsing-hexagon-background'
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
-const cinzel = Cinzel({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-cinzel" });
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: 'Arkham MUN | Diplomacy, reimagined',
@@ -41,7 +35,15 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${cinzel.variable} ${inter.variable}`}>
+    <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="font-sans antialiased">
         <PulsingHexagonBackground />
         <div className="site-comic-texture" aria-hidden="true" />

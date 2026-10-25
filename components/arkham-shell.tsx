@@ -136,10 +136,13 @@ export function ArkhamHeader() {
   // Lock body scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
-      const originalStyle = window.getComputedStyle(document.body).overflow
+      const originalBodyOverflow = window.getComputedStyle(document.body).overflow
+      const originalHtmlOverflow = window.getComputedStyle(document.documentElement).overflow
       document.body.style.overflow = "hidden"
+      document.documentElement.style.overflow = "hidden"
       return () => {
-        document.body.style.overflow = originalStyle
+        document.body.style.overflow = originalBodyOverflow
+        document.documentElement.style.overflow = originalHtmlOverflow
       }
     }
   }, [mobileMenuOpen])
@@ -332,69 +335,76 @@ export function ArkhamHeader() {
         <div className="nav-sweep-glow" />
       </div>
 
-      {/* Mobile Panel: unrolls from the top using clip-path */}
-      <div
-        id="arkham-mobile-panel"
-        className={`arkham-mobile-panel ${mobileMenuOpen ? "is-open" : ""}`}
-        role="region"
-        aria-label="Mobile navigation panel"
-      >
-        <div className="mobile-panel-inner container-x">
-          <nav className="mobile-panel-nav" aria-label="Mobile main navigation">
-            {navLinks.map((link, idx) => {
-              const isActive = activeHref === link.href
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={(e) => {
-                    handleLinkClick(e, link.href)
-                    setMobileMenuOpen(false)
-                  }}
-                  className={`mobile-nav-link ${isActive ? "is-active" : ""}`}
-                  style={{ "--item-idx": idx } as React.CSSProperties}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <span>{link.label}</span>
-                  {isActive && <span className="nav-active-dot" aria-hidden="true" />}
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* Dashboard and Logout sit at the bottom of the panel */}
+      {/* Mobile Panel: rendered via createPortal so it is outside header backdrop-filter and cannot be overlapped */}
+      {mounted &&
+        createPortal(
           <div
-            className="mobile-panel-actions"
-            style={{ "--item-idx": navLinks.length } as React.CSSProperties}
+            id="arkham-mobile-panel"
+            className={`arkham-mobile-panel ${mobileMenuOpen ? "is-open" : ""}`}
+            style={{
+              top: isScrolled ? "58px" : "74px",
+            }}
+            role="region"
+            aria-label="Mobile navigation panel"
           >
-            <Link
-              href="/dashboard"
-              className="arkham-nav-btn dashboard-btn mobile-action-btn"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <span className="flex items-center gap-2">
-                <User size={15} className="text-[#e5252d]" />
-                <span>Dashboard</span>
-              </span>
-              <span className="arkham-badge-pulse">
-                {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "1"}
-              </span>
-            </Link>
+            <div className="mobile-panel-inner container-x">
+              <nav className="mobile-panel-nav" aria-label="Mobile main navigation">
+                {navLinks.map((link, idx) => {
+                  const isActive = activeHref === link.href
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={(e) => {
+                        handleLinkClick(e, link.href)
+                        setMobileMenuOpen(false)
+                      }}
+                      className={`mobile-nav-link ${isActive ? "is-active" : ""}`}
+                      style={{ "--item-idx": idx } as React.CSSProperties}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      <span>{link.label}</span>
+                      {isActive && <span className="nav-active-dot" aria-hidden="true" />}
+                    </Link>
+                  )
+                })}
+              </nav>
 
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false)
-                if (user) logout()
-                else window.location.href = "/login"
-              }}
-              className="arkham-logout-btn mobile-action-btn"
-            >
-              <LogOut size={15} />
-              <span>Logout</span>
-            </button>
-          </div>
-        </div>
-      </div>
+              {/* Dashboard and Logout sit at the bottom of the panel */}
+              <div
+                className="mobile-panel-actions"
+                style={{ "--item-idx": navLinks.length } as React.CSSProperties}
+              >
+                <Link
+                  href="/dashboard"
+                  className="arkham-nav-btn dashboard-btn mobile-action-btn"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <span className="flex items-center gap-2">
+                    <User size={15} className="text-[#e5252d]" />
+                    <span>Dashboard</span>
+                  </span>
+                  <span className="arkham-badge-pulse">
+                    {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "1"}
+                  </span>
+                </Link>
+
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    if (user) logout()
+                    else window.location.href = "/login"
+                  }}
+                  className="arkham-logout-btn mobile-action-btn"
+                >
+                  <LogOut size={15} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </header>
   )
 }

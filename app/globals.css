@@ -156,7 +156,7 @@
 .mun-site { font-family: Arial, Helvetica, sans-serif; isolation: isolate; }
 .mun-site .settings-panel { top: auto !important; left: auto !important; right: 20px !important; bottom: 20px !important; transform: scale(.78); transform-origin: bottom right; opacity: .72; z-index: 3; }
 .site-wash { position: absolute; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(circle at 68% 20%, rgba(227, 38, 46, .16), transparent 28%), linear-gradient(180deg, rgba(8, 8, 18, .28), #080812 75%); }
-.mun-site > *:not(.site-wash):not(canvas) { position: relative; z-index: 2; }
+.mun-site > *:not(.site-wash):not(canvas):not(header) { position: relative; z-index: 2; }
 .site-nav { width: 100%; max-width: 1560px; margin-inline: auto; padding-inline: clamp(16px, 4vw, 72px); padding-block: 27px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; }
 .brand-mark, .footer-brand { display: flex; align-items: center; gap: 11px; color: #fff; text-decoration: none; letter-spacing: .12em; }
 .brand-mark img { width: 42px; height: 42px; object-fit: cover; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .42); box-shadow: 0 0 0 4px rgba(227, 38, 46, .08), 0 0 22px rgba(227, 38, 46, .28); }
@@ -704,13 +704,15 @@
 }
 
 /* 6. Scroll behavior & Header container */
-.arkham-master-header {
-  position: sticky;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  z-index: 50;
+.arkham-master-header,
+header.arkham-master-header,
+.mun-site > header.arkham-master-header {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  z-index: 99999 !important;
   background: rgba(10, 6, 8, 0.55);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -1090,8 +1092,8 @@
   min-width: 44px;
   min-height: 44px;
   padding: 12px 10px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   border-radius: 8px;
   cursor: pointer;
   flex-direction: column;
@@ -1099,6 +1101,7 @@
   align-items: center;
   box-sizing: border-box;
   transition: border-color 200ms ease, background-color 200ms ease;
+  z-index: 100000 !important;
 }
 
 .arkham-hamburger-btn:hover {
@@ -1115,17 +1118,18 @@
   display: block;
   width: 22px;
   height: 2px;
-  background: #ffffff;
+  background: #ffffff !important;
   border-radius: 2px;
   transition: transform 320ms cubic-bezier(0.34, 1.4, 0.5, 1),
               opacity 200ms ease,
               background-color 200ms ease;
   transform-origin: center;
+  pointer-events: none;
 }
 
 .arkham-hamburger-btn.is-open .top-bar {
   transform: translateY(7px) rotate(45deg);
-  background: #e5252d;
+  background: #ffffff !important;
 }
 
 .arkham-hamburger-btn.is-open .mid-bar {
@@ -1135,7 +1139,7 @@
 
 .arkham-hamburger-btn.is-open .bot-bar {
   transform: translateY(-7px) rotate(-45deg);
-  background: #e5252d;
+  background: #ffffff !important;
 }
 
 @media (max-width: 900px) {
@@ -1150,23 +1154,23 @@
 
 /* 9. Mobile Panel Unrolling via Clip-Path */
 .arkham-mobile-panel {
-  position: absolute;
-  top: 100%;
+  position: fixed !important;
   left: 0;
   right: 0;
-  background: rgba(10, 6, 8, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(229, 37, 45, 0.25);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.75);
+  bottom: 0;
+  background: #08060a !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border-bottom: 1px solid rgba(229, 37, 45, 0.35);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.95);
   clip-path: inset(0 0 100% 0);
   opacity: 0;
   pointer-events: none;
-  transition: clip-path 450ms cubic-bezier(0.34, 1.4, 0.5, 1),
-              opacity 300ms ease;
-  z-index: 45;
-  max-height: calc(100vh - 74px);
+  transition: clip-path 420ms cubic-bezier(0.34, 1.4, 0.5, 1),
+              opacity 250ms ease;
+  z-index: 99998 !important;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .arkham-mobile-panel.is-open {
