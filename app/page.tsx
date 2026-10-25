@@ -70,15 +70,28 @@ export default function Home() {
             <a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a>
           </div>
         </div>
-        <div className="hero-emblem" aria-hidden="true"><div className="emblem-ring" /><img src={logoUrl} alt="" /></div>
-        <div className="hero-meta">
-          <div><span>DATE</span><p>24—25<br /><b>OCTOBER</b></p></div>
-          <div className="meta-line" />
-          <div><span>VENUE</span><p>IN<br /><b>CENTRAL DELHI</b></p></div>
-          <div className="meta-line" />
-          <div><span>DEADLINE</span><p>01<br /><b>OCTOBER</b></p></div>
+        <div className="hero-emblem" aria-hidden="true">
+          <div className="emblem-ring" />
+          <img src={logoUrl} alt="Arkham MUN emblem" />
         </div>
-        <div className="scroll-cue"><span /> Scroll to explore</div>
+        <div className="hero-meta">
+          <div className="hero-meta-item">
+            <span>DATE</span>
+            <p>24—25 OCTOBER</p>
+          </div>
+          <div className="hero-meta-item">
+            <span>VENUE</span>
+            <p>IN CENTRAL DELHI</p>
+          </div>
+          <div className="hero-meta-item">
+            <span>DEADLINE</span>
+            <p>01 OCTOBER</p>
+          </div>
+        </div>
+        <a href="#about" className="scroll-cue" aria-label="Scroll to explore">
+          <span>SCROLL TO EXPLORE</span>
+          <div className="scroll-cue-line" />
+        </a>
       </section>
 
       <section id="about" className="content-section about-section container-x">
