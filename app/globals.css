@@ -10,6 +10,92 @@
 .global-mouse-aura:hover::before { opacity: 1; }
 .global-mouse-aura::after { content: ""; position: fixed; left: var(--mouse-x); top: var(--mouse-y); width: 18px; height: 18px; z-index: 1000; pointer-events: none; border: 1px solid rgba(255,255,255,.7); border-radius: 999px; transform: translate(-50%,-50%); box-shadow: 0 0 0 5px rgba(227,38,46,.08), 0 0 22px rgba(227,38,46,.65); opacity: 0; transition: opacity .35s ease, width .25s ease, height .25s ease; }
 .global-mouse-aura:hover::after { opacity: .9; width: 22px; height: 22px; }
+
+/* ==========================================================================
+   CUSTOM BAT CURSOR
+   ========================================================================== */
+html.cursor-bat,
+html.cursor-bat * {
+  cursor: none !important;
+}
+
+html.cursor-bat input,
+html.cursor-bat textarea,
+html.cursor-bat [contenteditable="true"] {
+  cursor: text !important;
+}
+
+html.cursor-bat input[type="button"],
+html.cursor-bat input[type="submit"],
+html.cursor-bat input[type="reset"] {
+  cursor: none !important;
+}
+
+html.cursor-bat .global-mouse-aura::after {
+  display: none !important;
+}
+
+@keyframes flap {
+  0% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.7);
+  }
+}
+
+.bat-cursor-element {
+  position: fixed;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 9999;
+  will-change: transform;
+  width: 42px;
+  height: 28px;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.bat-cursor-element .flap {
+  transform-box: fill-box;
+  transform-origin: 50% 55%;
+  animation: flap 0.9s ease-in-out infinite alternate;
+}
+
+.bat-click-ripple {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 2px solid #e5252d;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  box-sizing: border-box;
+  animation: bat-ripple-anim 600ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes bat-ripple-anim {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bat-cursor-element .flap {
+    animation: none !important;
+  }
+  .bat-click-ripple {
+    display: none !important;
+  }
+}
 @media (pointer: coarse), (prefers-reduced-motion: reduce) { .global-mouse-aura::before, .global-mouse-aura::after { display: none; } }
 
 :root {
