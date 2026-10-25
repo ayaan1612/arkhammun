@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useRef, useState, useCallb
 import { useRouter } from 'next/navigation'
 import { arkham } from '@/lib/arkham-data'
 
-export type TransitionType = 'register' | 'dashboard' | 'logout' | 'dashboard-back'
+export type TransitionType = 'register' | 'dashboard' | 'logout' | 'dashboard-back' | 'login'
 
 export interface TransitionOptions {
   originRect?: DOMRect | null
@@ -281,10 +281,10 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       // -----------------------------------------------------------------
       // TRANSITION 2: Dashboard -> /dashboard (or dashboard-back -> /)
       // -----------------------------------------------------------------
-      else if (type === 'dashboard' || type === 'dashboard-back') {
+      else if (type === 'dashboard' || type === 'dashboard-back' || type === 'login') {
         const isBack = type === 'dashboard-back'
-        const targetUrl = options.targetUrl || (isBack ? '/' : '/dashboard')
-        setAnnouncement(isBack ? 'Returning to home' : 'Opening dashboard')
+        const targetUrl = options.targetUrl || (type === 'login' ? '/login' : isBack ? '/' : '/dashboard')
+        setAnnouncement(type === 'login' ? 'Opening login' : isBack ? 'Returning to home' : 'Opening dashboard')
 
         document.documentElement.dataset.transition = isBack ? 'from-dashboard' : 'to-dashboard'
 

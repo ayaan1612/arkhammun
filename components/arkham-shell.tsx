@@ -18,6 +18,7 @@ import {
   Phone,
   Shield,
   User,
+  UserPlus,
   X,
 } from "lucide-react"
 import { arkham } from "@/lib/arkham-data"
@@ -44,7 +45,9 @@ export function ArkhamHeader() {
   const { user, token, logout, isAdmin } = useAuth()
   const { activeTransition, isTransitioning, triggerTransition, prefetch } = useTransitionNav()
   const isDashboardLoading = activeTransition === "dashboard"
+  const isLoginLoading = activeTransition === "login"
   const isLogoutLoading = activeTransition === "logout"
+  const isRegisterLoading = activeTransition === "register"
   const [unreadCount, setUnreadCount] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -301,40 +304,74 @@ export function ArkhamHeader() {
           })}
         </nav>
 
-        {/* Right: a "Dashboard" button with a red count badge, and a red "Logout" button */}
+        {/* Right: When logged in -> Dashboard + Logout. When NOT logged in -> Login + Register */}
         <div className="arkham-desktop-actions">
-          <Link
-            href="/dashboard"
-            className={`arkham-nav-btn dashboard-btn nav-anim-item arkham-interactive-btn ${isDashboardLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-            style={{ "--stagger-i": 8 } as React.CSSProperties}
-            title="Delegate Dashboard"
-            onClick={(e) => {
-              e.preventDefault()
-              triggerTransition('dashboard', {
-                originRect: e.currentTarget.getBoundingClientRect(),
-                targetUrl: '/dashboard'
-              })
-            }}
-            onPointerDown={triggerRipple}
-            onMouseEnter={() => prefetch('/dashboard')}
-            onFocus={() => prefetch('/dashboard')}
-          >
-            {isDashboardLoading ? (
-              <>
-                <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                <span>Opening…</span>
-              </>
-            ) : (
-              <>
-                <User size={14} className="text-[#e5252d] btn-icon" />
-                <span>Dashboard</span>
-                <span className="arkham-badge-pulse" title="Notifications">
-                  {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "1"}
-                </span>
-              </>
-            )}
-            <span className="arkham-btn-sheen" aria-hidden="true" />
-          </Link>
+          {user ? (
+            /* Logged in: Dashboard */
+            <Link
+              href="/dashboard"
+              className={`arkham-nav-btn dashboard-btn nav-anim-item arkham-interactive-btn ${isDashboardLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+              style={{ "--stagger-i": 8 } as React.CSSProperties}
+              title="Delegate Dashboard"
+              onClick={(e) => {
+                e.preventDefault()
+                triggerTransition('dashboard', {
+                  originRect: e.currentTarget.getBoundingClientRect(),
+                  targetUrl: '/dashboard'
+                })
+              }}
+              onPointerDown={triggerRipple}
+              onMouseEnter={() => prefetch('/dashboard')}
+              onFocus={() => prefetch('/dashboard')}
+            >
+              {isDashboardLoading ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Opening…</span>
+                </>
+              ) : (
+                <>
+                  <User size={14} className="text-[#e5252d] btn-icon" />
+                  <span>Dashboard</span>
+                  <span className="arkham-badge-pulse" title="Notifications">
+                    {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "1"}
+                  </span>
+                </>
+              )}
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+            </Link>
+          ) : (
+            /* Not logged in: Login */
+            <Link
+              href="/login"
+              className={`arkham-nav-btn dashboard-btn nav-anim-item arkham-interactive-btn ${isLoginLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+              style={{ "--stagger-i": 8 } as React.CSSProperties}
+              title="Sign in to your account"
+              onClick={(e) => {
+                e.preventDefault()
+                triggerTransition('login', {
+                  originRect: e.currentTarget.getBoundingClientRect(),
+                  targetUrl: '/login'
+                })
+              }}
+              onPointerDown={triggerRipple}
+              onMouseEnter={() => prefetch('/login')}
+              onFocus={() => prefetch('/login')}
+            >
+              {isLoginLoading ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Opening…</span>
+                </>
+              ) : (
+                <>
+                  <LogIn size={14} className="text-[#e5252d] btn-icon" />
+                  <span>Login</span>
+                </>
+              )}
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+            </Link>
+          )}
 
           {isAdmin && (
             <Link
@@ -348,42 +385,72 @@ export function ArkhamHeader() {
             </Link>
           )}
 
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              const rect = e.currentTarget.getBoundingClientRect()
-              if (user) {
+          {user ? (
+            /* Logged in: Logout */
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                const rect = e.currentTarget.getBoundingClientRect()
                 triggerTransition('logout', {
                   originRect: rect,
                   onLogout: () => logout()
                 })
-              } else {
-                triggerTransition('dashboard', {
+              }}
+              onPointerDown={triggerRipple}
+              title="Sign out of Arkham account"
+              className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+              style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
+              aria-label="Logout"
+              disabled={isLogoutLoading || isTransitioning}
+            >
+              {isLogoutLoading ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Signing out…</span>
+                </>
+              ) : (
+                <>
+                  <LogOut size={13} className="btn-icon" />
+                  <span>Logout</span>
+                </>
+              )}
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+            </button>
+          ) : (
+            /* Not logged in: Register */
+            <Link
+              href="/register"
+              onClick={(e) => {
+                e.preventDefault()
+                const rect = e.currentTarget.getBoundingClientRect()
+                triggerTransition('register', {
                   originRect: rect,
-                  targetUrl: '/login'
+                  targetUrl: '/register'
                 })
-              }
-            }}
-            onPointerDown={triggerRipple}
-            title={user ? "Sign out of Arkham account" : "Sign in / Register"}
-            className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-            style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
-            aria-label="Logout"
-            disabled={isLogoutLoading || isTransitioning}
-          >
-            {isLogoutLoading ? (
-              <>
-                <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                <span>Signing out…</span>
-              </>
-            ) : (
-              <>
-                <LogOut size={13} className="btn-icon" />
-                <span>Logout</span>
-              </>
-            )}
-            <span className="arkham-btn-sheen" aria-hidden="true" />
-          </button>
+              }}
+              onPointerDown={triggerRipple}
+              onMouseEnter={() => prefetch('/register')}
+              onFocus={() => prefetch('/register')}
+              title="Register for Arkham MUN"
+              className={`arkham-logout-btn nav-anim-item arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+              style={{ "--stagger-i": isAdmin ? 10 : 9 } as React.CSSProperties}
+              aria-label="Register"
+              disabled={isRegisterLoading || isTransitioning}
+            >
+              {isRegisterLoading ? (
+                <>
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span>Opening…</span>
+                </>
+              ) : (
+                <>
+                  <UserPlus size={13} className="btn-icon" />
+                  <span>Register</span>
+                </>
+              )}
+              <span className="arkham-btn-sheen" aria-hidden="true" />
+            </Link>
+          )}
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -440,79 +507,136 @@ export function ArkhamHeader() {
                 })}
               </nav>
 
-              {/* Dashboard and Logout sit at the bottom of the panel */}
+              {/* When logged in: Dashboard + Logout. When NOT logged in: Login + Register */}
               <div
                 className="mobile-panel-actions"
                 style={{ "--item-idx": navLinks.length } as React.CSSProperties}
               >
-                <Link
-                  href="/dashboard"
-                  className={`arkham-nav-btn dashboard-btn mobile-action-btn arkham-interactive-btn ${isDashboardLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setMobileMenuOpen(false)
-                    triggerTransition('dashboard', {
-                      originRect: e.currentTarget.getBoundingClientRect(),
-                      targetUrl: '/dashboard'
-                    })
-                  }}
-                  onPointerDown={triggerRipple}
-                  onMouseEnter={() => prefetch('/dashboard')}
-                  onFocus={() => prefetch('/dashboard')}
-                >
-                  {isDashboardLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Opening…</span>
-                    </span>
-                  ) : (
-                    <>
+                {user ? (
+                  <Link
+                    href="/dashboard"
+                    className={`arkham-nav-btn dashboard-btn mobile-action-btn arkham-interactive-btn ${isDashboardLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setMobileMenuOpen(false)
+                      triggerTransition('dashboard', {
+                        originRect: e.currentTarget.getBoundingClientRect(),
+                        targetUrl: '/dashboard'
+                      })
+                    }}
+                    onPointerDown={triggerRipple}
+                    onMouseEnter={() => prefetch('/dashboard')}
+                    onFocus={() => prefetch('/dashboard')}
+                  >
+                    {isDashboardLoading ? (
                       <span className="flex items-center gap-2">
-                        <User size={15} className="text-[#e5252d] btn-icon" />
-                        <span>Dashboard</span>
+                        <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <span>Opening…</span>
                       </span>
-                      <span className="arkham-badge-pulse">
-                        {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "1"}
+                    ) : (
+                      <>
+                        <span className="flex items-center gap-2">
+                          <User size={15} className="text-[#e5252d] btn-icon" />
+                          <span>Dashboard</span>
+                        </span>
+                        <span className="arkham-badge-pulse">
+                          {unreadCount > 0 ? (unreadCount > 9 ? "9+" : unreadCount) : "1"}
+                        </span>
+                      </>
+                    )}
+                    <span className="arkham-btn-sheen" aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <Link
+                    href="/login"
+                    className={`arkham-nav-btn dashboard-btn mobile-action-btn arkham-interactive-btn ${isLoginLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setMobileMenuOpen(false)
+                      triggerTransition('login', {
+                        originRect: e.currentTarget.getBoundingClientRect(),
+                        targetUrl: '/login'
+                      })
+                    }}
+                    onPointerDown={triggerRipple}
+                    onMouseEnter={() => prefetch('/login')}
+                    onFocus={() => prefetch('/login')}
+                  >
+                    {isLoginLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <span>Opening…</span>
                       </span>
-                    </>
-                  )}
-                  <span className="arkham-btn-sheen" aria-hidden="true" />
-                </Link>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <LogIn size={15} className="text-[#e5252d] btn-icon" />
+                        <span>Login</span>
+                      </span>
+                    )}
+                    <span className="arkham-btn-sheen" aria-hidden="true" />
+                  </Link>
+                )}
 
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setMobileMenuOpen(false)
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    if (user) {
+                {user ? (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setMobileMenuOpen(false)
+                      const rect = e.currentTarget.getBoundingClientRect()
                       triggerTransition('logout', {
                         originRect: rect,
                         onLogout: () => logout()
                       })
-                    } else {
-                      triggerTransition('dashboard', {
+                    }}
+                    onPointerDown={triggerRipple}
+                    className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                    disabled={isLogoutLoading || isTransitioning}
+                  >
+                    {isLogoutLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <span>Signing out…</span>
+                      </span>
+                    ) : (
+                      <>
+                        <LogOut size={15} className="btn-icon" />
+                        <span>Logout</span>
+                      </>
+                    )}
+                    <span className="arkham-btn-sheen" aria-hidden="true" />
+                  </button>
+                ) : (
+                  <Link
+                    href="/register"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setMobileMenuOpen(false)
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      triggerTransition('register', {
                         originRect: rect,
-                        targetUrl: '/login'
+                        targetUrl: '/register'
                       })
-                    }
-                  }}
-                  onPointerDown={triggerRipple}
-                  className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isLogoutLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
-                  disabled={isLogoutLoading || isTransitioning}
-                >
-                  {isLogoutLoading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      <span>Signing out…</span>
-                    </span>
-                  ) : (
-                    <>
-                      <LogOut size={15} className="btn-icon" />
-                      <span>Logout</span>
-                    </>
-                  )}
-                  <span className="arkham-btn-sheen" aria-hidden="true" />
-                </button>
+                    }}
+                    onPointerDown={triggerRipple}
+                    onMouseEnter={() => prefetch('/register')}
+                    onFocus={() => prefetch('/register')}
+                    className={`arkham-logout-btn mobile-action-btn arkham-interactive-btn ${isRegisterLoading ? "is-loading pointer-events-none cursor-default opacity-90" : ""}`}
+                    disabled={isRegisterLoading || isTransitioning}
+                  >
+                    {isRegisterLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                        <span>Opening…</span>
+                      </span>
+                    ) : (
+                      <>
+                        <UserPlus size={15} className="btn-icon" />
+                        <span>Register</span>
+                      </>
+                    )}
+                    <span className="arkham-btn-sheen" aria-hidden="true" />
+                  </Link>
+                )}
               </div>
             </div>
           </div>,
