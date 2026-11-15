@@ -169,7 +169,7 @@ function LoginForm() {
           </>
         }
       >
-        Access your registered events, official venue entry passes, committee dockets, and conference communiquÃ©s.
+        Access your registered events, official venue entry passes, committee dockets, and conference communiqués.
       </PageIntro>
 
       <div

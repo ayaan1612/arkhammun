@@ -4,42 +4,39 @@ import React, { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  AlertTriangle,
   Bell,
+  Building,
+  Calendar,
   CheckCircle2,
   Clock,
-  ExternalLink,
+  Download,
   MapPin,
   MessageSquare,
-  QrCode,
   RefreshCw,
   Search,
   Sparkles,
   Ticket,
+  User,
   X,
   XCircle,
-  AlertTriangle,
-  Download,
-  Calendar,
-  Building,
-  User,
 } from "lucide-react"
 import {
   entryPassApi,
   NotificationsLookupResponse,
-  NotificationRegistration,
-  ContactQuery,
-  EventDetails,
 } from "@/lib/entry-pass-api"
 import styles from "./notification-center.module.css"
 
 export function NotificationSystem() {
   const pathname = usePathname()
-  if (pathname?.startsWith("/admin")) return null
 
   const [isOpen, setIsOpen] = useState(false)
   const [isBarDismissed, setIsBarDismissed] = useState(false)
   const [data, setData] = useState<NotificationsLookupResponse | null>(null)
-  const [queryInput, setQueryInput] = useState("")
+  const [queryInput, setQueryInput] = useState(() => {
+    if (typeof window === "undefined") return ""
+    return localStorage.getItem("arkham_delegate_email") || localStorage.getItem("arkham_delegate_reg_id") || ""
+  })
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<"passes" | "replies" | "event">("passes")
   const [entryQrs, setEntryQrs] = useState<Record<string, string>>({})
@@ -48,7 +45,7 @@ export function NotificationSystem() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
   const calculateTimeLeft = useCallback(() => {
-    const target = new Date("2026-10-24T09:00:00+05:30").getTime()
+    const target = new Date("2027-04-10T09:00:00+05:30").getTime()
     const now = new Date().getTime()
     const difference = target - now
 
@@ -63,7 +60,6 @@ export function NotificationSystem() {
   }, [])
 
   useEffect(() => {
-    calculateTimeLeft()
     const timer = setInterval(calculateTimeLeft, 1000)
     return () => clearInterval(timer)
   }, [calculateTimeLeft])
@@ -77,10 +73,10 @@ export function NotificationSystem() {
 
       // Preload QR passes for approved registrations
       for (const reg of res.registrations) {
-        if (reg.status === "approved" && !entryQrs[reg.id]) {
+        if (reg.status === "approved") {
           try {
             const qrRes = await entryPassApi.getEntryQr(reg.id)
-            setEntryQrs((prev) => ({ ...prev, [reg.id]: qrRes.qr }))
+            setEntryQrs((prev) => (prev[reg.id] ? prev : { ...prev, [reg.id]: qrRes.qr }))
           } catch {
             // pass
           }
@@ -91,7 +87,7 @@ export function NotificationSystem() {
     } finally {
       setLoading(false)
     }
-  }, [entryQrs])
+  }, [])
 
   // Initial load from localStorage
   useEffect(() => {
@@ -99,12 +95,9 @@ export function NotificationSystem() {
     const storedEmail = localStorage.getItem("arkham_delegate_email") || ""
     const storedRegId = localStorage.getItem("arkham_delegate_reg_id") || ""
     const initialQuery = storedEmail || storedRegId || ""
-    if (initialQuery) {
-      setQueryInput(initialQuery)
-      fetchNotifications(initialQuery)
-    } else {
-      fetchNotifications("")
-    }
+    const timer = setTimeout(() => {
+      void fetchNotifications(initialQuery)
+    }, 0)
 
     const handleUpdate = () => {
       const email = localStorage.getItem("arkham_delegate_email") || ""
@@ -112,13 +105,18 @@ export function NotificationSystem() {
       const q = email || regId || ""
       if (q) {
         setQueryInput(q)
-        fetchNotifications(q)
+        void fetchNotifications(q)
       }
     }
 
     window.addEventListener("arkham_notification_update", handleUpdate)
-    return () => window.removeEventListener("arkham_notification_update", handleUpdate)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener("arkham_notification_update", handleUpdate)
+    }
   }, [fetchNotifications])
+
+  if (pathname?.startsWith("/admin")) return null
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()

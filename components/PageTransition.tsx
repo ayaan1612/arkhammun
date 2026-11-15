@@ -18,7 +18,7 @@ export type TransitionType = 'register' | 'dashboard' | 'logout' | 'dashboard-ba
 export interface GoOptions {
   type: TransitionType
   href?: string
-  action?: () => Promise<any> | any
+  action?: () => Promise<unknown> | unknown
   originEl?: HTMLElement | null
   originRect?: DOMRect | null
   sessionExpired?: boolean
@@ -80,11 +80,11 @@ export function registerAuthLogout(fn: () => void) {
 }
 
 // Global router ref so transitions can navigate from module-level go()
-let moduleRouter: any = null
+let moduleRouter: { push: (url: string) => void; replace: (url: string) => void; refresh: () => void; prefetch?: (url: string) => void } | null = null
 let modulePathname = ''
 let pendingRouteResolve: (() => void) | null = null
 
-export function setModuleRouter(router: any, pathname: string) {
+export function setModuleRouter(router: { push: (url: string) => void; replace: (url: string) => void; refresh: () => void; prefetch?: (url: string) => void }, pathname: string) {
   moduleRouter = router
   modulePathname = pathname
   if (pendingRouteResolve) {
@@ -411,7 +411,7 @@ export async function go(options: GoOptions): Promise<boolean> {
     }, 6000)
 
     let actionSucceeded = false
-    let actionError: any = null
+    let actionError: unknown = null
 
     try {
       if (finalAction) {
@@ -527,7 +527,7 @@ export async function go(options: GoOptions): Promise<boolean> {
 
     if (typeof document !== 'undefined' && 'startViewTransition' in document) {
       try {
-        ;(document as any).startViewTransition(async () => {
+        ;(document as unknown as { startViewTransition: (cb: () => Promise<void>) => void }).startViewTransition(async () => {
           router?.push(finalTarget)
           await new Promise((res) => setTimeout(res, 250))
         })
@@ -585,7 +585,7 @@ export function useTransitionNav() {
   )
 
   const triggerTransition = useCallback(
-    (type: TransitionType, options: any = {}) => {
+    (type: TransitionType, options: Partial<GoOptions> = {}) => {
       return go({ type, ...options })
     },
     []
@@ -620,7 +620,7 @@ export function TransitionButton({
 }: {
   type: TransitionType
   href?: string
-  action?: () => Promise<any> | any
+  action?: () => Promise<unknown> | unknown
   label?: string
   loadingText?: string
   sessionExpired?: boolean
@@ -630,7 +630,7 @@ export function TransitionButton({
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
   style?: React.CSSProperties
-  [key: string]: any
+  [key: string]: unknown
 }) {
   const { go: executeGo, activeTransition } = useTransitionNav()
   const isLoading = activeTransition === type

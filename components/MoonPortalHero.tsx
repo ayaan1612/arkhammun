@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useRef } from 'react'
 import Link from 'next/link'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import { useMoonPortal, UseMoonPortalOptions } from '@/hooks/useMoonPortal'
@@ -80,8 +80,52 @@ export function MoonPortalHero({
   onProgress,
   className = '',
 }: MoonPortalHeroProps) {
-  const { refs, smoothScrollEnabled, toggleSmoothScroll, isReducedMotion } =
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
+  const pinRef = useRef<HTMLDivElement | null>(null)
+  const heroRef = useRef<HTMLElement | null>(null)
+  const nextSectionRef = useRef<HTMLElement | null>(null)
+  const moonWrapperRef = useRef<HTMLDivElement | null>(null)
+  const moonArcRef = useRef<SVGCircleElement | null>(null)
+  const moonDashedRingRef = useRef<SVGCircleElement | null>(null)
+  const portalRingRef = useRef<HTMLDivElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const progressBarRef = useRef<HTMLDivElement | null>(null)
+  const scrollCueRef = useRef<HTMLDivElement | null>(null)
+  const scrollCueLineRef = useRef<HTMLDivElement | null>(null)
+
+  const headlineLine1Ref = useRef<HTMLSpanElement | null>(null)
+  const headlineLine2Ref = useRef<HTMLSpanElement | null>(null)
+  const headlineLine3Ref = useRef<HTMLSpanElement | null>(null)
+  const eyebrowRef = useRef<HTMLDivElement | null>(null)
+  const leadRef = useRef<HTMLParagraphElement | null>(null)
+  const ctaRef = useRef<HTMLDivElement | null>(null)
+  const infoItemsRef = useRef<(HTMLDivElement | null)[]>([])
+  const hexBgRef = useRef<HTMLDivElement | null>(null)
+
+  const { smoothScrollEnabled, toggleSmoothScroll, isReducedMotion } =
     useMoonPortal({
+      refs: {
+        wrapperRef,
+        pinRef,
+        heroRef,
+        nextSectionRef,
+        moonWrapperRef,
+        moonArcRef,
+        moonDashedRingRef,
+        portalRingRef,
+        canvasRef,
+        progressBarRef,
+        scrollCueRef,
+        scrollCueLineRef,
+        headlineLine1Ref,
+        headlineLine2Ref,
+        headlineLine3Ref,
+        eyebrowRef,
+        leadRef,
+        ctaRef,
+        infoItemsRef,
+        hexBgRef,
+      },
       wrapperHeightMultiplier,
       lerpFactor,
       smoothScroll,
@@ -93,19 +137,19 @@ export function MoonPortalHero({
 
   return (
     <div
-      ref={refs.wrapperRef}
+      ref={wrapperRef}
       className={`moon-portal-wrapper relative w-full bg-[#0a0608] text-white selection:bg-[#e3262e] selection:text-white ${className}`}
       style={{ height: `${wrapperHeightMultiplier * 100}vh` }}
     >
       {/* Sticky Pin Container (100vh viewport, pins during the 3.2x scroll sequence) */}
       <div
-        ref={refs.pinRef}
+        ref={pinRef}
         className="moon-portal-pin sticky top-0 h-screen w-full overflow-hidden bg-[#0a0608]"
         style={{ isolation: 'isolate' }}
       >
         {/* Top Scroll Progress Indicator */}
         <div
-          ref={refs.progressBarRef}
+          ref={progressBarRef}
           className="moon-portal-progress-bar fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4a50] via-[#e3262e] to-[#8f0510] z-50 origin-left pointer-events-none"
           style={{ transform: 'scaleX(0)' }}
           aria-hidden="true"
@@ -113,7 +157,7 @@ export function MoonPortalHero({
 
         {/* Hexagonal Background Grid Pattern */}
         <div
-          ref={refs.hexBgRef}
+          ref={hexBgRef}
           className="moon-portal-hex-bg absolute inset-0 pointer-events-none z-[1] will-change-transform opacity-30"
           style={{
             backgroundImage: `radial-gradient(circle at 70% 30%, rgba(227, 38, 46, 0.12), transparent 45%),
@@ -138,7 +182,7 @@ export function MoonPortalHero({
         {/* LAYER 1: HERO CONTENT (z-2)                                         */}
         {/* ------------------------------------------------------------------- */}
         <section
-          ref={refs.heroRef}
+          ref={heroRef}
           className="moon-portal-hero absolute inset-0 z-[2] flex flex-col justify-between overflow-hidden will-change-transform px-4 sm:px-8 md:px-16 py-8 md:py-12"
           aria-label="Conference Hero"
         >
@@ -148,7 +192,7 @@ export function MoonPortalHero({
             <div className="moon-portal-left-col flex flex-col justify-center items-start z-10 w-full">
               {/* Eyebrow */}
               <div
-                ref={refs.eyebrowRef}
+                ref={eyebrowRef}
                 className="moon-portal-eyebrow mb-4 will-change-transform font-['Cinzel',serif]"
               >
                 {eyebrow}
@@ -157,19 +201,19 @@ export function MoonPortalHero({
               {/* Headline with 3 distinct animated line blocks */}
               <h1 className="moon-portal-headline font-['Cinzel',serif] text-[clamp(2.4rem,5.5vw,5.2rem)] font-bold tracking-tight text-white leading-[1.08] mb-6 select-text">
                 <span
-                  ref={refs.headlineLine1Ref}
+                  ref={headlineLine1Ref}
                   className="block will-change-transform"
                 >
                   {headline.line1}
                 </span>
                 <span
-                  ref={refs.headlineLine2Ref}
+                  ref={headlineLine2Ref}
                   className="block will-change-transform italic text-[#ff4a50] drop-shadow-[0_0_18px_rgba(255,74,80,0.5)]"
                 >
                   {headline.line2}
                 </span>
                 <span
-                  ref={refs.headlineLine3Ref}
+                  ref={headlineLine3Ref}
                   className="block will-change-transform"
                 >
                   {headline.line3}
@@ -178,7 +222,7 @@ export function MoonPortalHero({
 
               {/* Lead Paragraph */}
               <p
-                ref={refs.leadRef}
+                ref={leadRef}
                 className="moon-portal-lead text-[clamp(15px,1.2vw,18px)] leading-[1.7] text-[#f4f1f1]/80 max-w-[560px] mb-8 will-change-transform select-text"
               >
                 {lead}
@@ -186,7 +230,7 @@ export function MoonPortalHero({
 
               {/* Call-to-action Row */}
               <div
-                ref={refs.ctaRef}
+                ref={ctaRef}
                 className="moon-portal-cta-row flex flex-wrap items-center gap-4 will-change-transform"
               >
                 {cta ? (
@@ -218,7 +262,7 @@ export function MoonPortalHero({
             {/* Right Column: Blood Moon Emblem with SVG Rings */}
             <div className="moon-portal-moon-col flex items-center justify-center w-full z-10 order-first md:order-last">
               <div
-                ref={refs.moonWrapperRef}
+                ref={moonWrapperRef}
                 className="moon-portal-moon-wrapper relative flex items-center justify-center w-[clamp(220px,40vmin,420px)] aspect-square will-change-transform"
                 style={{ transformOrigin: 'center center' }}
               >
@@ -251,7 +295,7 @@ export function MoonPortalHero({
                   />
                   {/* Dashed Red Ring (slow continuous rotation) */}
                   <circle
-                    ref={refs.moonDashedRingRef}
+                    ref={moonDashedRingRef}
                     cx="0"
                     cy="0"
                     r="93"
@@ -275,7 +319,7 @@ export function MoonPortalHero({
                   />
                   {/* Bright Scanning Red Arc (accelerates with scroll velocity) */}
                   <circle
-                    ref={refs.moonArcRef}
+                    ref={moonArcRef}
                     cx="0"
                     cy="0"
                     r="97"
@@ -316,7 +360,7 @@ export function MoonPortalHero({
                 <div
                   key={item.label}
                   ref={(el) => {
-                    refs.infoItemsRef.current[idx] = el
+                    infoItemsRef.current[idx] = el
                   }}
                   className="moon-portal-info-item flex flex-col will-change-transform"
                 >
@@ -346,7 +390,7 @@ export function MoonPortalHero({
         {/* LAYER 2: NEXT SECTION REVEALED THROUGH PORTAL (z-3)                 */}
         {/* ------------------------------------------------------------------- */}
         <section
-          ref={refs.nextSectionRef}
+          ref={nextSectionRef}
           className="moon-portal-next-section absolute inset-0 z-[3] w-full h-full overflow-hidden will-change-[clip-path,transform,opacity] flex items-center justify-center bg-[#0a0608]"
           style={{
             clipPath: 'circle(0px at 50% 50%)',
@@ -363,7 +407,7 @@ export function MoonPortalHero({
         {/* LAYER 3: GLOWING RED PORTAL RING (#portal-ring) (z-4)               */}
         {/* ------------------------------------------------------------------- */}
         <div
-          ref={refs.portalRingRef}
+          ref={portalRingRef}
           id="portal-ring"
           className="absolute rounded-full border-2 border-[#ff4a50] pointer-events-none will-change-transform z-[4]"
           style={{
@@ -377,7 +421,7 @@ export function MoonPortalHero({
         {/* LAYER 4: PARTICLES CANVAS OVERLAY (z-5)                             */}
         {/* ------------------------------------------------------------------- */}
         <canvas
-          ref={refs.canvasRef}
+          ref={canvasRef}
           className="moon-portal-canvas absolute inset-0 pointer-events-none z-[5] w-full h-full"
           aria-hidden="true"
         />
@@ -386,7 +430,7 @@ export function MoonPortalHero({
         {/* LAYER 5: SCROLL TO EXPLORE CUE (z-6)                                */}
         {/* ------------------------------------------------------------------- */}
         <div
-          ref={refs.scrollCueRef}
+          ref={scrollCueRef}
           className="moon-portal-scroll-cue absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-auto cursor-pointer z-[6] select-none hover:opacity-100 transition-opacity"
           onClick={() => window.scrollTo({ top: window.innerHeight * 2.2, behavior: "smooth" })}
           aria-hidden="true"
@@ -396,7 +440,7 @@ export function MoonPortalHero({
           </span>
           <div className="w-[1px] h-9 bg-white/20 relative overflow-hidden">
             <div
-              ref={refs.scrollCueLineRef}
+              ref={scrollCueLineRef}
               className="absolute top-0 left-0 w-full h-full bg-[#ff4a50] origin-top shadow-[0_0_8px_#ff4a50]"
               style={{ transform: 'scaleY(0)' }}
             />

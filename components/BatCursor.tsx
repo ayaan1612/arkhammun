@@ -1,9 +1,20 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useSyncExternalStore } from "react"
+
+function subscribePointerFine(callback: () => void) {
+  if (typeof window === "undefined") return () => {}
+  const mql = window.matchMedia("(pointer: fine)")
+  mql.addEventListener("change", callback)
+  return () => mql.removeEventListener("change", callback)
+}
+
+function getPointerSnapshot() {
+  return window.matchMedia("(pointer: fine)").matches
+}
 
 export function BatCursor() {
-  const [mounted, setMounted] = useState(false)
+  const isPointerFine = useSyncExternalStore(subscribePointerFine, getPointerSnapshot, () => false)
   const batRef = useRef<HTMLDivElement>(null)
   const flapRef = useRef<SVGGElement>(null)
 
@@ -27,10 +38,7 @@ export function BatCursor() {
 
   useEffect(() => {
     // 1. Show only on devices with a mouse or trackpad
-    const pointerQuery = window.matchMedia("(pointer: fine)")
-    if (!pointerQuery.matches) return
-
-    setMounted(true)
+    if (!isPointerFine) return
 
     // 10. Respect prefers-reduced-motion
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -181,9 +189,9 @@ export function BatCursor() {
 
       document.querySelectorAll(".bat-click-ripple").forEach((el) => el.remove())
     }
-  }, [])
+  }, [isPointerFine])
 
-  if (!mounted) return null
+  if (!isPointerFine) return null
 
   return (
     <div

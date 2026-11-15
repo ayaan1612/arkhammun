@@ -139,7 +139,13 @@ function createEmberSpriteCanvas(): HTMLCanvasElement | null {
 }
 
 export function Preloader() {
-  const [visible, setVisible] = useState(true)
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return true
+    const isReload =
+      (performance.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming)?.type === 'reload'
+    const hasLoadedThisSession = sessionStorage.getItem('arkham_session_loaded') === 'true'
+    return !hasLoadedThisSession || isReload
+  })
 
   // DOM Refs
   const loaderRef = useRef<HTMLDivElement>(null)
@@ -182,8 +188,7 @@ export function Preloader() {
     const hasLoadedThisSession =
       typeof window !== 'undefined' && sessionStorage.getItem('arkham_session_loaded') === 'true'
 
-    if (hasLoadedThisSession && !isReload) {
-      setVisible(false)
+    if (!visible) {
       return
     }
 

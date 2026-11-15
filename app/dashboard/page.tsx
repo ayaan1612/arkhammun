@@ -103,7 +103,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (token) {
-      loadDashboardData()
+      const id = setTimeout(() => void loadDashboardData(), 0)
+      return () => clearTimeout(id)
     }
   }, [token])
 
@@ -367,7 +368,7 @@ export default function DashboardPage() {
               {isLogoutLoading ? (
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Signing outâ€¦</span>
+                  <span>Signing out…</span>
                 </span>
               ) : (
                 <>
@@ -463,7 +464,7 @@ export default function DashboardPage() {
                                       fontWeight: 700,
                                     }}
                                   >
-                                    <CheckCircle2 size={12} /> ADMITTED Â· QR EXPIRED
+                                    <CheckCircle2 size={12} /> ADMITTED · QR EXPIRED
                                   </span>
                                 ) : (
                                   <span
@@ -547,7 +548,7 @@ export default function DashboardPage() {
                         <div style={{ display: "flex", gap: "16px", color: "#8d8a9e", fontSize: "12px", flexWrap: "wrap" }}>
                           <span>ðŸ“… {ev.date}</span>
                           <span>ðŸ“ {ev.venue}</span>
-                          <span>ðŸ’° â‚¹{ev.entryFee}</span>
+                          <span>💰 ₹{ev.entryFee}</span>
                         </div>
                       </div>
 
@@ -686,7 +687,7 @@ export default function DashboardPage() {
                             <span style={{ fontSize: "11px", color: "#e3262e", fontWeight: 700, letterSpacing: "0.08em" }}>
                               REG ID: {reg._id.slice(-8).toUpperCase()}
                             </span>
-                            <span style={{ color: "#6b667a" }}>â€¢</span>
+                            <span style={{ color: "#6b667a" }}>•</span>
                             <span style={{ fontSize: "12px", color: "#8d8a9e" }}>
                               {new Date(reg.registeredAt).toLocaleDateString()}
                             </span>
@@ -716,7 +717,7 @@ export default function DashboardPage() {
                                   gap: "5px",
                                 }}
                               >
-                                <CheckCircle2 size={13} /> ADMITTED Â· QR EXPIRED
+                                <CheckCircle2 size={13} /> ADMITTED · QR EXPIRED
                               </span>
                             ) : (
                               <span
@@ -811,7 +812,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <span style={{ color: "#aaa8ba", display: "block" }}>Amount:</span>
-                          <strong style={{ color: "#fff" }}>â‚¹{reg.amount}</strong>
+                          <strong style={{ color: "#fff" }}>₹{reg.amount}</strong>
                         </div>
                         <div>
                           <span style={{ color: "#aaa8ba", display: "block" }}>UTR Reference:</span>
@@ -857,7 +858,7 @@ export default function DashboardPage() {
                           <strong>Secretariat Rejection Reason:</strong> {reg.reject_reason}
                           <div style={{ marginTop: "6px" }}>
                             <Link href="/register" style={{ color: "#fff", textDecoration: "underline", fontWeight: 600 }}>
-                              Click here to update payment proof and resubmit â†’
+                              Click here to update payment proof and resubmit →
                             </Link>
                           </div>
                         </div>
@@ -982,7 +983,7 @@ export default function DashboardPage() {
                     }}
                   >
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#c084fc", fontWeight: 700, fontSize: "14px" }}>
-                      <CheckCircle2 size={18} /> VENUE ADMISSION COMPLETED Â· PASS EXPIRED
+                      <CheckCircle2 size={18} /> VENUE ADMISSION COMPLETED · PASS EXPIRED
                     </div>
                     <p style={{ margin: "6px 0 0", fontSize: "12px", color: "#d8b4fe" }}>
                       You have entered the venue at{" "}
@@ -1029,11 +1030,11 @@ export default function DashboardPage() {
                   </p>
                   {/* Progress tracker */}
                   <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "11px" }}>
-                    <span style={{ color: "#4ade80", fontWeight: 600 }}>âœ“ Enrolled</span>
-                    <span style={{ color: "#6b667a" }}>â†’</span>
-                    <span style={{ color: "#facc15", fontWeight: 600 }}>â³ Under Review</span>
-                    <span style={{ color: "#6b667a" }}>â†’</span>
-                    <span style={{ color: "#8d8a9e" }}>â—‹ Dais Clearance</span>
+                    <span style={{ color: "#4ade80", fontWeight: 600 }}>✓ Enrolled</span>
+                    <span style={{ color: "#6b667a" }}>→</span>
+                    <span style={{ color: "#facc15", fontWeight: 600 }}>⏳ Under Review</span>
+                    <span style={{ color: "#6b667a" }}>→</span>
+                    <span style={{ color: "#8d8a9e" }}>○ Dais Clearance</span>
                   </div>
                 </div>
               )}
@@ -1148,7 +1149,7 @@ export default function DashboardPage() {
                             border: "2px solid #fff",
                           }}
                         >
-                          ADMITTED Â· EXPIRED
+                          ADMITTED · EXPIRED
                         </div>
                       )}
                     </div>
@@ -1159,7 +1160,7 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: 700, marginBottom: "8px" }}>
-                        âœ“ CRYPTOGRAPHICALLY SIGNED PASS Â· ACTIVE FOR ENTRY
+                        ✓ CRYPTOGRAPHICALLY SIGNED PASS · ACTIVE FOR ENTRY
                       </div>
                     )}
 
@@ -1232,14 +1233,14 @@ export default function DashboardPage() {
               </div>
               <div>
                 <span style={{ color: "#8d8a9e", display: "block" }}>Entry Fee Amount</span>
-                <strong style={{ color: "#fff", fontSize: "13px" }}>â‚¹{statusModalReg.amount}</strong>
+                <strong style={{ color: "#fff", fontSize: "13px" }}>₹{statusModalReg.amount}</strong>
               </div>
               <div style={{ gridColumn: "1 / -1", paddingTop: "6px", borderTop: "1px dashed rgba(255, 255, 255, 0.08)" }}>
                 <span style={{ color: "#8d8a9e", display: "block" }}>Venue Admission Status</span>
                 <strong style={{ color: (statusModalReg.used_at || modalPassData?.isExpired) ? "#c084fc" : "#4ade80", fontSize: "13px" }}>
                   {(statusModalReg.used_at || modalPassData?.used_at)
-                    ? `âœ“ Admitted & Checked In (${new Date(statusModalReg.used_at || modalPassData?.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}) Â· QR Expired`
-                    : "â³ Awaiting Arrival at Venue"}
+                    ? `✓ Admitted & Checked In (${new Date(statusModalReg.used_at || modalPassData?.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}) · QR Expired`
+                    : "⏳ Awaiting Arrival at Venue"}
                 </strong>
               </div>
             </div>
@@ -1272,7 +1273,7 @@ export default function DashboardPage() {
                         color: "#aaa8ba",
                       }}
                     >
-                      <span style={{ color: "#e3262e", fontWeight: 600 }}>â€¢</span> {n.message}
+                      <span style={{ color: "#e3262e", fontWeight: 600 }}>•</span> {n.message}
                     </div>
                   ))}
               </div>
@@ -1534,7 +1535,7 @@ export default function DashboardPage() {
                       style={{ padding: "8px 16px", fontSize: "12px", display: "inline-block" }}
                       onClick={() => setNotificationsModalOpen(false)}
                     >
-                      Contact Secretariat Desk â†’
+                      Contact Secretariat Desk →
                     </Link>
                   </div>
                 ) : (
@@ -1569,7 +1570,7 @@ export default function DashboardPage() {
                             border: q.status === "replied" ? "1px solid rgba(34, 197, 94, 0.3)" : "1px solid rgba(234, 179, 8, 0.3)",
                           }}
                         >
-                          {q.status === "replied" ? "âœ“ SECRETARIAT REPLIED" : "â³ PENDING REVIEW"}
+                          {q.status === "replied" ? "✓ SECRETARIAT REPLIED" : "⏳ PENDING REVIEW"}
                         </span>
                       </div>
 

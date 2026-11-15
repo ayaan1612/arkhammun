@@ -85,11 +85,11 @@ const defaultFormSections: FormSectionsConfig = {
     title: "Committee preferences",
     description: "Rank your preferred committee assignments.",
     items: [
-      "UNCSW (Advancing Women's Protection, Leadership and Rights in Conflict Zones, with Special Emphasis on the Russiaâ€“Ukraine War.)",
+      "UNCSW (Advancing Women's Protection, Leadership and Rights in Conflict Zones, with Special Emphasis on the Russia–Ukraine War.)",
       "UNGA (Strengthening Nuclear Weapon-Free Zones, with a Focus on the Middle East and South Asia.)",
       "Lok Sabha (Indian parliamentary committee simulation.)",
-      "IPL â€” Mega Auction (Simulated IPL Mega Auction committee.)",
-      "IP â€” International Press (Journalists, Caricaturists and Photographers to Cover Conference Proceedings.)",
+      "IPL — Mega Auction (Simulated IPL Mega Auction committee.)",
+      "IP — International Press (Journalists, Caricaturists and Photographers to Cover Conference Proceedings.)",
       "UNODC (Human Rights Implications of the Global War on Drugs.)",
       "WHO (Strengthening Global Preparedness for Future Pandemics and Ensuring Fair Access to Vaccines, Diagnostics and Treatments for All Countries.)",
       "UNEP (Protecting Global Biodiversity While Balancing Economic Growth and Environmental Sustainability.)",
@@ -260,40 +260,25 @@ export default function AdminPage() {
   const [adminPassLoading, setAdminPassLoading] = useState(false)
   const [emailErrorModalText, setEmailErrorModalText] = useState<string | null>(null)
 
-  // Synchronize authenticated state on mount
+  // Synchronize authenticated state on mount & user changes
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedToken = localStorage.getItem("arkham_auth_token")
-      if (savedToken && (savedToken.includes("admin") || savedToken.includes("arkham"))) {
-        setAdminKey(savedToken)
+    const savedToken = typeof window !== "undefined" ? localStorage.getItem("arkham_auth_token") : null
+    const activeKey = token || savedToken || ""
+    const hasAdminToken = Boolean(activeKey && (activeKey.includes("admin") || activeKey.includes("arkham")))
+
+    const id = setTimeout(() => {
+      if (hasAdminToken) {
         setAuthenticated(true)
-        void loadData(savedToken)
+        setAdminKey(activeKey)
+        void loadData(activeKey)
         void loadEvents()
-      } else {
+      } else if (!authLoading && !user) {
         setAuthenticated(false)
         setAdminKey("")
       }
-    }
-  }, [])
+    }, 0)
 
-  useEffect(() => {
-    if (!authLoading) {
-      if (user && (isAdmin || user.role === "admin")) {
-        const activeKey = token || localStorage.getItem("arkham_auth_token") || ""
-        if (activeKey) {
-          setAdminKey(activeKey)
-          setAuthenticated(true)
-          void loadData(activeKey)
-          void loadEvents()
-        }
-      } else if (!user) {
-        const savedToken = typeof window !== "undefined" ? localStorage.getItem("arkham_auth_token") : null
-        if (!savedToken || (!savedToken.includes("admin") && !savedToken.includes("arkham"))) {
-          setAuthenticated(false)
-          setAdminKey("")
-        }
-      }
-    }
+    return () => clearTimeout(id)
   }, [user, isAdmin, token, authLoading])
 
   useEffect(() => () => {
@@ -554,13 +539,13 @@ export default function AdminPage() {
     setError("")
     try {
       const res = await entryPassApi.approveRegistration(id, adminKey)
-      let msg = "âœ“ Payment approved and signed entry pass issued."
+      let msg = "✓ Payment approved and signed entry pass issued."
       if (res.email?.status === "sent") {
-        msg = "âœ“ Payment approved! Entry pass QR has been automatically emailed to the delegate."
+        msg = "✓ Payment approved! Entry pass QR has been automatically emailed to the delegate."
       } else if (res.email?.status === "failed") {
-        msg = `âœ“ Payment approved! Pass issued to dashboard (auto-email note: ${res.email.error || "delivery error"}).`
+        msg = `✓ Payment approved! Pass issued to dashboard (auto-email note: ${res.email.error || "delivery error"}).`
       } else if (res.email?.status === "not_configured") {
-        msg = "âœ“ Payment approved. Pass is now available on delegate's dashboard."
+        msg = "✓ Payment approved. Pass is now available on delegate's dashboard."
       }
       setNotice(msg)
       await loadData(adminKey, msg, queueFilter)
@@ -665,7 +650,7 @@ export default function AdminPage() {
         title: "",
         description: "",
         date: "",
-        time: "09:00 AM â€“ 05:00 PM",
+        time: "09:00 AM – 05:00 PM",
         venue: "",
         entryFee: 2200,
         upiId: "chauhan5408k@okaxis",
@@ -890,7 +875,7 @@ export default function AdminPage() {
   async function handleSendReply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!replyModalQuery || !replyMessageText.trim()) return
-    const targetQueryId = replyModalQuery.id || (replyModalQuery as any)._id
+    const targetQueryId = replyModalQuery.id || (replyModalQuery as { _id?: string })._id
     if (!targetQueryId) {
       setError("Enquiry ID is missing. Please refresh the page and try again.")
       return
@@ -922,7 +907,7 @@ export default function AdminPage() {
       streamRef.current = null
     }
 
-    setScanState({ type: "idle", message: "Verifying pass cryptographic signatureâ€¦" })
+    setScanState({ type: "idle", message: "Verifying pass cryptographic signature…" })
 
     try {
       // Check pass validity without admitting yet (admit: false)
@@ -935,18 +920,18 @@ export default function AdminPage() {
         if (isAlreadyUsed) {
           setScanState({
             type: "used",
-            message: `âš ï¸ QR EXPIRED & ALREADY USED Â· Admitted earlier at ${new Date(
+            message: `⚠️ï¸ QR EXPIRED & ALREADY USED · Admitted earlier at ${new Date(
               result.registration.checkedInAt || Date.now()
             ).toLocaleTimeString()}.`,
           })
         } else {
           setScanState({
             type: "valid",
-            message: `âœ“ VALID ENTRY PASS Â· Review details below and click Grant Entry.`,
+            message: `✓ VALID ENTRY PASS · Review details below and click Grant Entry.`,
           })
         }
       } else {
-        setScanState({ type: "invalid", message: "INVALID PASS Â· This is not a valid signed Arkham MUN entry QR." })
+        setScanState({ type: "invalid", message: "INVALID PASS · This is not a valid signed Arkham MUN entry QR." })
         setTimeout(() => {
           setScanState({ type: "idle", message: "Point camera at delegate QR code." })
           setCameraOn(true)
@@ -978,7 +963,7 @@ export default function AdminPage() {
       if (res.valid) {
         const delegateName = res.registration?.name || scannedRegistration?.name || "Delegate"
         const checkinTime = res.registration?.checkedInAt || new Date().toISOString()
-        setNotice(`âœ“ ENTRY GRANTED: ${delegateName} has been admitted and checked in! Pass is now expired.`)
+        setNotice(`✓ ENTRY GRANTED: ${delegateName} has been admitted and checked in! Pass is now expired.`)
         setAllApprovedRegistrations((prev) =>
           prev.map((item) => (item.id === (res.registration?.id || scannedRegistration?.id) ? { ...item, used_at: checkinTime } : item))
         )
@@ -1261,7 +1246,7 @@ export default function AdminPage() {
           {isAdminLogoutLoading ? (
             <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span className="inline-block w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-              <span>Signing outâ€¦</span>
+              <span>Signing out…</span>
             </span>
           ) : (
             <>
@@ -1610,7 +1595,7 @@ export default function AdminPage() {
             <Search size={15} color="#858094" />
             <input
               type="text"
-              placeholder="Search by name, email, UTR, or committeeâ€¦"
+              placeholder="Search by name, email, UTR, or committee…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -1626,11 +1611,11 @@ export default function AdminPage() {
                     <div>
                       <h3>{reg.name}</h3>
                       <p>
-                        ID: <code>{reg.id}</code> Â· Committee: <strong>{reg.committee || "General Delegate"}</strong>
-                        {reg.event && ` Â· Event: ${reg.event.title}`}
+                        ID: <code>{reg.id}</code> · Committee: <strong>{reg.committee || "General Delegate"}</strong>
+                        {reg.event && ` · Event: ${reg.event.title}`}
                       </p>
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>â‚¹{reg.amount}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>₹{reg.amount}</span>
                   </div>
 
                   <dl className={styles.registrationDetails}>
@@ -1720,7 +1705,7 @@ export default function AdminPage() {
                             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                               <input
                                 type="text"
-                                placeholder="Enter or select rejection reason (delivered to delegate's email & notification bell)â€¦"
+                                placeholder="Enter or select rejection reason (delivered to delegate's email & notification bell)…"
                                 value={rejectReason}
                                 onChange={(e) => setRejectReason(e.target.value)}
                                 style={{
@@ -1766,7 +1751,7 @@ export default function AdminPage() {
                     )}
 
                     {reg.status === "approved" && (
-                      <span style={{ color: "#4ade80", fontSize: 12, fontWeight: 700 }}>âœ“ Pass Cleared</span>
+                      <span style={{ color: "#4ade80", fontSize: 12, fontWeight: 700 }}>✓ Pass Cleared</span>
                     )}
 
                     {reg.status === "rejected" && reg.reject_reason && (
@@ -1815,7 +1800,7 @@ export default function AdminPage() {
             <Search size={15} color="#858094" />
             <input
               type="text"
-              placeholder="Search approved delegatesâ€¦"
+              placeholder="Search approved delegates…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -1839,8 +1824,8 @@ export default function AdminPage() {
                     <div>
                       <h3>{reg.name}</h3>
                       <p>
-                        Registration: <code>{reg.id}</code> Â· {reg.committee || "General Delegate"}
-                        {reg.event && ` Â· ${reg.event.title}`}
+                        Registration: <code>{reg.id}</code> · {reg.committee || "General Delegate"}
+                        {reg.event && ` · ${reg.event.title}`}
                       </p>
                     </div>
                     <span
@@ -1853,7 +1838,7 @@ export default function AdminPage() {
                         fontWeight: 700,
                       }}
                     >
-                      {reg.used_at ? `âœ“ Checked in at ${new Date(reg.used_at).toLocaleTimeString()}` : "â³ Awaiting Arrival"}
+                      {reg.used_at ? `✓ Checked in at ${new Date(reg.used_at).toLocaleTimeString()}` : "⏳ Awaiting Arrival"}
                     </span>
                   </div>
 
@@ -1936,7 +1921,7 @@ export default function AdminPage() {
                           <CircleAlert size={13} /> Delivery Issue (Click details)
                         </button>
                       ) : (
-                        <span style={{ color: "#facc15" }}>â³ Not sent yet</span>
+                        <span style={{ color: "#facc15" }}>⏳ Not sent yet</span>
                       )}
                     </div>
 
@@ -2011,7 +1996,7 @@ export default function AdminPage() {
           </div>
 
           {eventsList.length === 0 ? (
-            <div className={styles.emptyState}>No events in database. Click "Create New Event" to add one.</div>
+            <div className={styles.emptyState}>No events in database. Click &quot;Create New Event&quot; to add one.</div>
           ) : (
             <div style={{ display: "grid", gap: 16 }}>
               {eventsList.map((ev) => (
@@ -2048,9 +2033,9 @@ export default function AdminPage() {
                     <p style={{ margin: "6px 0", color: "#aaa8ba", fontSize: 13 }}>{ev.description}</p>
                     <div style={{ display: "flex", gap: 16, color: "#8d8a9e", fontSize: 12, flexWrap: "wrap" }}>
                       <span>ðŸ“… {ev.date}</span>
-                      <span>â° {ev.time}</span>
+                      <span>⏰ {ev.time}</span>
                       <span>ðŸ“ {ev.venue}</span>
-                      <span>ðŸ’° â‚¹{ev.entryFee}</span>
+                      <span>💰 ₹{ev.entryFee}</span>
                       <span>UPI: {ev.upiId}</span>
                     </div>
                   </div>
@@ -2155,7 +2140,7 @@ export default function AdminPage() {
                         color: "#fff",
                         borderRadius: 4,
                       }}
-                      placeholder="Event briefing, theme, or delegate scopeâ€¦"
+                      placeholder="Event briefing, theme, or delegate scope…"
                     />
                   </label>
 
@@ -2178,7 +2163,7 @@ export default function AdminPage() {
                           color: "#fff",
                           borderRadius: 4,
                         }}
-                        placeholder="e.g. 10â€“11 April 2027"
+                        placeholder="e.g. 10–11 April 2027"
                       />
                     </label>
 
@@ -2199,7 +2184,7 @@ export default function AdminPage() {
                           color: "#fff",
                           borderRadius: 4,
                         }}
-                        placeholder="e.g. 9:00 AM â€“ 5:00 PM"
+                        placeholder="e.g. 9:00 AM – 5:00 PM"
                       />
                     </label>
                   </div>
@@ -2228,7 +2213,7 @@ export default function AdminPage() {
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <label style={{ display: "grid", gap: 6, color: "#e8e4f3", fontSize: 12 }}>
-                      ENTRY FEE (â‚¹ INR)
+                      ENTRY FEE (₹ INR)
                       <input
                         type="number"
                         required
@@ -2346,7 +2331,7 @@ export default function AdminPage() {
               <textarea
                 rows={6}
                 required
-                placeholder="Type your official announcement here (e.g. Schedule release, dress code reminders, committee room allocations)â€¦"
+                placeholder="Type your official announcement here (e.g. Schedule release, dress code reminders, committee room allocations)…"
                 value={announcementMessage}
                 onChange={(e) => setAnnouncementMessage(e.target.value)}
                 style={{
@@ -2369,7 +2354,7 @@ export default function AdminPage() {
               style={{ padding: "14px", alignSelf: "flex-start" }}
             >
               {announcementSending ? <LoaderCircle className={styles.spinner} size={15} /> : <Send size={15} />}
-              {announcementSending ? "Dispatching noticesâ€¦" : "Broadcast Announcement to Dashboard"}
+              {announcementSending ? "Dispatching notices…" : "Broadcast Announcement to Dashboard"}
             </button>
           </form>
         </section>
@@ -2426,8 +2411,8 @@ export default function AdminPage() {
                       }}
                     >
                       {scannedRegistration.checkedInAt
-                        ? "â›” PASS EXPIRED / ALREADY ADMITTED"
-                        : "âœ“ VALID ENTRY PASS Â· READY FOR GATE ADMISSION"}
+                        ? "⛔ PASS EXPIRED / ALREADY ADMITTED"
+                        : "✓ VALID ENTRY PASS · READY FOR GATE ADMISSION"}
                     </strong>
                     <span style={{ fontSize: 12, color: "#aaa8ba" }}>
                       {scannedRegistration.checkedInAt
@@ -2599,7 +2584,7 @@ export default function AdminPage() {
                     Fee &amp; Payment Reference
                   </span>
                   <strong style={{ fontSize: 13, color: "#fff" }}>
-                    â‚¹ {scannedRegistration.amount || 2300} Â· <span style={{ fontFamily: "monospace", color: "#a5b4fc" }}>UTR: {scannedRegistration.utr || "Verified"}</span>
+                    ₹ {scannedRegistration.amount || 2300} · <span style={{ fontFamily: "monospace", color: "#a5b4fc" }}>UTR: {scannedRegistration.utr || "Verified"}</span>
                   </strong>
                 </div>
 
@@ -2723,7 +2708,7 @@ export default function AdminPage() {
                       gap: 8,
                     }}
                   >
-                    <X size={18} /> Pass Expired Â· Scan Next Delegate
+                    <X size={18} /> Pass Expired · Scan Next Delegate
                   </button>
                 )}
               </div>
@@ -2813,7 +2798,7 @@ export default function AdminPage() {
                         }}
                       >
                         <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: "#22c55e", display: "inline-block" }} />
-                        Scanner Live Â· Ready
+                        Scanner Live · Ready
                       </span>
                     </div>
                   )}
@@ -2983,7 +2968,7 @@ export default function AdminPage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <label style={{ display: "grid", gap: 6, color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>
-                  ENTRY FEE (â‚¹ INR)
+                  ENTRY FEE (₹ INR)
                   <input
                     type="number"
                     value={amountInput}
@@ -3043,7 +3028,7 @@ export default function AdminPage() {
                   <h3 style={{ margin: 0, fontSize: 16, color: "#fff" }}>Section 06: Payment &amp; Official QR Poster</h3>
                 </div>
                 <span style={{ fontSize: 11, color: paymentQrUrl ? "#4ade80" : "#aaa8ba", fontWeight: 700 }}>
-                  {paymentQrUrl ? "âœ“ CUSTOM QR POSTER ACTIVE" : "DEFAULT QR ACTIVE"}
+                  {paymentQrUrl ? "✓ CUSTOM QR POSTER ACTIVE" : "DEFAULT QR ACTIVE"}
                 </span>
               </div>
 
@@ -3080,7 +3065,7 @@ export default function AdminPage() {
                     }}
                   >
                     {qrUploadBusy ? <LoaderCircle size={14} className={styles.spinner} /> : <Upload size={14} />}
-                    {qrUploadBusy ? "Uploading Posterâ€¦" : "Upload New QR Poster"}
+                    {qrUploadBusy ? "Uploading Poster…" : "Upload New QR Poster"}
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
@@ -3749,7 +3734,7 @@ export default function AdminPage() {
                 required
                 value={replyMessageText}
                 onChange={(e) => setReplyMessageText(e.target.value)}
-                placeholder="Type response to delegateâ€¦"
+                placeholder="Type response to delegate…"
                 style={{
                   width: "100%",
                   padding: 10,
@@ -3878,7 +3863,7 @@ export default function AdminPage() {
                 </div>
 
                 <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 700 }}>
-                  âœ“ CRYPTOGRAPHICALLY SIGNED ENTRY PASS
+                  ✓ CRYPTOGRAPHICALLY SIGNED ENTRY PASS
                 </div>
 
                 <p style={{ margin: 0, color: "#8d8a9e", fontSize: 12, lineHeight: 1.5 }}>
@@ -3930,7 +3915,7 @@ export default function AdminPage() {
                     }}
                   >
                     {retryingId === adminPassModalReg.id ? <LoaderCircle size={14} className={styles.spinner} /> : <Mail size={14} />}
-                    Send Entry Pass to Delegate's Email ({adminPassModalReg.email || adminPassModalReg.contact})
+                    Send Entry Pass to Delegate&apos;s Email ({adminPassModalReg.email || adminPassModalReg.contact})
                   </button>
                 </div>
               </>

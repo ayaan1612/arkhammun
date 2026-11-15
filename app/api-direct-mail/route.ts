@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-// @ts-ignore
+// @ts-expect-error nodemailer types provided at runtime
 import nodemailer from "nodemailer";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       text: mailOptions.text,
       html: mailOptions.html,
       attachments: Array.isArray(mailOptions.attachments)
-        ? mailOptions.attachments.map((att: any) => {
+        ? mailOptions.attachments.map((att: { content?: string; [key: string]: unknown }) => {
             if (att.content && typeof att.content === "string") {
               return {
                 ...att,
@@ -72,11 +72,11 @@ export async function POST(req: Request) {
       messageId: info.messageId,
       response: info.response,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Vercel Mail Proxy Error]:", error);
     return NextResponse.json(
       {
-        error: error.message || "Failed to send email via Google SMTP proxy.",
+        error: error instanceof Error ? error.message : "Failed to send email via Google SMTP proxy.",
       },
       { status: 500 }
     );

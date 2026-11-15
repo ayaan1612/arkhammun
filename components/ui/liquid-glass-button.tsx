@@ -82,7 +82,7 @@ export function LiquidButton({
     }, 600)
   }
 
-  const handleClick = (e: React.MouseEvent<any>) => {
+  const handleClick = (e: React.MouseEvent<HTMLElement>) => {
     if (isLoading) {
       e.preventDefault()
       return
@@ -92,7 +92,7 @@ export function LiquidButton({
       const rect = e.currentTarget.getBoundingClientRect()
       triggerTransition("register", { originRect: rect, targetUrl: href })
     }
-    if (onClick) onClick(e)
+    if (onClick) (onClick as (e: React.MouseEvent<HTMLElement>) => void)(e)
   }
 
   const content = isLoading ? (
@@ -108,7 +108,7 @@ export function LiquidButton({
     return (
       <Link
         href={href}
-        ref={buttonRef as any}
+        ref={buttonRef as React.Ref<HTMLAnchorElement>}
         className={cn(
           liquidButtonVariants({ variant, size, className: cn("group", className) }),
           isLoading && "is-loading pointer-events-none cursor-default opacity-90"
@@ -119,7 +119,7 @@ export function LiquidButton({
         onPointerDown={handlePointerDown}
         onMouseEnter={() => prefetch(href)}
         onFocus={() => prefetch(href)}
-        {...(props as any)}
+        {...(props as Record<string, unknown>)}
       >
         <span className="absolute inset-0 overflow-hidden rounded-full bg-gradient-to-br from-white/20 via-white/[0.04] to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_0_28px_rgba(227,27,35,0.18)]" aria-hidden="true" />
         <span className="arkham-btn-sheen" aria-hidden="true" />
@@ -132,7 +132,7 @@ export function LiquidButton({
 
   return (
     <Comp
-      ref={buttonRef as any}
+      ref={buttonRef as React.Ref<HTMLButtonElement>}
       className={cn(
         liquidButtonVariants({ variant, size, className: cn("group", className) }),
         isLoading && "is-loading pointer-events-none cursor-default opacity-90"
@@ -141,7 +141,7 @@ export function LiquidButton({
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       onPointerDown={handlePointerDown}
-      {...(props as any)}
+      {...props}
     >
       <span className="absolute inset-0 overflow-hidden rounded-full bg-gradient-to-br from-white/20 via-white/[0.04] to-transparent shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_0_28px_rgba(227,27,35,0.18)]" aria-hidden="true" />
       <span className="arkham-btn-sheen" aria-hidden="true" />

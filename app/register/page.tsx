@@ -161,7 +161,10 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!token || !user) return
     let active = true
-    setCheckingExisting(true)
+
+    const timer = setTimeout(() => {
+      if (active) setCheckingExisting(true)
+    }, 0)
 
     entryPassApi
       .getMyRegistrations(token)
@@ -180,6 +183,7 @@ export default function RegisterPage() {
 
     return () => {
       active = false
+      clearTimeout(timer)
     }
   }, [token, user])
 

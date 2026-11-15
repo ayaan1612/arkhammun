@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { AnimatePresence, motion } from "motion/react"
-import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LayoutDashboard, LogIn, Mail, MapPin, Menu, ShieldCheck, Users, X } from "lucide-react"
+import { ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, Instagram, LayoutDashboard, LogIn, Mail, MapPin, ShieldCheck, Users } from "lucide-react"
 import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { useAuth } from "@/lib/auth-context"
 import { ArkhamHeader } from "@/components/arkham-shell"
@@ -32,13 +32,8 @@ const schedule = [
 
 export default function Home() {
   const { user } = useAuth()
-  const [isMounted, setIsMounted] = useState(false)
   const [activeCommittee, setActiveCommittee] = useState(0)
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
 
   const moveCommittee = (direction: number) => {
     setActiveCommittee((current) => (current + direction + committees.length) % committees.length)
@@ -49,10 +44,6 @@ export default function Home() {
     const autoplay = window.setInterval(() => moveCommittee(1), 4800)
     return () => window.clearInterval(autoplay)
   }, [isCommitteePaused])
-
-  if (!isMounted) {
-    return <main className="mun-site relative min-h-screen overflow-x-clip bg-transparent text-white" aria-busy="true" />
-  }
 
   return (
     <main className="mun-site relative min-h-screen overflow-x-clip bg-transparent text-white">

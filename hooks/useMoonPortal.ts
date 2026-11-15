@@ -1,8 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from 'react'
 
 export interface UseMoonPortalOptions {
+  /**
+   * Optional external refs container passed from parent.
+   */
+  refs?: MoonPortalRefs
+
   /**
    * Height multiplier for the tall scroll wrapper relative to viewport height.
    * Default: 3.2 (meaning 320vh total scroll distance).
@@ -117,31 +122,61 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
 
   // Toggle state for smooth scroll lerp
   const [smoothScrollEnabled, setSmoothScrollEnabled] = useState(initialSmoothScroll)
-  const [isReducedMotion, setIsReducedMotion] = useState(false)
+  const isReducedMotion = useSyncExternalStore(
+    (callback) => {
+      if (typeof window === 'undefined') return () => {}
+      const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+      media.addEventListener('change', callback)
+      return () => media.removeEventListener('change', callback)
+    },
+    () => (typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false),
+    () => false
+  )
 
-  // DOM element references
-  const wrapperRef = useRef<HTMLDivElement | null>(null)
-  const pinRef = useRef<HTMLDivElement | null>(null)
-  const heroRef = useRef<HTMLElement | null>(null)
-  const nextSectionRef = useRef<HTMLElement | null>(null)
-  const moonWrapperRef = useRef<HTMLDivElement | null>(null)
-  const moonArcRef = useRef<SVGCircleElement | null>(null)
-  const moonDashedRingRef = useRef<SVGCircleElement | null>(null)
-  const portalRingRef = useRef<HTMLDivElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const progressBarRef = useRef<HTMLDivElement | null>(null)
-  const scrollCueRef = useRef<HTMLDivElement | null>(null)
-  const scrollCueLineRef = useRef<HTMLDivElement | null>(null)
+  // Internal fallback DOM element references
+  const fallbackWrapperRef = useRef<HTMLDivElement | null>(null)
+  const fallbackPinRef = useRef<HTMLDivElement | null>(null)
+  const fallbackHeroRef = useRef<HTMLElement | null>(null)
+  const fallbackNextSectionRef = useRef<HTMLElement | null>(null)
+  const fallbackMoonWrapperRef = useRef<HTMLDivElement | null>(null)
+  const fallbackMoonArcRef = useRef<SVGCircleElement | null>(null)
+  const fallbackMoonDashedRingRef = useRef<SVGCircleElement | null>(null)
+  const fallbackPortalRingRef = useRef<HTMLDivElement | null>(null)
+  const fallbackCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const fallbackProgressBarRef = useRef<HTMLDivElement | null>(null)
+  const fallbackScrollCueRef = useRef<HTMLDivElement | null>(null)
+  const fallbackScrollCueLineRef = useRef<HTMLDivElement | null>(null)
 
-  // Animated text & UI refs
-  const headlineLine1Ref = useRef<HTMLSpanElement | null>(null)
-  const headlineLine2Ref = useRef<HTMLSpanElement | null>(null)
-  const headlineLine3Ref = useRef<HTMLSpanElement | null>(null)
-  const eyebrowRef = useRef<HTMLDivElement | null>(null)
-  const leadRef = useRef<HTMLParagraphElement | null>(null)
-  const ctaRef = useRef<HTMLDivElement | null>(null)
-  const infoItemsRef = useRef<(HTMLDivElement | null)[]>([])
-  const hexBgRef = useRef<HTMLDivElement | null>(null)
+  const fallbackHeadlineLine1Ref = useRef<HTMLSpanElement | null>(null)
+  const fallbackHeadlineLine2Ref = useRef<HTMLSpanElement | null>(null)
+  const fallbackHeadlineLine3Ref = useRef<HTMLSpanElement | null>(null)
+  const fallbackEyebrowRef = useRef<HTMLDivElement | null>(null)
+  const fallbackLeadRef = useRef<HTMLParagraphElement | null>(null)
+  const fallbackCtaRef = useRef<HTMLDivElement | null>(null)
+  const fallbackInfoItemsRef = useRef<(HTMLDivElement | null)[]>([])
+  const fallbackHexBgRef = useRef<HTMLDivElement | null>(null)
+
+  const wrapperRef = options.refs?.wrapperRef || fallbackWrapperRef
+  const pinRef = options.refs?.pinRef || fallbackPinRef
+  const heroRef = options.refs?.heroRef || fallbackHeroRef
+  const nextSectionRef = options.refs?.nextSectionRef || fallbackNextSectionRef
+  const moonWrapperRef = options.refs?.moonWrapperRef || fallbackMoonWrapperRef
+  const moonArcRef = options.refs?.moonArcRef || fallbackMoonArcRef
+  const moonDashedRingRef = options.refs?.moonDashedRingRef || fallbackMoonDashedRingRef
+  const portalRingRef = options.refs?.portalRingRef || fallbackPortalRingRef
+  const canvasRef = options.refs?.canvasRef || fallbackCanvasRef
+  const progressBarRef = options.refs?.progressBarRef || fallbackProgressBarRef
+  const scrollCueRef = options.refs?.scrollCueRef || fallbackScrollCueRef
+  const scrollCueLineRef = options.refs?.scrollCueLineRef || fallbackScrollCueLineRef
+
+  const headlineLine1Ref = options.refs?.headlineLine1Ref || fallbackHeadlineLine1Ref
+  const headlineLine2Ref = options.refs?.headlineLine2Ref || fallbackHeadlineLine2Ref
+  const headlineLine3Ref = options.refs?.headlineLine3Ref || fallbackHeadlineLine3Ref
+  const eyebrowRef = options.refs?.eyebrowRef || fallbackEyebrowRef
+  const leadRef = options.refs?.leadRef || fallbackLeadRef
+  const ctaRef = options.refs?.ctaRef || fallbackCtaRef
+  const infoItemsRef = options.refs?.infoItemsRef || fallbackInfoItemsRef
+  const hexBgRef = options.refs?.hexBgRef || fallbackHexBgRef
 
   // Animation runtime measurements & state (stored in refs to avoid React renders)
   const initialGeoRef = useRef<{ cx: number; cy: number; r0: number } | null>(null)
@@ -228,18 +263,7 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
     }
   }, [])
 
-  // Listen for reduced motion preference
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setIsReducedMotion(media.matches)
 
-    const handler = (e: MediaQueryListEvent) => setIsReducedMotion(e.matches)
-    if (media.addEventListener) {
-      media.addEventListener('change', handler)
-      return () => media.removeEventListener('change', handler)
-    }
-  }, [])
 
   // Setup listeners for re-measuring on resize, load, and font ready
   useEffect(() => {
@@ -399,7 +423,7 @@ export function useMoonPortal(options: UseMoonPortalOptions = {}) {
         const nextScale = 1.12 - 0.12 * e
 
         nextEl.style.clipPath = `circle(${r.toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`
-        ;(nextEl.style as any).webkitClipPath = `circle(${r.toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`
+        nextEl.style.setProperty('-webkit-clip-path', `circle(${r.toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`)
         nextEl.style.opacity = nextOpacity.toFixed(3)
         nextEl.style.transformOrigin = `${cx.toFixed(1)}px ${cy.toFixed(1)}px`
         nextEl.style.transform = `scale(${nextScale.toFixed(4)})`

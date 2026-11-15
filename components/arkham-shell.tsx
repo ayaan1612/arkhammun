@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useSyncExternalStore } from "react"
 import { createPortal } from "react-dom"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -52,7 +52,8 @@ export function ArkhamHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
-  const [mounted, setMounted] = useState(false)
+  const emptySubscribe = () => () => {}
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false)
 
   // Track active link for scroll spy & page navigation
   const [activeHref, setActiveHref] = useState<string>(pathname)
@@ -76,10 +77,6 @@ export function ArkhamHeader() {
     { label: "Contact", href: "/contact" },
   ]
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   // 6. Scroll behavior: after 20px of scroll, the bar height goes from 74px to 58px,
   // the logo scales to .84, the background becomes more opaque (.88), and a soft shadow appears.
   useEffect(() => {
@@ -90,11 +87,6 @@ export function ArkhamHeader() {
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
-
-  // Sync activeHref with pathname
-  useEffect(() => {
-    setActiveHref(pathname)
-  }, [pathname])
 
   // 3. Highlight the active link by scroll position (IntersectionObserver or scroll spy) on "/"
   useEffect(() => {
@@ -128,7 +120,8 @@ export function ArkhamHeader() {
   }, [pathname])
 
   // 2. Gliding hover indicator calculation
-  const targetHref = hoveredHref || activeHref
+  const currentActive = pathname === "/" ? activeHref : pathname
+  const targetHref = hoveredHref || currentActive
 
   const updateIndicator = () => {
     const target = linkRefs.current.get(targetHref)
@@ -204,12 +197,8 @@ export function ArkhamHeader() {
     }
   }, [token, pathname])
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [pathname])
-
   const handleLinkClick = (e: React.MouseEvent, href: string) => {
+    setMobileMenuOpen(false)
     if (pathname === "/") {
       const id = href === "/" ? "top" : href.replace("/", "")
       const el = document.getElementById(id)

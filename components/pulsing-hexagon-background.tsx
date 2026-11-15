@@ -115,7 +115,7 @@ const WindowTitleBar: React.FC<WindowTitleBarProps> = ({ title, onMinimize, isMi
 const SettingsPanel: React.FC<{ settings: CustomSettings; setSettings: React.Dispatch<React.SetStateAction<CustomSettings>>; currentRhythm: RhythmKey; setCurrentRhythm: (rhythm: RhythmKey) => void; }> = ({ 
     settings, setSettings, currentRhythm, setCurrentRhythm
 }) => {
-    const updateSetting = (key: keyof CustomSettings, value: any) => { setSettings(prev => ({ ...prev, [key]: value })); }
+    const updateSetting = <K extends keyof CustomSettings>(key: K, value: CustomSettings[K]) => { setSettings(prev => ({ ...prev, [key]: value })); }
     const [position, setPosition] = useState({ x: 20, y: 20 }); 
     const [isDragging, setIsDragging] = useState(false);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -423,7 +423,7 @@ export default function PulsingHexagonBackground() {
           rgb_str = currentSettings.staticColor
       }
       
-      // 3. Aplica o pulso dinâmico (stp)
+      // 3. Aplica o pulso dinamico (stp)
       const finalPulseAmplitude = pulseValue * currentSettings.pulseAmplitude; 
       const stp = 0.5 - 0.5 * finalPulseAmplitude;
       
