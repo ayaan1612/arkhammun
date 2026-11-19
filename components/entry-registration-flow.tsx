@@ -27,7 +27,7 @@ const DEFAULT_EVENT: PublicEvent = {
   },
   amount: 2300,
   upiId: "chauhan5408k@okaxis",
-  paymentQrUrl: "/api/payment-qr.png",
+  paymentQrUrl: "/payment-qr.jpeg",
   registrationOpen: true,
 }
 

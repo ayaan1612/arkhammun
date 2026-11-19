@@ -8,6 +8,7 @@ import { LiquidButton } from "@/components/ui/liquid-glass-button"
 import { useAuth } from "@/lib/auth-context"
 import { ArkhamHeader } from "@/components/arkham-shell"
 import { HeroLogo } from "@/components/HeroLogo"
+import { arkham } from "@/lib/arkham-data"
 
 const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg"
 
@@ -33,6 +34,34 @@ const schedule = [
 export default function Home() {
   const { user } = useAuth()
   const [activeCommittee, setActiveCommittee] = useState(0)
+  const [conferenceEvent, setConferenceEvent] = useState({
+    name: arkham.name || "Arkham MUN 2027",
+    date: arkham.dates || "10–11 April 2027",
+    venue: arkham.venueNote || "In Central Delhi",
+    fee: 2300,
+    upiId: arkham.paymentUpi || "chauhan5408k@okaxis",
+    registrationOpen: true,
+    registrationNotice: "",
+  })
+
+  useEffect(() => {
+    fetch("/api/event")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.event) {
+          setConferenceEvent({
+            name: data.event.name || "Arkham MUN 2027",
+            date: data.event.date || arkham.dates,
+            venue: data.event.venue || arkham.venueNote,
+            fee: Number(data.amount) || 2300,
+            upiId: data.upiId || arkham.paymentUpi,
+            registrationOpen: data.registrationOpen !== false,
+            registrationNotice: data.registrationNotice || "",
+          })
+        }
+      })
+      .catch(() => {})
+  }, [])
   const [isCommitteePaused, setIsCommitteePaused] = useState(false)
 
   const moveCommittee = (direction: number) => {
@@ -49,14 +78,38 @@ export default function Home() {
     <main className="mun-site relative min-h-screen overflow-x-clip bg-transparent text-white">
       <div className="site-wash" aria-hidden="true" />
       <ArkhamHeader />
+      {!conferenceEvent.registrationOpen && (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 40,
+            background: "linear-gradient(90deg, rgba(227, 38, 46, 0.25), rgba(120, 10, 20, 0.35))",
+            borderBottom: "1px solid rgba(227, 38, 46, 0.6)",
+            color: "#ffc2c5",
+            padding: "10px 20px",
+            textAlign: "center",
+            fontSize: "13px",
+            fontWeight: 700,
+            letterSpacing: "0.03em",
+          }}
+        >
+          🔒 REGISTRATION NOTICE: {conferenceEvent.registrationNotice || "Registrations for Arkham MUN are currently closed."}
+        </div>
+      )}
 
       <section id="top" className="hero-shell container-x">
         <div className="hero-copy">
-          <div className="eyebrow"><span className="live-dot" /> 10—11 April 2027 · Central Delhi</div>
+          <div className="eyebrow"><span className="live-dot" /> {conferenceEvent.date} · {conferenceEvent.venue}</div>
           <h1>Question.<br /><em>Negotiate.</em><br />Shape tomorrow.</h1>
           <p className="hero-intro">Arkham MUN is a Model United Nations conference built for voices ready to engage with diplomacy, challenge assumptions and turn ideas into action.</p>
           <div className="hero-actions">
-            <LiquidButton href="/register" className="home-action-button" size="xl">Register now <ArrowRight size={17} /></LiquidButton>
+            <LiquidButton href="/register" className="home-action-button" size="xl">
+              {conferenceEvent.registrationOpen ? (
+                <>Register now <ArrowRight size={17} /></>
+              ) : (
+                "Registration Closed"
+              )}
+            </LiquidButton>
             <a className="text-link" href="#about">Explore Arkham <ChevronDown size={16} /></a>
           </div>
         </div>
@@ -64,11 +117,11 @@ export default function Home() {
         <div className="hero-meta">
           <div className="hero-meta-item">
             <span>DATE</span>
-            <p>10—11 APRIL 2027</p>
+            <p>{conferenceEvent.date.toUpperCase()}</p>
           </div>
           <div className="hero-meta-item">
             <span>VENUE</span>
-            <p>IN CENTRAL DELHI</p>
+            <p>{conferenceEvent.venue.toUpperCase()}</p>
           </div>
         </div>
         <a href="#about" className="scroll-cue" aria-label="Scroll to explore">
@@ -89,7 +142,7 @@ export default function Home() {
         <div className="stats-row">
           <div><strong>08</strong><span>committees</span></div>
           <div><strong>02</strong><span>days of dialogue</span></div>
-          <div><strong>₹2300</strong><span>school delegation</span></div>
+          <div><strong>₹{conferenceEvent.fee}</strong><span>school delegation</span></div>
           <div><strong>∞</strong><span>possibilities</span></div>
         </div>
       </section>
@@ -232,12 +285,38 @@ export default function Home() {
         <div className="two-column registration-grid">
           <div>
             <h2>Take your<br /><em>seat.</em></h2>
-            <p className="section-copy">Complete your registration online. Payment is accepted online via UPI at <strong>chauhan5408k@okaxis</strong>.</p>
+            <p className="section-copy">Complete your registration online. Payment is accepted online via UPI at <strong>{conferenceEvent.upiId}</strong>.</p>
+            {!conferenceEvent.registrationOpen && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px 16px",
+                  background: "rgba(227, 38, 46, 0.15)",
+                  border: "1px solid #e3262e",
+                  borderRadius: "6px",
+                  color: "#ffc2c5",
+                  fontSize: "13px",
+                  lineHeight: 1.5,
+                }}
+              >
+                🔒 <strong>Notice:</strong> {conferenceEvent.registrationNotice || "Registrations are currently closed by the Secretariat."}
+              </div>
+            )}
           </div>
           <div className="fee-card">
-            <div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div>
-            <div><span>Individual delegate</span><strong>₹2500</strong><small>Individual delegation · Online payment</small></div>
-            <LiquidButton href="/register" className="home-action-button" size="xl">Begin registration <ArrowRight size={17} /></LiquidButton>
+            <div><span>School delegation</span><strong>₹{conferenceEvent.fee}</strong><small>Per student for a school delegation</small></div>
+            <div><span>Individual delegate</span><strong>₹{Math.round(conferenceEvent.fee * 1.087)}</strong><small>Individual delegation · Online payment</small></div>
+            <LiquidButton
+              href="/register"
+              className="home-action-button"
+              size="xl"
+            >
+              {conferenceEvent.registrationOpen ? (
+                <>Begin registration <ArrowRight size={17} /></>
+              ) : (
+                "Registration Closed"
+              )}
+            </LiquidButton>
           </div>
         </div>
       </section>

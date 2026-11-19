@@ -1,0 +1,14 @@
+{
+  "event": {
+    "name": "Arkham MUN 2027",
+    "date": "10–11 April 2027",
+    "time": "09:00 AM – 05:00 PM",
+    "venue": "In Central Delhi"
+  },
+  "amount": 2300,
+  "upiId": "chauhan5408k@okaxis",
+  "registrationOpen": true,
+  "registrationNotice": "Registrations for Arkham MUN 2027 are live.",
+  "paymentQrConfigured": true,
+  "paymentQrUrl": "/payment-qr.jpeg"
+}

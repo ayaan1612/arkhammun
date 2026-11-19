@@ -759,6 +759,7 @@ export default function AdminPage() {
       setRegistrationNoticeInput(result.registrationNotice)
       if (result.paymentQrUrl) setPaymentQrUrl(result.paymentQrUrl)
       if (result.formSections) setFormSections(result.formSections)
+      await loadEvents()
       setNotice("Conference settings & registration form updated successfully.")
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to save configuration.")
