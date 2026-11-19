@@ -89,6 +89,13 @@ function getStoragePaths(): string[] {
   return paths
 }
 
+function sanitizeQrUrl(url: string | null | undefined): string {
+  if (!url || typeof url !== "string") return "/payment-qr.jpeg"
+  // If it's a broken /uploads/ URL from previous broken upload, fall back to /payment-qr.jpeg
+  if (url.startsWith("/uploads/")) return "/payment-qr.jpeg"
+  return url
+}
+
 function loadFromDisk(): StoredConferenceSettings | null {
   for (const filePath of getStoragePaths()) {
     try {
@@ -97,11 +104,32 @@ function loadFromDisk(): StoredConferenceSettings | null {
         if (raw) {
           const parsed = JSON.parse(raw)
           if (parsed && typeof parsed === "object") {
+            const rawQr = parsed.paymentQrUrl
+            const cleanQr = sanitizeQrUrl(rawQr)
             return {
               ...defaultSettings,
               ...parsed,
+              paymentQrUrl: cleanQr,
               event: { ...defaultSettings.event, ...(parsed.event || {}) },
-              formSections: { ...defaultSettings.formSections, ...(parsed.formSections || {}) },
+              formSections: {
+                ...defaultFormSections,
+                ...(parsed.formSections || {}),
+                delegateDetails: { ...defaultFormSections.delegateDetails, ...(parsed.formSections?.delegateDetails || {}) },
+                experience: {
+                  ...defaultFormSections.experience,
+                  ...(parsed.formSections?.experience || {}),
+                  tiers: parsed.formSections?.experience?.tiers || defaultFormSections.experience?.tiers,
+                },
+                committees: {
+                  ...defaultFormSections.committees,
+                  ...(parsed.formSections?.committees || {}),
+                  items: parsed.formSections?.committees?.items || defaultFormSections.committees?.items,
+                },
+                portfolioPreferences: { ...defaultFormSections.portfolioPreferences, ...(parsed.formSections?.portfolioPreferences || {}) },
+                references: { ...defaultFormSections.references, ...(parsed.formSections?.references || {}) },
+                paymentSection: { ...defaultFormSections.paymentSection, ...(parsed.formSections?.paymentSection || {}) },
+                specialRequests: { ...defaultFormSections.specialRequests, ...(parsed.formSections?.specialRequests || {}) },
+              },
             }
           }
         }
@@ -151,6 +179,9 @@ export function updateConferenceSettings(
 ): StoredConferenceSettings {
   const current = getConferenceSettings()
 
+  const rawQr = updates.paymentQrUrl !== undefined ? updates.paymentQrUrl : current.paymentQrUrl
+  const cleanQr = sanitizeQrUrl(rawQr)
+
   const updated: StoredConferenceSettings = {
     ...current,
     ...updates,
@@ -166,24 +197,46 @@ export function updateConferenceSettings(
       updates.registrationNotice !== undefined
         ? String(updates.registrationNotice).trim()
         : current.registrationNotice,
-    paymentQrUrl:
-      updates.paymentQrUrl !== undefined
-        ? updates.paymentQrUrl === ""
-          ? "/payment-qr.jpeg"
-          : updates.paymentQrUrl
-        : current.paymentQrUrl,
-    paymentQrConfigured:
-      updates.paymentQrUrl !== undefined ? Boolean(updates.paymentQrUrl) : current.paymentQrConfigured,
+    paymentQrUrl: cleanQr,
+    paymentQrConfigured: cleanQr !== "/payment-qr.jpeg",
     formSections: {
       ...current.formSections,
       ...(updates.formSections || {}),
+      delegateDetails: {
+        ...current.formSections?.delegateDetails,
+        ...(updates.formSections?.delegateDetails || {}),
+      },
+      experience: {
+        ...current.formSections?.experience,
+        ...(updates.formSections?.experience || {}),
+        tiers:
+          updates.formSections?.experience?.tiers ||
+          current.formSections?.experience?.tiers ||
+          defaultFormSections.experience?.tiers,
+      },
       committees: {
-        ...current.formSections.committees,
+        ...current.formSections?.committees,
         ...(updates.formSections?.committees || {}),
+        items:
+          updates.formSections?.committees?.items ||
+          current.formSections?.committees?.items ||
+          defaultFormSections.committees?.items,
+      },
+      portfolioPreferences: {
+        ...current.formSections?.portfolioPreferences,
+        ...(updates.formSections?.portfolioPreferences || {}),
+      },
+      references: {
+        ...current.formSections?.references,
+        ...(updates.formSections?.references || {}),
       },
       paymentSection: {
-        ...current.formSections.paymentSection,
+        ...current.formSections?.paymentSection,
         ...(updates.formSections?.paymentSection || {}),
+      },
+      specialRequests: {
+        ...current.formSections?.specialRequests,
+        ...(updates.formSections?.specialRequests || {}),
       },
     },
   }

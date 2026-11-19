@@ -17,31 +17,36 @@ export async function POST(req: Request) {
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
 
-      const publicDir = path.join(process.cwd(), "public", "uploads")
-      if (!fs.existsSync(publicDir)) {
-        fs.mkdirSync(publicDir, { recursive: true })
-      }
-      const ext = path.extname(file.name || "") || ".jpeg"
-      const filename = `payment-qr-${Date.now()}${ext}`
-      fs.writeFileSync(path.join(publicDir, filename), buffer)
-      const qrUrl = `/uploads/${filename}`
+      // Convert to Base64 data URL so it displays instantly with zero 404 risk on any serverless platform
+      const mimeType = file.type || "image/jpeg"
+      const base64 = buffer.toString("base64")
+      const dataUrl = `data:${mimeType};base64,${base64}`
+
+      // Also attempt to save locally if filesystem is writable
+      try {
+        const publicDir = path.join(process.cwd(), "public", "uploads")
+        if (!fs.existsSync(publicDir)) {
+          fs.mkdirSync(publicDir, { recursive: true })
+        }
+        const ext = path.extname(file.name || "") || ".jpeg"
+        const filename = `payment-qr-${Date.now()}${ext}`
+        fs.writeFileSync(path.join(publicDir, filename), buffer)
+      } catch {}
 
       updateConferenceSettings({
-        paymentQrUrl: qrUrl,
+        paymentQrUrl: dataUrl,
         paymentQrConfigured: true,
       })
 
       return NextResponse.json({
         paymentQrConfigured: true,
-        paymentQrUrl: qrUrl,
+        paymentQrUrl: dataUrl,
       })
     }
-  } catch {
-    // If formData parsing fails, fall back to default
-  }
+  } catch {}
 
   return NextResponse.json({
-    paymentQrConfigured: true,
+    paymentQrConfigured: false,
     paymentQrUrl: "/payment-qr.jpeg",
   })
 }

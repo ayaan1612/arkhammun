@@ -564,6 +564,13 @@ export const entryPassApi = {
   },
 
   paymentQrUrl(url: string) {
+    if (!url) return "/payment-qr.jpeg"
+    if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+      return url
+    }
+    if (url.startsWith("/payment-qr.")) {
+      return url
+    }
     const base = getApiBaseUrl()
     return base ? `${base}${url}` : url
   },

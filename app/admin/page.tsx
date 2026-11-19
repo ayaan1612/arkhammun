@@ -455,7 +455,10 @@ export default function AdminPage() {
           setRegistrationNoticeInput(currentSettings.registrationNotice)
         }
         if (currentSettings.paymentQrUrl) {
-          setPaymentQrUrl(currentSettings.paymentQrUrl)
+          const cleanQr = currentSettings.paymentQrUrl.includes("/uploads/")
+            ? "/payment-qr.jpeg"
+            : currentSettings.paymentQrUrl
+          setPaymentQrUrl(cleanQr)
         }
         if (currentSettings.formSections) {
           setFormSections({
@@ -745,7 +748,7 @@ export default function AdminPage() {
           upiId: upiIdInput.trim(),
           registrationOpen: registrationOpenInput,
           registrationNotice: registrationNoticeInput.trim(),
-          paymentQrUrl: paymentQrUrl || undefined,
+          paymentQrUrl: paymentQrUrl && !paymentQrUrl.includes("/uploads/") ? paymentQrUrl : "/payment-qr.jpeg",
           formSections: formSections,
         },
         adminKey
@@ -771,6 +774,17 @@ export default function AdminPage() {
   async function handleQrPosterUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+
+    // Immediately display client-side preview via FileReader so there is 0ms delay and zero broken image
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (dataUrl) {
+        setPaymentQrUrl(dataUrl)
+      }
+    }
+    reader.readAsDataURL(file)
+
     setQrUploadBusy(true)
     setError("")
     try {
@@ -779,7 +793,7 @@ export default function AdminPage() {
       setSettings((current) =>
         current ? { ...current, paymentQrConfigured: result.paymentQrConfigured, paymentQrUrl: result.paymentQrUrl } : current
       )
-      setNotice("Official UPI QR poster uploaded and updated live!")
+      setNotice("Official UPI QR poster uploaded and updated live! Click 'Save Conference & Form Studio' below to persist.")
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to upload payment QR poster.")
     } finally {
@@ -789,8 +803,11 @@ export default function AdminPage() {
   }
 
   function handleResetPaymentQr() {
-    setPaymentQrUrl("")
-    setNotice("Reset payment QR poster to default. Click 'Save Conference & Form Studio' to persist.")
+    setPaymentQrUrl("/payment-qr.jpeg")
+    setSettings((current) =>
+      current ? { ...current, paymentQrConfigured: false, paymentQrUrl: "/payment-qr.jpeg" } : current
+    )
+    setNotice("Reset payment QR poster to default. Click 'Save Conference & Form Studio' below to persist.")
   }
 
   function handleAddCommittee() {
@@ -3044,11 +3061,18 @@ export default function AdminPage() {
                   <span style={{ color: "#aaa8ba", fontSize: 11, fontWeight: 600 }}>LIVE QR POSTER PREVIEW</span>
                   <div style={{ position: "relative", width: 200, height: 280, background: "#000", border: "1px solid rgba(227, 38, 46, 0.4)", borderRadius: 6, overflow: "hidden" }}>
                     <Image
-                      src={paymentQrUrl ? entryPassApi.paymentQrUrl(paymentQrUrl) : "/payment-qr.jpeg"}
+                      src={
+                        paymentQrUrl && !paymentQrUrl.includes("/uploads/")
+                          ? entryPassApi.paymentQrUrl(paymentQrUrl)
+                          : "/payment-qr.jpeg"
+                      }
                       alt="Current Payment QR Poster"
                       fill
                       unoptimized
                       style={{ objectFit: "contain" }}
+                      onError={() => {
+                        setPaymentQrUrl("/payment-qr.jpeg")
+                      }}
                     />
                   </div>
 

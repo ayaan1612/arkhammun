@@ -886,12 +886,22 @@ export default function RegisterPage() {
                     {paymentCfg?.upiNote || "Official UPI Payment QR"}
                   </span>
                   <Image
-                    src={publicEvent?.paymentQrUrl ? entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl) : "/payment-qr.jpeg"}
+                    src={
+                      publicEvent?.paymentQrUrl && !publicEvent.paymentQrUrl.includes("/uploads/")
+                        ? entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl)
+                        : "/payment-qr.jpeg"
+                    }
                     alt="Arkham MUN official UPI payment QR poster"
                     width={320}
                     height={480}
                     unoptimized
                     priority
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement
+                      if (target && !target.src.includes("/payment-qr.jpeg")) {
+                        target.src = "/payment-qr.jpeg"
+                      }
+                    }}
                     style={{
                       width: "100%",
                       height: "auto",
