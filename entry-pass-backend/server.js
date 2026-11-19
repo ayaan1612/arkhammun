@@ -80,6 +80,55 @@ app.use(
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
+// Lightweight response compression middleware for mobile & low-bandwidth clients
+const zlib = require("zlib");
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers["accept-encoding"] || "";
+  if (!acceptEncoding.includes("gzip")) {
+    return next();
+  }
+
+  const originalSend = res.send;
+  res.send = function (body) {
+    if (res.headersSent) return originalSend.call(this, body);
+
+    const contentType = String(res.getHeader("content-type") || "");
+    const isCompressible =
+      typeof body === "string" ||
+      Buffer.isBuffer(body) ||
+      contentType.includes("json") ||
+      contentType.includes("text");
+
+    let payload = null;
+    if (typeof body === "string") {
+      payload = Buffer.from(body);
+    } else if (Buffer.isBuffer(body)) {
+      payload = body;
+    } else if (typeof body === "object" && body !== null) {
+      try {
+        payload = Buffer.from(JSON.stringify(body));
+        if (!contentType) res.setHeader("Content-Type", "application/json; charset=utf-8");
+      } catch {
+        payload = null;
+      }
+    }
+
+    if (isCompressible && payload && payload.length > 1024) {
+      try {
+        const compressed = zlib.gzipSync(payload);
+        res.setHeader("Content-Encoding", "gzip");
+        res.setHeader("Vary", "Accept-Encoding");
+        res.removeHeader("Content-Length");
+        return originalSend.call(this, compressed);
+      } catch {
+        return originalSend.call(this, body);
+      }
+    }
+    return originalSend.call(this, body);
+  };
+  next();
+});
+
 // Establish / reuse MongoDB Atlas connection for every request (cached in serverless)
 app.use(async (req, res, next) => {
   try {
@@ -2090,3 +2139,6 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.app = app;
+module.exports.issueEntryPayload = issueEntryPayload;
+module.exports.verifyEntryPayload = verifyEntryPayload;

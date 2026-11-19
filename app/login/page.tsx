@@ -189,7 +189,7 @@ function LoginForm() {
         style={{ minHeight: "60vh", display: "flex", justifyContent: "center", paddingTop: "20px" }}
       >
         <div
-          className="contact-card"
+          className="contact-card auth-card"
           style={{
             width: "100%",
             maxWidth: "480px",

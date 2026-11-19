@@ -194,7 +194,7 @@ export default function DashboardPage() {
       <div className="page-section" style={{ paddingTop: "30px" }}>
         {/* Top Header / Profile Bar */}
         <div
-          className="dashboard-reveal-item"
+          className="dashboard-profile-bar dashboard-reveal-item"
           style={{
             display: "flex",
             alignItems: "center",
@@ -249,7 +249,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div className="dashboard-actions-row" style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
             <button
               onClick={(e) => {
                 e.preventDefault()
@@ -694,8 +694,8 @@ export default function DashboardPage() {
                           </div>
                           <h4 style={{ margin: "4px 0 2px", fontSize: "18px", color: "#fff" }}>{eventTitle}</h4>
                           <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", color: "#aaa8ba", fontSize: "12px" }}>
-                            <span>ðŸ“… {eventDate}</span>
-                            <span>ðŸ“ {eventVenue}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={13} style={{ color: '#e3262e' }} /> {eventDate}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} style={{ color: '#e3262e' }} /> {eventVenue}</span>
                           </div>
                         </div>
 

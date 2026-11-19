@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { GlobalMouseAura } from '@/components/global-mouse-aura'
@@ -7,6 +7,14 @@ import { AuthProvider } from '@/lib/auth-context'
 import PulsingHexagonBackground from '@/components/pulsing-hexagon-background'
 import { BatCursor } from '@/components/BatCursor'
 import { PageTransitionOverlay, PageTransitionContentWrapper } from '@/components/PageTransition'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#0a0608',
+  viewportFit: 'cover',
+}
 
 export const metadata: Metadata = {
   title: 'Arkham MUN | Diplomacy, reimagined',

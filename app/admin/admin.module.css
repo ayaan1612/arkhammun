@@ -163,14 +163,119 @@
 .checkInBadge.checked { color: #a8dfb9; background: rgba(84, 189, 128, .12); border: 1px solid rgba(84, 189, 128, .4); }
 .checkInBadge.awaiting { color: #9d99ab; background: rgba(255, 255, 255, .05); border: 1px solid rgba(255, 255, 255, .15); }
 
-@media (max-width: 680px) {
-  .adminPage { padding: 22px 16px 50px; }
-  .header { grid-template-columns: 1fr auto; row-gap: 18px; }
+@media (max-width: 768px) {
+  .adminPage { padding: 20px 14px 60px; }
+  .header { grid-template-columns: 1fr auto; row-gap: 16px; padding-bottom: 20px; }
   .headerTitle { grid-row: 2; grid-column: 1 / -1; justify-self: start; text-align: left; }
-  .logoutButton { grid-column: 2; grid-row: 1; }
-  .loginPanel { margin: 54px auto; padding: 25px 20px; }
-  .queuePanel, .scannerPanel, .settingsPanel { padding: 18px 14px; }
-  .scannerGrid { grid-template-columns: 1fr; }
+  .headerTitle h1 { font-size: 20px; }
+  .logoutButton { grid-column: 2; grid-row: 1; min-height: 40px; padding: 8px 12px; }
+  .backLink { min-height: 40px; }
+
+  .tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 8px;
+    margin: 16px 0 20px;
+    gap: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tabs button {
+    flex-shrink: 0;
+    min-height: 42px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  .tabs button.activeTab {
+    background: rgba(227, 38, 46, 0.18);
+    border-color: #e3262e;
+    color: #fff;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .metricCard {
+    padding: 12px 14px;
+  }
+  .metricValue {
+    font-size: 22px;
+  }
+  .metricLabel {
+    font-size: 10px;
+  }
+
+  .loginPanel { margin: 36px auto; padding: 24px 18px; border-radius: 8px; }
+  .loginPanel h2 { font-size: 22px; }
+  .loginPanel input { font-size: 16px !important; min-height: 46px; }
+  .queuePanel, .scannerPanel, .settingsPanel { padding: 18px 14px; border-radius: 8px; }
+  .scannerGrid { grid-template-columns: 1fr; gap: 16px; }
   .videoFrame { min-height: 240px; }
-  .registration { padding: 15px; }
+
+  .registration { padding: 16px 14px; border-radius: 8px; }
+  .registrationTitle { flex-direction: column; gap: 8px; }
+  .registrationDetails { gap: 14px 20px; margin: 14px 0; }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .approveButton, .rejectButton, .secondaryButton, .primaryButton {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .manualForm {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .manualForm input {
+    min-width: 100%;
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+  .manualForm button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .settingsForm {
+    max-width: 100%;
+  }
+  .settingsForm input {
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+
+  .modalContent {
+    width: min(94vw, 540px);
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 20px 16px;
+    border-radius: 8px;
+  }
+  .modalOverlay {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .metricsGrid {
+    grid-template-columns: 1fr;
+  }
+  .headerTitle h1 {
+    font-size: 18px;
+  }
 }
