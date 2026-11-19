@@ -20,6 +20,7 @@ import {
   LogIn,
   LogOut,
   Mail,
+  MapPin,
   Megaphone,
   MessageSquare,
   Plus,
@@ -208,7 +209,7 @@ export default function AdminPage() {
     venue: arkham.venueNote,
   })
   const [amountInput, setAmountInput] = useState<number>(2200)
-  const [upiIdInput, setUpiIdInput] = useState<string>(arkham.paymentUpi || "9718884945@ptsbi")
+  const [upiIdInput, setUpiIdInput] = useState<string>(arkham.paymentUpi || "chauhan5408k@okaxis")
   const [registrationOpenInput, setRegistrationOpenInput] = useState<boolean>(true)
   const [registrationNoticeInput, setRegistrationNoticeInput] = useState<string>("")
   const [paymentQrUrl, setPaymentQrUrl] = useState<string>("")
@@ -2036,9 +2037,9 @@ export default function AdminPage() {
                     </div>
                     <p style={{ margin: "6px 0", color: "#aaa8ba", fontSize: 13 }}>{ev.description}</p>
                     <div style={{ display: "flex", gap: 16, color: "#8d8a9e", fontSize: 12, flexWrap: "wrap" }}>
-                      <span>ðŸ“… {ev.date}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Calendar size={13} /> {ev.date}</span>
                       <span>⏰ {ev.time}</span>
-                      <span>ðŸ“ {ev.venue}</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MapPin size={13} /> {ev.venue}</span>
                       <span>💰 ₹{ev.entryFee}</span>
                       <span>UPI: {ev.upiId}</span>
                     </div>
@@ -2062,7 +2063,7 @@ export default function AdminPage() {
                         color: ev.registrationOpen ? "#ff8288" : "#4ade80",
                       }}
                     >
-                      {ev.registrationOpen ? "ðŸ”’ Close Registration" : "ðŸ”“ Re-open Registration"}
+                      {ev.registrationOpen ? "🔒 Close Registration" : "🔓 Re-open Registration"}
                     </button>
                     <button
                       className={styles.secondaryButton}
@@ -2321,7 +2322,7 @@ export default function AdminPage() {
                   fontSize: 13,
                 }}
               >
-                <option value="all">ðŸ“¢ All Registered Delegates (All Events)</option>
+                <option value="all">📢 All Registered Delegates (All Events)</option>
                 {eventsList.map((ev) => (
                   <option key={ev._id} value={ev._id}>
                     Target Event: {ev.title} ({ev.date})

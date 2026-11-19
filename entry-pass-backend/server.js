@@ -310,7 +310,7 @@ async function getDefaultEventDetails() {
     time: process.env.EVENT_TIME || "9:00 AM – 5:00 PM",
     venue: process.env.EVENT_VENUE || "Arkham Assembly Hall & International Dais, New Delhi",
     amount: entryFee,
-    upiId: "9718884945@ptsbi",
+    upiId: "chauhan5408k@okaxis",
     registrationOpen: true,
     registrationNotice: "",
     paymentQrUrl: null,
@@ -760,7 +760,7 @@ app.get("/api/events", async (req, res) => {
         venue: "Arkham Assembly Hall & International Dais, New Delhi",
         time: "09:00 AM - 05:00 PM",
         entryFee: entryFee,
-        upiId: "9718884945@ptsbi",
+        upiId: "chauhan5408k@okaxis",
         registrationOpen: true,
         registrationNotice: "Early bird delegate registration is currently live. Limited seats per committee.",
       });
@@ -805,8 +805,8 @@ app.get("/api/event", async (req, res) => {
         venue: details.venue,
       },
       amount: details.amount,
-      upiId: details.upiId || "9718884945@ptsbi",
-      paymentQrUrl: details.paymentQrUrl || "/api/payment-qr.png",
+      upiId: details.upiId || "chauhan5408k@okaxis",
+      paymentQrUrl: details.paymentQrUrl || "/payment-qr.jpeg",
       paymentQrConfigured: Boolean(details.paymentQrUrl),
       registrationOpen: details.registrationOpen,
       registrationNotice: details.registrationNotice || "",
@@ -821,7 +821,7 @@ app.get("/api/event", async (req, res) => {
 app.get("/api/payment-qr.png", async (req, res, next) => {
   try {
     const details = await getDefaultEventDetails();
-    const upiId = details.upiId || "9718884945@ptsbi";
+    const upiId = details.upiId || "chauhan5408k@okaxis";
     const amount = details.amount || entryFee;
     const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(
       details.name
@@ -974,7 +974,7 @@ app.post("/api/admin/events", requireAdmin, async (req, res) => {
       venue: venue.trim(),
       time: time || "09:00 AM - 05:00 PM",
       entryFee: Number(fee) || entryFee,
-      upiId: upiId || "9718884945@ptsbi",
+      upiId: upiId || "chauhan5408k@okaxis",
       registrationOpen: registrationOpen !== false,
       registrationNotice: registrationNotice || "",
     });
@@ -2012,11 +2012,11 @@ app.get("/api/admin/settings", requireAdmin, async (req, res) => {
         venue: details.venue,
       },
       amount: details.amount,
-      upiId: details.upiId || "9718884945@ptsbi",
+      upiId: details.upiId || "chauhan5408k@okaxis",
       registrationOpen: details.registrationOpen,
       registrationNotice: details.registrationNotice || "",
       paymentQrConfigured: Boolean(details.paymentQrUrl),
-      paymentQrUrl: details.paymentQrUrl || "/api/payment-qr.png",
+      paymentQrUrl: details.paymentQrUrl || "/payment-qr.jpeg",
       formSections: details.formSections || defaultFormSections,
     });
   } catch (err) {
@@ -2114,7 +2114,7 @@ app.put("/api/admin/settings", requireAdmin, async (req, res) => {
       registrationOpen: currentEvent.registrationOpen,
       registrationNotice: currentEvent.registrationNotice,
       paymentQrConfigured: Boolean(currentEvent.paymentQrUrl),
-      paymentQrUrl: currentEvent.paymentQrUrl || "/api/payment-qr.png",
+      paymentQrUrl: currentEvent.paymentQrUrl || "/payment-qr.jpeg",
       formSections: currentEvent.formSections || defaultFormSections,
       message: "Conference and registration form settings successfully updated.",
     });

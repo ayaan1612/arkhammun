@@ -232,7 +232,7 @@ export default function Home() {
         <div className="two-column registration-grid">
           <div>
             <h2>Take your<br /><em>seat.</em></h2>
-            <p className="section-copy">Complete your registration online. Payment is accepted online via UPI at <strong>9718884945@ptsbi</strong>.</p>
+            <p className="section-copy">Complete your registration online. Payment is accepted online via UPI at <strong>chauhan5408k@okaxis</strong>.</p>
           </div>
           <div className="fee-card">
             <div><span>School delegation</span><strong>₹2300</strong><small>Per student for a school delegation</small></div>

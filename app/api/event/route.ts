@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     },
     amount: 2300,
     upiId: arkham.paymentUpi,
-    paymentQrUrl: null,
+    paymentQrUrl: "/payment-qr.jpeg",
     registrationOpen: true,
     registrationNotice: "Registrations for Arkham MUN 2027 are live.",
   })

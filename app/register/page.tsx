@@ -10,6 +10,8 @@ import {
   CircleAlert,
   Clock3,
   Copy,
+  Download,
+  ExternalLink,
   LoaderCircle,
   LogIn,
   Shield,
@@ -122,8 +124,8 @@ const DEFAULT_EVENT: PublicEvent = {
     venue: "Central Delhi, India",
   },
   amount: 2300,
-  upiId: "9718884945@ptsbi",
-  paymentQrUrl: "/api/payment-qr.png",
+  upiId: "chauhan5408k@okaxis",
+  paymentQrUrl: "/payment-qr.jpeg",
   registrationOpen: true,
 }
 
@@ -293,7 +295,7 @@ export default function RegisterPage() {
     setNotice("")
   }
 
-  const upiId = publicEvent?.upiId || "9718884945@ptsbi"
+  const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
 
   const formSections = publicEvent?.formSections || {}
   const delegateDetailsCfg = formSections.delegateDetails
@@ -935,6 +937,49 @@ export default function RegisterPage() {
                     >
                       {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy"}
                     </button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 2 }}>
+                    <a
+                      href={`upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("Arkham MUN")}&am=${encodeURIComponent(String(publicEvent?.amount || 2300))}&cu=INR&tn=${encodeURIComponent("Arkham MUN Registration")}`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        padding: "8px 10px",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: "#e3262e",
+                        color: "#fff",
+                        borderRadius: 4,
+                        textDecoration: "none",
+                        textAlign: "center",
+                      }}
+                    >
+                      <ExternalLink size={12} /> Pay via UPI App
+                    </a>
+                    <a
+                      href={publicEvent?.paymentQrUrl ? entryPassApi.paymentQrUrl(publicEvent.paymentQrUrl) : "/payment-qr.jpeg"}
+                      download="Arkham-MUN-Payment-QR.jpeg"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        padding: "8px 10px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: "rgba(255, 255, 255, 0.08)",
+                        color: "#e2e0ed",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: 4,
+                        textDecoration: "none",
+                        textAlign: "center",
+                      }}
+                    >
+                      <Download size={12} /> Save QR Image
+                    </a>
                   </div>
                 </div>
 

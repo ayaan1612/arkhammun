@@ -19,8 +19,8 @@ export async function GET(req: Request) {
     upiId: arkham.paymentUpi,
     registrationOpen: true,
     registrationNotice: "",
-    paymentQrConfigured: false,
-    paymentQrUrl: null,
+    paymentQrConfigured: true,
+    paymentQrUrl: "/payment-qr.jpeg",
   })
 }
 

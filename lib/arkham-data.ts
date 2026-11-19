@@ -3,7 +3,7 @@ export const arkham = {
   dates: '10–11 April 2027',
   location: 'Central Delhi, India',
   fees: { school: '₹2,300', individual: '₹2,500' },
-  paymentUpi: '9718884945@ptsbi',
+  paymentUpi: 'chauhan5408k@okaxis',
   venueNote: 'In Central Delhi',
   logo: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202026-07-21%20at%209.49.19%20PM%20%281%29-TtjyOzah9Sj825Ttt0s8mJWmOeUncA.jpeg',
   email: 'arkhammun2026@gmail.com',

@@ -26,7 +26,7 @@ const DEFAULT_EVENT: PublicEvent = {
     venue: "Central Delhi, India",
   },
   amount: 2300,
-  upiId: "9718884945@ptsbi",
+  upiId: "chauhan5408k@okaxis",
   paymentQrUrl: "/api/payment-qr.png",
   registrationOpen: true,
 }
@@ -151,7 +151,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     setNotice("")
   }
 
-  const upiId = publicEvent?.upiId || "9718884945@ptsbi"
+  const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
 
   function copyUpi() {
     navigator.clipboard.writeText(upiId)

@@ -546,8 +546,8 @@ export default function DashboardPage() {
                           {ev.description}
                         </p>
                         <div style={{ display: "flex", gap: "16px", color: "#8d8a9e", fontSize: "12px", flexWrap: "wrap" }}>
-                          <span>ðŸ“… {ev.date}</span>
-                          <span>ðŸ“ {ev.venue}</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Calendar size={13} /> {ev.date}</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MapPin size={13} /> {ev.venue}</span>
                           <span>💰 ₹{ev.entryFee}</span>
                         </div>
                       </div>
@@ -1156,7 +1156,7 @@ export default function DashboardPage() {
 
                     {(statusModalReg.used_at || modalPassData.isExpired) ? (
                       <div style={{ fontSize: "12px", color: "#c084fc", fontWeight: 700, marginBottom: "8px" }}>
-                        ðŸ”’ PASS USED &amp; EXPIRED AT {new Date(statusModalReg.used_at || modalPassData.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        🔒 PASS USED &amp; EXPIRED AT {new Date(statusModalReg.used_at || modalPassData.used_at || "").toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     ) : (
                       <div style={{ fontSize: "12px", color: "#4ade80", fontWeight: 700, marginBottom: "8px" }}>
@@ -1496,7 +1496,7 @@ export default function DashboardPage() {
                             border: "1px solid rgba(227, 38, 46, 0.35)",
                           }}
                         >
-                          ðŸ“¢ OFFICIAL SECRETARIAT BROADCAST
+                          📢 OFFICIAL SECRETARIAT BROADCAST
                         </span>
                         <span style={{ fontSize: "11px", color: "#8d8a9e" }}>
                           {new Date(notif.createdAt).toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
