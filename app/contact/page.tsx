@@ -198,6 +198,9 @@ export default function ContactPage() {
                     </>
                   )}
                 </button>
+                <p style={{ color: "#6b667a", fontSize: "11px", marginTop: "12px", lineHeight: 1.5, textAlign: "center" }}>
+                  Your details are used solely to respond to your enquiry and are retained for a maximum of 90 days. We do not share your information with third parties.
+                </p>
               </form>
             )}
           </div>

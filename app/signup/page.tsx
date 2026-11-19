@@ -87,8 +87,8 @@ function SignupForm() {
 
     if (!password) {
       errors.password = "Password is required."
-    } else if (password.length < 6) {
-      errors.password = "Password must be at least 6 characters long."
+    } else if (password.length < 10) {
+      errors.password = "Password must be at least 10 characters long."
     }
 
     if (password !== confirmPassword) {
@@ -341,7 +341,7 @@ function SignupForm() {
               <div style={{ position: "relative" }}>
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 10 characters"
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)

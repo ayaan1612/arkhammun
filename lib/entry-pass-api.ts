@@ -303,11 +303,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   let response: Response
   const baseUrl = getApiBaseUrl()
   
-  // Prefer internal Next.js route handlers for admin and metadata endpoints
+  // Direct Next.js routes that can handle auth directly without external backend
   const isDirectNextRoute =
-    endpoint.startsWith("/api/admin/") ||
-    endpoint === "/api/auth/me" ||
-    endpoint === "/api/events"
+    endpoint === "/api/admin/login" ||
+    endpoint === "/api/auth/me"
   const primaryUrl = isDirectNextRoute || !baseUrl ? endpoint : `${baseUrl}${endpoint}`
 
   try {
@@ -358,15 +357,16 @@ function authHeaders(tokenOrKey?: string, json = false): HeadersInit {
   const headers: Record<string, string> = {}
   if (json) headers["Content-Type"] = "application/json"
   if (tokenOrKey) {
+    const cleanToken = tokenOrKey.replace(/^arkham-admin-verified-/, "").trim()
     if (tokenOrKey.startsWith("Bearer ")) {
       headers["Authorization"] = tokenOrKey
-    } else if (tokenOrKey.length > 40) {
+    } else if (tokenOrKey.length > 40 && tokenOrKey.includes(".")) {
       // Likely JWT token
       headers["Authorization"] = `Bearer ${tokenOrKey}`
     } else {
-      // Legacy admin key
-      headers["x-admin-key"] = tokenOrKey
-      headers["Authorization"] = `Bearer ${tokenOrKey}`
+      // Legacy admin key or clean token
+      headers["x-admin-key"] = cleanToken || tokenOrKey
+      headers["Authorization"] = `Bearer ${cleanToken || tokenOrKey}`
     }
   }
   return headers

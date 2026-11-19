@@ -437,6 +437,11 @@ export function Preloader() {
       setVisible(false)
     }
 
+    // Hard safety: always dismiss within 10 seconds no matter what
+    const hardTimeout = setTimeout(() => {
+      finishAndCleanup()
+    }, 10000)
+
     const renderLoop = (now: number) => {
       if (!runningRef.current) return
 
@@ -698,6 +703,7 @@ export function Preloader() {
     return () => {
       window.removeEventListener('resize', handleResize)
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current)
+      clearTimeout(hardTimeout)
       document.documentElement.style.overflow = ''
       document.body.style.overflow = ''
       document.documentElement.removeAttribute('data-preloader-active')

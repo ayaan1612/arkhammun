@@ -33,7 +33,7 @@ function LoginForm() {
 
   const initialRole: UserType = redirectTarget.includes("/admin") || paramRole === "admin" ? "admin" : "delegate"
   const [userType, setUserType] = useState<UserType>(initialRole)
-  const [email, setEmail] = useState(initialRole === "admin" ? "arkhammun2026@gmail.com" : "")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [adminKey, setAdminKey] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -110,8 +110,19 @@ function LoginForm() {
 
     try {
       if (userType === "admin") {
-        const activeAdminEmail = email.trim() || "arkhammun2026@gmail.com"
-        const activeAdminKey = adminKey.trim() || "admin12345"
+        const activeAdminEmail = email.trim()
+        const activeAdminKey = adminKey.trim()
+
+        if (!activeAdminEmail) {
+          setError("Please enter the Administrative Email.")
+          setLoading(false)
+          return
+        }
+        if (!activeAdminKey) {
+          setError("Please enter the Secretariat Admin Key.")
+          setLoading(false)
+          return
+        }
 
         // 1. Authenticate immediately to guarantee admin session and token are persisted
         await loginAdmin(activeAdminEmail, activeAdminKey)
@@ -146,10 +157,11 @@ function LoginForm() {
       if (userType === "admin") {
         // Fallback admin check to guarantee admin never gets stranded
         try {
-          const activeAdminEmail = email.trim() || "arkhammun2026@gmail.com"
-          await loginAdmin(activeAdminEmail, adminKey.trim() || "admin12345")
-          router.replace(targetDestination)
-          return
+          if (email.trim() && adminKey.trim()) {
+            await loginAdmin(email.trim(), adminKey.trim())
+            router.replace(targetDestination)
+            return
+          }
         } catch {}
       }
       const msg = err instanceof Error ? err.message : "Authentication failed. Please verify your credentials."
@@ -236,15 +248,11 @@ function LoginForm() {
               tabIndex={0}
               onClick={() => {
                 setUserType("admin")
-                if (!email) setEmail("arkhammun2026@gmail.com")
-                if (!adminKey) setAdminKey("admin12345")
                 setError("")
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   setUserType("admin")
-                  if (!email) setEmail("arkhammun2026@gmail.com")
-                  if (!adminKey) setAdminKey("admin12345")
                   setError("")
                 }
               }}

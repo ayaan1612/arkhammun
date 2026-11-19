@@ -408,6 +408,7 @@ export async function go(options: GoOptions): Promise<boolean> {
     let timedOut = false
     const safetyTimer = setTimeout(() => {
       timedOut = true
+      updateStore({ activeTransition: null, isTransitioning: false })
     }, 6000)
 
     let actionSucceeded = false

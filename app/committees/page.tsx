@@ -8,7 +8,7 @@ export default function CommitteesPage() {
     <ArkhamShell>
       <main>
         <PageIntro eyebrow="02 / The rooms" title={<>Choose your <em>arena.</em></>}>
-          Eight committees, eight distinct rooms for research, negotiation and conviction. Browse the verified Arkham MUN agendas, study guides, and parliamentary frameworks below.
+          Eight committees, eight distinct rooms for research, negotiation and conviction. Browse the verified Arkham MUN agendas below. Study guides and parliamentary frameworks will be published ahead of the conference.
         </PageIntro>
 
         {/* Directory Grid */}

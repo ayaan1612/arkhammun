@@ -121,8 +121,8 @@ const DEFAULT_EVENT: PublicEvent = {
     time: "9:00 AM – 5:00 PM",
     venue: "Central Delhi, India",
   },
-  amount: 2200,
-  upiId: "chauhan5408k@okaxis",
+  amount: 2300,
+  upiId: "9718884945@ptsbi",
   paymentQrUrl: "/api/payment-qr.png",
   registrationOpen: true,
 }
@@ -293,7 +293,7 @@ export default function RegisterPage() {
     setNotice("")
   }
 
-  const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
+  const upiId = publicEvent?.upiId || "9718884945@ptsbi"
 
   const formSections = publicEvent?.formSections || {}
   const delegateDetailsCfg = formSections.delegateDetails

@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server"
 import { arkham } from "@/lib/arkham-data"
+import { proxyToBackend } from "@/lib/admin-proxy"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(req: Request) {
+  const proxyRes = await proxyToBackend(req, "/api/events")
+  if (proxyRes) return proxyRes
+
   return NextResponse.json({
     events: [
       {
@@ -13,7 +17,7 @@ export async function GET() {
         date: arkham.dates,
         venue: arkham.venueNote,
         time: "09:00 AM – 05:00 PM",
-        entryFee: 2200,
+        entryFee: 2300,
         upiId: arkham.paymentUpi,
         registrationOpen: true,
         registrationNotice: "Registrations for Arkham MUN 2027 are live.",

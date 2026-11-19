@@ -26,7 +26,7 @@ const DEFAULT_EVENT: PublicEvent = {
     venue: "Central Delhi, India",
   },
   amount: 2300,
-  upiId: "chauhan5408k@okaxis",
+  upiId: "9718884945@ptsbi",
   paymentQrUrl: "/api/payment-qr.png",
   registrationOpen: true,
 }
@@ -151,7 +151,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
     setNotice("")
   }
 
-  const upiId = publicEvent?.upiId || "chauhan5408k@okaxis"
+  const upiId = publicEvent?.upiId || "9718884945@ptsbi"
 
   function copyUpi() {
     navigator.clipboard.writeText(upiId)
@@ -235,7 +235,7 @@ export function EntryRegistrationFlow({ isOpen, onClose }: Props) {
                         onChange={(event) => setPaymentConfirmed(event.target.checked)}
                       />
                       <span>
-                        I confirm that I have transferred <strong>INR {Number(registration.amount).toFixed(2)}</strong> via UPI to <code>chauhan5408k@okaxis</code> and entered the genuine transaction reference (UTR) above.
+                        I confirm that I have transferred <strong>INR {Number(registration.amount).toFixed(2)}</strong> via UPI to <code>{upiId}</code> and entered the genuine transaction reference (UTR) above.
                       </span>
                     </label>
 

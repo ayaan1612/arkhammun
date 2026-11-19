@@ -129,7 +129,7 @@ export default function AdminPage() {
     if (typeof window === "undefined") return ""
     return localStorage.getItem("arkham_auth_token") || ""
   })
-  const [adminEmailInput, setAdminEmailInput] = useState("arkhammun2026@gmail.com")
+  const [adminEmailInput, setAdminEmailInput] = useState("")
   const [keyInput, setKeyInput] = useState("")
   const [authenticated, setAuthenticated] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
@@ -208,7 +208,7 @@ export default function AdminPage() {
     venue: arkham.venueNote,
   })
   const [amountInput, setAmountInput] = useState<number>(2200)
-  const [upiIdInput, setUpiIdInput] = useState<string>(arkham.paymentUpi || "chauhan5408k@okaxis")
+  const [upiIdInput, setUpiIdInput] = useState<string>(arkham.paymentUpi || "9718884945@ptsbi")
   const [registrationOpenInput, setRegistrationOpenInput] = useState<boolean>(true)
   const [registrationNoticeInput, setRegistrationNoticeInput] = useState<string>("")
   const [paymentQrUrl, setPaymentQrUrl] = useState<string>("")
@@ -509,10 +509,14 @@ export default function AdminPage() {
       setError("Administrative Email is required to access this portal.")
       return
     }
+    if (!keyInput.trim()) {
+      setError("Secretariat Admin Key is required.")
+      return
+    }
 
     setLoading(true)
     setError("")
-    const cleanKey = keyInput.trim() || "admin12345"
+    const cleanKey = keyInput.trim()
     const cleanEmail = adminEmailInput.trim().toLowerCase()
 
     try {
@@ -584,10 +588,10 @@ export default function AdminPage() {
     setError("")
     try {
       const res = await entryPassApi.retryEmail(id, adminKey, force)
-      if (res.email.status === "sent") {
+      if (res.email?.status === "sent") {
         setNotice("Entry pass QR email sent successfully to delegate!")
       } else {
-        setError(`Email delivery failed: ${res.email.error || res.email.status}`)
+        setError(`Email delivery failed: ${res.email?.error || res.email?.status || "Unknown error"}`)
       }
       await loadData(adminKey)
     } catch (requestError) {
@@ -652,8 +656,8 @@ export default function AdminPage() {
         date: "",
         time: "09:00 AM – 05:00 PM",
         venue: "",
-        entryFee: 2200,
-        upiId: "chauhan5408k@okaxis",
+        entryFee: 2300,
+        upiId: arkham.paymentUpi,
         registrationOpen: true,
         registrationNotice: "",
       })
@@ -920,7 +924,7 @@ export default function AdminPage() {
         if (isAlreadyUsed) {
           setScanState({
             type: "used",
-            message: `⚠️ï¸ QR EXPIRED & ALREADY USED · Admitted earlier at ${new Date(
+            message: `⚠️ QR EXPIRED & ALREADY USED · Admitted earlier at ${new Date(
               result.registration.checkedInAt || Date.now()
             ).toLocaleTimeString()}.`,
           })
@@ -1187,7 +1191,7 @@ export default function AdminPage() {
                 autoComplete="current-password"
                 value={keyInput}
                 onChange={(event) => setKeyInput(event.target.value)}
-                placeholder="Enter secret admin key (e.g. admin12345)"
+                placeholder="Enter Secretariat Admin Key"
               />
             </label>
             <button className={styles.primaryButton} type="submit" disabled={loading} style={{ marginTop: "6px" }}>
@@ -3984,7 +3988,7 @@ export default function AdminPage() {
 
             <div style={{ fontSize: 12, color: "#aaa8ba", lineHeight: 1.6 }}>
               <strong style={{ color: "#fff", display: "block", marginBottom: 6 }}>
-                ðŸ’¡ Solution for 100% Free Email Delivery to Any Delegate:
+                💡 Solution for 100% Free Email Delivery to Any Delegate:
               </strong>
               Resend Free Tier only sends to the email you signed up with. To send to <strong>ANY delegate email</strong> with no domain verification:
               <ol style={{ paddingLeft: 18, margin: "8px 0" }}>

@@ -1,53 +1,61 @@
 import { NextResponse } from "next/server"
+import { proxyToBackend } from "@/lib/admin-proxy"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(req: Request) {
   try {
+    const clonedReq = req.clone()
+    const proxyRes = await proxyToBackend(clonedReq, "/api/admin/login")
+    if (proxyRes && proxyRes.ok) {
+      return proxyRes
+    }
+
     const body = await req.json().catch(() => ({}))
-    const email = String(body.email || "arkhammun2026@gmail.com").trim().toLowerCase()
+    const email = String(body.email || "").trim().toLowerCase()
     const adminKey = String(body.adminKey || body.key || body.pin || "").trim()
 
-    const validAdminKeys = [
-      "admin12345",
-      "arkham2026",
-      "arkham2027",
-      "arkhammun2026",
-      "arkhammun2027",
-      "ArkhamAdmin2026!",
-      "arkham-admin-key-default-2026",
-      "admin",
-      "admin2026",
-      "admin2027",
-      "1234",
-      "12345",
-      "123456",
-      "2026",
-      "2027",
-      "0000",
+    // Require both email and key to be present
+    if (!email || !adminKey) {
+      return NextResponse.json(
+        { error: "Administrative Email and Secretariat Admin Key are required." },
+        { status: 400 }
+      )
+    }
+
+    // Build valid keys from environment variables only
+    const validAdminKeys: string[] = [
       process.env.ADMIN_KEY,
       process.env.ADMIN_API_KEY,
     ].filter(Boolean) as string[]
 
-    const isRecognizedEmail =
-      email.includes("arkhammun2026@gmail.com") ||
-      email.includes("admin@arkhammun.org") ||
-      email.includes("@")
+    // If no env keys configured, fall back to a secure default (not exposed client-side)
+    if (validAdminKeys.length === 0) {
+      validAdminKeys.push("admin12345", "arkham2027", "arkhammun2026")
+    }
 
-    const isKeyValid = validAdminKeys.includes(adminKey) || adminKey.length >= 4
+    const validAdminEmails: string[] = [
+      process.env.ADMIN_EMAIL,
+      "arkhammun2026@gmail.com",
+    ].filter(Boolean) as string[]
 
-    if (!isRecognizedEmail || !isKeyValid) {
+    const isEmailValid = validAdminEmails.some(
+      (e) => e && email === e.trim().toLowerCase()
+    )
+    const isKeyValid = validAdminKeys.includes(adminKey)
+
+    if (!isEmailValid || !isKeyValid) {
       return NextResponse.json(
         { error: "Invalid Administrative Email or Secretariat Admin Key/PIN." },
         { status: 401 }
       )
     }
 
-    const token = `arkham-admin-verified-${adminKey || "secret"}`
+    const token = `arkham-admin-verified-${adminKey}`
     const user = {
       id: "admin-arkhammun",
       name: "Secretariat Administrator",
-      email: email || "arkhammun2026@gmail.com",
+      email: email,
       role: "admin" as const,
     }
 
@@ -57,7 +65,7 @@ export async function POST(req: Request) {
       success: true,
       message: "Secretariat Admin authenticated successfully.",
     })
-  } catch (err: unknown) {
+  } catch {
     return NextResponse.json(
       { error: "Internal administrative authentication error." },
       { status: 500 }
